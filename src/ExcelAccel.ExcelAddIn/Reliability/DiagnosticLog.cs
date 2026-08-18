@@ -15,6 +15,9 @@ internal static class DiagnosticLog
     public static void Error(string operationId, Exception exception, long? elapsedMilliseconds = null) =>
         Write("ERROR", operationId, "failed", exception.GetType().FullName, elapsedMilliseconds);
 
+    public static void Failure(string operationId, string failureCode, Exception exception, long? elapsedMilliseconds = null) =>
+        Write("ERROR", operationId, failureCode, exception.GetType().FullName, elapsedMilliseconds);
+
     private static void Write(string level, string operationId, string outcome, string? errorType, long? elapsedMilliseconds)
     {
         try

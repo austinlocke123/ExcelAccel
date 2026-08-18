@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using ExcelAccel.Core.Commands;
@@ -10,6 +11,8 @@ namespace ExcelAccel.ExcelAddIn.Reliability;
 internal static class RuntimeState
 {
     private static readonly int ProcessId = Process.GetCurrentProcess().Id;
+    private static readonly object QuarantineSync = new object();
+    private static readonly HashSet<string> QuarantinedCommands = new HashSet<string>(StringComparer.Ordinal);
     private static int _excelThreadId;
 
     private static string SessionDirectory => Path.Combine(
@@ -37,7 +40,27 @@ internal static class RuntimeState
         AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
         AppDomain.CurrentDomain.DomainUnload -= OnDomainUnload;
         TryDelete(MarkerPath);
+        lock (QuarantineSync)
+        {
+            QuarantinedCommands.Clear();
+        }
         IsSafeMode = false;
+    }
+
+    public static void Quarantine(string commandId)
+    {
+        lock (QuarantineSync)
+        {
+            QuarantinedCommands.Add(commandId);
+        }
+    }
+
+    public static bool IsQuarantined(string commandId)
+    {
+        lock (QuarantineSync)
+        {
+            return QuarantinedCommands.Contains(commandId);
+        }
     }
 
     public static void VerifyExcelThread()

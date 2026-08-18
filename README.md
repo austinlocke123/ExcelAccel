@@ -20,6 +20,7 @@ one read-only command, and one property-scoped formatting command.
 9. [Original feature coverage](docs/FEATURE_COVERAGE.md)
 10. [Architecture decisions](docs/decisions/README.md)
 11. [Phase 0 implementation evidence](docs/evidence/PHASE0_VERTICAL_SLICE.md)
+12. [Excel adapter and state-guard evidence](docs/evidence/WP-P0-04_ADAPTER_STATE_GUARD.md)
 
 ## Build and test
 

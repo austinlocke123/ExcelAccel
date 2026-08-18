@@ -34,6 +34,10 @@ public static class ExcelAccelNativeMethods
     $workbook = $null
     $worksheet = $null
     $cell = $null
+    $secondCell = $null
+    $multiArea = $null
+    $mergedRange = $null
+    $quitReturned = $false
 
     try {
         $excel = New-Object -ComObject Excel.Application
@@ -80,15 +84,91 @@ public static class ExcelAccelNativeMethods
             throw 'The formatting command did not produce the exact property-scoped result.'
         }
 
+        $excel.ScreenUpdating = $true
+        $excel.EnableEvents = $true
+        [void]$excel.Run('ExcelAccel.Smoke.ThrowInsideStateGuard')
+        $stateRestored = [bool]$excel.ScreenUpdating -and [bool]$excel.EnableEvents
+        [Console]::WriteLine("state_restored_after_fault=$stateRestored")
+        [Console]::Out.Flush()
+        if (-not $stateRestored) {
+            throw 'Excel application state was not restored after the injected mutation failure.'
+        }
+
+        $cell.NumberFormat = 'General'
+        $worksheet.Protect()
+        try {
+            [void]$cell.Select()
+            [void]$excel.Run('ExcelAccel.Smoke.ApplyCurrencyFormat')
+            $protectedTargetRefused = ([string]$cell.NumberFormat -eq 'General')
+        }
+        finally {
+            $worksheet.Unprotect()
+        }
+        [Console]::WriteLine("protected_target_refused=$protectedTargetRefused")
+        [Console]::Out.Flush()
+        if (-not $protectedTargetRefused) {
+            throw 'The formatting command mutated a protected worksheet target.'
+        }
+
+        $secondCell = $worksheet.Range('C1')
+        $multiArea = $worksheet.Range('A1,C1')
+        $cell.NumberFormat = 'General'
+        $secondCell.NumberFormat = 'General'
+        [void]$multiArea.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.ApplyCurrencyFormat')
+        $multiAreaRefused =
+            ([string]$cell.NumberFormat -eq 'General') -and
+            ([string]$secondCell.NumberFormat -eq 'General')
+        [Console]::WriteLine("multi_area_refused=$multiAreaRefused")
+        [Console]::Out.Flush()
+        if (-not $multiAreaRefused) {
+            throw 'The formatting command mutated a multi-area selection.'
+        }
+
+        $mergedRange = $worksheet.Range('A2:B2')
+        $mergedRange.Merge()
+        try {
+            $mergedRange.NumberFormat = 'General'
+            [void]$mergedRange.Select()
+            [void]$excel.Run('ExcelAccel.Smoke.ApplyCurrencyFormat')
+            $mergedTargetRefused = ([string]$mergedRange.NumberFormat -eq 'General')
+        }
+        finally {
+            $mergedRange.UnMerge()
+        }
+        [Console]::WriteLine("merged_target_refused=$mergedTargetRefused")
+        [Console]::Out.Flush()
+        if (-not $mergedTargetRefused) {
+            throw 'The formatting command mutated a merged-cell selection.'
+        }
+
         $workbook.Close($false)
         $workbook = $null
         [Console]::WriteLine('workbook_closed=true')
         [Console]::Out.Flush()
         $excel.Quit()
+        $quitReturned = $true
         [Console]::WriteLine('quit_returned=true')
         [Console]::Out.Flush()
     }
     finally {
+        try {
+            if ($null -ne $workbook) {
+                $workbook.Close($false)
+            }
+        }
+        catch {
+        }
+        try {
+            if ($null -ne $excel -and -not $quitReturned) {
+                $excel.Quit()
+            }
+        }
+        catch {
+        }
+        Release-ComObject $mergedRange
+        Release-ComObject $multiArea
+        Release-ComObject $secondCell
         Release-ComObject $cell
         Release-ComObject $worksheet
         Release-ComObject $workbook
@@ -145,8 +225,11 @@ try {
     if ($excelProcessId) {
         $excelProcess = Get-Process -Id ([int]$excelProcessId) -ErrorAction SilentlyContinue
         if ($excelProcess) {
-            Stop-Process -Id $excelProcess.Id -Force
-            throw "Excel PID $excelProcessId did not exit cleanly within the smoke-test window. Worker output:`n$output"
+            $exitedAfterGracePeriod = $excelProcess.WaitForExit(5000)
+            if (-not $exitedAfterGracePeriod) {
+                Stop-Process -Id $excelProcess.Id -Force
+                throw "Excel PID $excelProcessId did not exit cleanly within the smoke-test window. Worker output:`n$output"
+            }
         }
     }
 
@@ -163,6 +246,10 @@ try {
         'version=',
         'currency_format=$#,##0.00;($#,##0.00);-',
         'content_preserved=True',
+        'state_restored_after_fault=True',
+        'protected_target_refused=True',
+        'multi_area_refused=True',
+        'merged_target_refused=True',
         'workbook_closed=true',
         'quit_returned=true'
     )
