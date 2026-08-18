@@ -1,0 +1,288 @@
+[
+  {
+    "id": "a1-relative",
+    "formula": "=A1",
+    "excelOracle": true,
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["A1"]
+  },
+  {
+    "id": "a1-absolute-mixed",
+    "formula": "=$A$1+A$2+$B3",
+    "excelOracle": true,
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["$A$1", "A$2", "$B3"]
+  },
+  {
+    "id": "a1-range",
+    "formula": "=SUM(A1:B2)",
+    "excelOracle": true,
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["A1:B2"]
+  },
+  {
+    "id": "quoted-sheet",
+    "formula": "='O''Brien Sheet'!B2",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["'O''Brien Sheet'!B2"]
+  },
+  {
+    "id": "unquoted-sheet",
+    "formula": "=Sheet1!$C$4",
+    "excelOracle": true,
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["Sheet1!$C$4"]
+  },
+  {
+    "id": "external-workbook",
+    "formula": "='[Book One.xlsx]Model'!A1",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_EXTERNAL_REFERENCE_INSPECT_ONLY",
+    "expectedReferenceTexts": ["'[Book One.xlsx]Model'!A1"]
+  },
+  {
+    "id": "spill-reference",
+    "formula": "=A1#",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_DYNAMIC_ARRAY_INSPECT_ONLY",
+    "expectedReferenceTexts": ["A1#"]
+  },
+  {
+    "id": "implicit-intersection",
+    "formula": "=@A1",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_DYNAMIC_ARRAY_INSPECT_ONLY",
+    "expectedReferenceTexts": ["@A1"]
+  },
+  {
+    "id": "workbook-name",
+    "formula": "=Tax_Rate*A1",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_NAME_INSPECT_ONLY",
+    "expectedReferenceTexts": ["A1"]
+  },
+  {
+    "id": "structured-reference",
+    "formula": "=Table1[Amount]",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_STRUCTURED_REFERENCE_INSPECT_ONLY",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "string-reference-lookalike",
+    "formula": "=\"A1\"&A1",
+    "excelOracle": true,
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["A1"]
+  },
+  {
+    "id": "constant-expression",
+    "formula": "=1+2*3",
+    "excelOracle": true,
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "RoundTrip",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "semicolon-comma-locale",
+    "formula": "=SUMME(A1;1,5)",
+    "notation": "A1",
+    "listSeparator": ";",
+    "decimalSeparator": ",",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["A1"]
+  },
+  {
+    "id": "r1c1-relative-absolute-current",
+    "formula": "=R[-1]C[2]+R1C1+RC",
+    "excelOracle": false,
+    "notation": "R1C1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["R[-1]C[2]", "R1C1", "RC"]
+  },
+  {
+    "id": "r1c1-qualified",
+    "formula": "=Sheet1!R[-2]C",
+    "notation": "R1C1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["Sheet1!R[-2]C"]
+  },
+  {
+    "id": "r1c1-native-oracle",
+    "formula": "=R[-1]C[2]+R1C1",
+    "excelOracle": false,
+    "notation": "R1C1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["R[-1]C[2]", "R1C1"]
+  },
+  {
+    "id": "intersection",
+    "formula": "=A1 B2",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_INTERSECTION_INSPECT_ONLY",
+    "expectedReferenceTexts": ["A1", "B2"]
+  },
+  {
+    "id": "array-syntax-refusal",
+    "formula": "={1,2}",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Refuse",
+    "expectedLimitationCode": "FORMULA_ARRAY_SYNTAX_UNSUPPORTED",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "unbalanced-refusal",
+    "formula": "=SUM(A1",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Refuse",
+    "expectedLimitationCode": "FORMULA_UNBALANCED_DELIMITER",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "dialect-refusal",
+    "formula": "=SUM(A1;B1)",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Refuse",
+    "expectedLimitationCode": "FORMULA_DIALECT_MISMATCH",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "out-of-bounds-reference",
+    "formula": "=XFE1",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Refuse",
+    "expectedLimitationCode": "FORMULA_INVALID_REFERENCE",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "error-literal",
+    "formula": "=IFERROR(A1,#N/A)",
+    "excelOracle": true,
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["A1"]
+  },
+  {
+    "id": "top-level-union",
+    "formula": "=A1,B2",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_UNION_INSPECT_ONLY",
+    "expectedReferenceTexts": ["A1", "B2"]
+  },
+  {
+    "id": "structured-lookalike-in-string",
+    "formula": "=\"Table1[Amount]\"",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "RoundTrip",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "invalid-token-sequence",
+    "formula": "=A1+",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Refuse",
+    "expectedLimitationCode": "FORMULA_INVALID_SYNTAX",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "unary-reference",
+    "formula": "=-A1",
+    "excelOracle": true,
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "Transform",
+    "expectedReferenceTexts": ["A1"]
+  },
+  {
+    "id": "worksheet-scoped-name",
+    "formula": "='Model Sheet'!Tax_Rate",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_NAME_INSPECT_ONLY",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "external-workbook-name",
+    "formula": "=[Book.xlsx]Model!Tax_Rate",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_EXTERNAL_REFERENCE_INSPECT_ONLY",
+    "expectedReferenceTexts": []
+  },
+  {
+    "id": "nested-structured-reference",
+    "formula": "=Table1[[#Headers],[Amount]]",
+    "notation": "A1",
+    "listSeparator": ",",
+    "decimalSeparator": ".",
+    "expectedDisposition": "InspectOnly",
+    "expectedLimitationCode": "FORMULA_STRUCTURED_REFERENCE_INSPECT_ONLY",
+    "expectedReferenceTexts": []
+  }
+]

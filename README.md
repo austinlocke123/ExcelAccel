@@ -21,6 +21,7 @@ one read-only command, and one property-scoped formatting command.
 10. [Architecture decisions](docs/decisions/README.md)
 11. [Phase 0 implementation evidence](docs/evidence/PHASE0_VERTICAL_SLICE.md)
 12. [Excel adapter and state-guard evidence](docs/evidence/WP-P0-04_ADAPTER_STATE_GUARD.md)
+13. [Formula strategy spike evidence](docs/evidence/WP-P0-05_FORMULA_STRATEGY.md)
 
 ## Build and test
 
@@ -33,6 +34,7 @@ dotnet restore ExcelAccel.sln
 dotnet build ExcelAccel.sln --configuration Debug --no-restore
 dotnet test ExcelAccel.sln --configuration Debug --no-build --no-restore
 ./scripts/Test-ExcelAddIn.ps1
+./scripts/Test-ExcelFormulaOracle.ps1
 ```
 
 The packed debug add-in is produced at
@@ -40,6 +42,10 @@ The packed debug add-in is produced at
 The smoke script launches a hidden temporary Excel process, verifies XLL
 registration and the health UDF, exercises the real currency-format command,
 checks content preservation, and requires clean Excel shutdown.
+The formula-oracle script drives a temporary workbook from the versioned parser
+corpus and requires exact qualified native `Formula` round-trip plus clean
+process exit. R1C1 remains excluded after a recorded lifecycle failure; the
+script does not register a formula command.
 
 ## Source material
 
@@ -51,6 +57,7 @@ inputs to the Markdown specification, not the normative implementation source.
 
 ## Current boundary
 
-Only the Phase 0 vertical slice is implemented. Feature families remain governed
-by their command contracts and phase gates; a successful skeleton does not mark
-the proposed ADRs or broader acceptance matrix complete.
+Only Phase 0 vertical-slice, reliability, and formula-strategy prototype work is
+implemented. Feature families remain governed by their command contracts and
+phase gates; successful spikes do not mark proposed ADRs or the broader
+acceptance matrix complete.

@@ -29,6 +29,10 @@ silently choosing an interpretation:
 9. [`FEATURE_COVERAGE.md`](FEATURE_COVERAGE.md) maps each original functional
    area to its detailed contract and current disposition.
 
+Prototype coverage artifacts under [`formulas/`](formulas/) are evidence for an
+open decision. They become authoritative only when the governing ADR and corpus
+are explicitly accepted.
+
 The files under [`../PRD/`](../PRD/) are retained source material and review
 history. They are non-normative after this specification is approved.
 
