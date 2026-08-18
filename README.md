@@ -1,12 +1,11 @@
 # ExcelAccel
 
-ExcelAccel is a proposed native Windows Excel add-in for fast, deterministic,
+ExcelAccel is a native Windows Excel add-in for fast, deterministic,
 keyboard-first financial-modeling workflows.
 
-The repository is currently in **specification review**. No implementation has
-been authorized or started. The goal of the current documentation is to make
-the feature set and engineering constraints precise enough for human review
-before agents begin coding.
+The repository is in **Phase 0 implementation**. The first vertical slice is a
+real 64-bit Excel-DNA `.xll` with a pure command core, a reliability boundary,
+one read-only command, and one property-scoped formatting command.
 
 ## Start here
 
@@ -20,6 +19,26 @@ before agents begin coding.
 8. [Traceability matrix](docs/TRACEABILITY.md)
 9. [Original feature coverage](docs/FEATURE_COVERAGE.md)
 10. [Architecture decisions](docs/decisions/README.md)
+11. [Phase 0 implementation evidence](docs/evidence/PHASE0_VERTICAL_SLICE.md)
+
+## Build and test
+
+Prerequisites are Windows, 64-bit desktop Excel, and a .NET 8 SDK. The shipped
+add-in targets .NET Framework 4.8; reference assemblies are restored as a build
+dependency, so the developer targeting pack is not required.
+
+```powershell
+dotnet restore ExcelAccel.sln
+dotnet build ExcelAccel.sln --configuration Debug --no-restore
+dotnet test ExcelAccel.sln --configuration Debug --no-build --no-restore
+./scripts/Test-ExcelAddIn.ps1
+```
+
+The packed debug add-in is produced at
+`src/ExcelAccel.ExcelAddIn/bin/Debug/net48/publish/ExcelAccel.ExcelAddIn-AddIn64-packed.xll`.
+The smoke script launches a hidden temporary Excel process, verifies XLL
+registration and the health UDF, exercises the real currency-format command,
+checks content preservation, and requires clean Excel shutdown.
 
 ## Source material
 
@@ -31,6 +50,6 @@ inputs to the Markdown specification, not the normative implementation source.
 
 ## Current boundary
 
-This repository intentionally contains documentation only. Creating a Visual
-Studio solution, selecting dependencies, writing production code, or publishing
-an add-in requires an explicit post-review decision.
+Only the Phase 0 vertical slice is implemented. Feature families remain governed
+by their command contracts and phase gates; a successful skeleton does not mark
+the proposed ADRs or broader acceptance matrix complete.

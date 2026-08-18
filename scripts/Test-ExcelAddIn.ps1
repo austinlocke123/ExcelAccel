@@ -1,0 +1,187 @@
+[CmdletBinding()]
+param(
+    [string]$AddInPath = "",
+    [ValidateRange(10, 120)]
+    [int]$TimeoutSeconds = 40,
+    [switch]$Worker
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Release-ComObject {
+    param([object]$Value)
+
+    if ($null -ne $Value -and [Runtime.InteropServices.Marshal]::IsComObject($Value)) {
+        [void][Runtime.InteropServices.Marshal]::ReleaseComObject($Value)
+    }
+}
+
+function Invoke-Worker {
+    param([string]$ResolvedAddInPath)
+
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+public static class ExcelAccelNativeMethods
+{
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+}
+'@
+
+    $excel = $null
+    $workbook = $null
+    $worksheet = $null
+    $cell = $null
+
+    try {
+        $excel = New-Object -ComObject Excel.Application
+        [uint32]$excelProcessId = 0
+        [void][ExcelAccelNativeMethods]::GetWindowThreadProcessId([IntPtr]$excel.Hwnd, [ref]$excelProcessId)
+        [Console]::WriteLine("excel_pid=$excelProcessId")
+        [Console]::Out.Flush()
+
+        $excel.Visible = $false
+        $excel.DisplayAlerts = $false
+        $registered = $excel.RegisterXLL($ResolvedAddInPath)
+        [Console]::WriteLine("registered=$registered")
+        [Console]::Out.Flush()
+        if (-not $registered) {
+            throw 'Excel returned false from RegisterXLL.'
+        }
+
+        $workbook = $excel.Workbooks.Add()
+        $worksheet = $workbook.Worksheets.Item(1)
+        $cell = $worksheet.Range('A1')
+        $cell.Formula = '=EXCELACCEL.VERSION()'
+        $excel.Calculate()
+        $version = [string]$cell.Value2
+        [Console]::WriteLine("version=$version")
+        [Console]::Out.Flush()
+        if ([string]::IsNullOrWhiteSpace($version) -or $version.StartsWith('#')) {
+            throw "The health function returned '$version'."
+        }
+
+        $cell.Value2 = 1234.5
+        $cell.NumberFormat = 'General'
+        $valueBefore = $cell.Value2
+        $formulaBefore = $cell.Formula
+        [void]$cell.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.ApplyCurrencyFormat')
+        $formatAfter = [string]$cell.NumberFormat
+        $valueAfter = $cell.Value2
+        $formulaAfter = $cell.Formula
+        $formatPreservedContent = ($valueBefore -eq $valueAfter) -and ($formulaBefore -eq $formulaAfter)
+        [Console]::WriteLine("currency_format=$formatAfter")
+        [Console]::WriteLine("content_preserved=$formatPreservedContent")
+        [Console]::Out.Flush()
+        if ($formatAfter -ne '$#,##0.00;($#,##0.00);-' -or -not $formatPreservedContent) {
+            throw 'The formatting command did not produce the exact property-scoped result.'
+        }
+
+        $workbook.Close($false)
+        $workbook = $null
+        [Console]::WriteLine('workbook_closed=true')
+        [Console]::Out.Flush()
+        $excel.Quit()
+        [Console]::WriteLine('quit_returned=true')
+        [Console]::Out.Flush()
+    }
+    finally {
+        Release-ComObject $cell
+        Release-ComObject $worksheet
+        Release-ComObject $workbook
+        Release-ComObject $excel
+        [GC]::Collect()
+        [GC]::WaitForPendingFinalizers()
+    }
+}
+
+if ($Worker) {
+    Invoke-Worker -ResolvedAddInPath $AddInPath
+    exit 0
+}
+
+if ([string]::IsNullOrWhiteSpace($AddInPath)) {
+    $AddInPath = Join-Path $PSScriptRoot '..\src\ExcelAccel.ExcelAddIn\bin\Debug\net48\publish\ExcelAccel.ExcelAddIn-AddIn64-packed.xll'
+}
+
+$resolvedPath = (Resolve-Path -LiteralPath $AddInPath).Path
+$runId = [Guid]::NewGuid().ToString('N')
+$outputPath = Join-Path ([IO.Path]::GetTempPath()) "excelaccel-smoke-$runId.out"
+$errorPath = Join-Path ([IO.Path]::GetTempPath()) "excelaccel-smoke-$runId.err"
+$workerProcess = $null
+
+try {
+    $arguments = @(
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', "`"$PSCommandPath`"",
+        '-Worker',
+        '-AddInPath', "`"$resolvedPath`""
+    )
+
+    $workerProcess = Start-Process powershell.exe `
+        -ArgumentList $arguments `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $outputPath `
+        -RedirectStandardError $errorPath `
+        -PassThru
+
+    $completed = $workerProcess.WaitForExit($TimeoutSeconds * 1000)
+    $output = if (Test-Path -LiteralPath $outputPath) { Get-Content -LiteralPath $outputPath -Raw } else { '' }
+    $errors = if (Test-Path -LiteralPath $errorPath) { Get-Content -LiteralPath $errorPath -Raw } else { '' }
+
+    if (-not $completed) {
+        Stop-Process -Id $workerProcess.Id -Force -ErrorAction SilentlyContinue
+    }
+    else {
+        $workerProcess.Refresh()
+    }
+
+    $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)$').Groups[1].Value
+    if ($excelProcessId) {
+        $excelProcess = Get-Process -Id ([int]$excelProcessId) -ErrorAction SilentlyContinue
+        if ($excelProcess) {
+            Stop-Process -Id $excelProcess.Id -Force
+            throw "Excel PID $excelProcessId did not exit cleanly within the smoke-test window. Worker output:`n$output"
+        }
+    }
+
+    if (-not $completed) {
+        throw "Smoke-test worker timed out after $TimeoutSeconds seconds. Worker output:`n$output`nWorker errors:`n$errors"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($errors)) {
+        throw "Smoke-test worker reported an error. Worker output:`n$output`nWorker errors:`n$errors"
+    }
+
+    $requiredEvidence = @(
+        'registered=True',
+        'version=',
+        'currency_format=$#,##0.00;($#,##0.00);-',
+        'content_preserved=True',
+        'workbook_closed=true',
+        'quit_returned=true'
+    )
+    foreach ($evidenceLine in $requiredEvidence) {
+        if ($output -notmatch "(?m)^$([regex]::Escape($evidenceLine))") {
+            throw "Smoke-test evidence is incomplete; missing '$evidenceLine'. Worker output:`n$output"
+        }
+    }
+
+    [pscustomobject]@{
+        AddIn = $resolvedPath
+        Passed = $true
+        Evidence = $output.Trim()
+    }
+}
+finally {
+    foreach ($temporaryPath in @($outputPath, $errorPath)) {
+        if (Test-Path -LiteralPath $temporaryPath) {
+            Remove-Item -LiteralPath $temporaryPath -Force
+        }
+    }
+}
