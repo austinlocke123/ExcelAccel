@@ -1,8 +1,14 @@
 # Deterministic data-cleaning command contracts
 
-Status: **Draft for review**  
-Capability: CAP-DATA-001  
+Status: **Approved contract; implementation qualification in progress**
+Capability: CAP-DATA-001
 Earliest phase: 1B
+
+Implementation note (2026-08-19): text trim/collapse/control removal and all
+eight explicit display-value conversions are registered and qualified through
+the transactional typed-matrix adapter. Typed text/number/date conversion
+grammars remain the next WP-1B-09 slice. See
+`docs/evidence/WP-1B-09_10_DATA_CLEANING.md`.
 
 ## Common boundary
 

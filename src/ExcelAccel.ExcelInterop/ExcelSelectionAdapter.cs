@@ -212,6 +212,7 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
     {
         object? applicationObject = null;
         object? workbookObject = null;
+        object? worksheetsObject = null;
         object? worksheetObject = null;
         object? rangeObject = null;
         object? areasObject = null;
@@ -225,7 +226,8 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             workbookObject = application.ActiveWorkbook;
             if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open the planned workbook and retry.");
             RequireWorkbookIdentity(workbookObject, target.WorkbookId);
-            worksheetObject = ((dynamic)workbookObject).Worksheets[target.WorksheetName];
+            worksheetsObject = ((dynamic)workbookObject).Worksheets;
+            worksheetObject = ((dynamic)worksheetsObject)[target.WorksheetName];
             dynamic worksheet = worksheetObject;
             rangeObject = worksheet.Range[target.Address];
             dynamic range = rangeObject;
@@ -273,6 +275,7 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             ComRelease.Owned(areasObject);
             ComRelease.Owned(rangeObject);
             ComRelease.Owned(worksheetObject);
+            ComRelease.Owned(worksheetsObject);
             ComRelease.Owned(workbookObject);
         }
     }
@@ -281,6 +284,7 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
     {
         object? applicationObject = null;
         object? workbookObject = null;
+        object? worksheetsObject = null;
         object? worksheetObject = null;
         object? rangeObject = null;
         object? rowsObject = null;
@@ -293,7 +297,8 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             workbookObject = application.ActiveWorkbook;
             if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open the planned workbook and retry.");
             RequireWorkbookIdentity(workbookObject, target.WorkbookId);
-            worksheetObject = ((dynamic)workbookObject).Worksheets[target.WorksheetName];
+            worksheetsObject = ((dynamic)workbookObject).Worksheets;
+            worksheetObject = ((dynamic)worksheetsObject)[target.WorksheetName];
             rangeObject = ((dynamic)worksheetObject).Range[target.Address];
             dynamic range = rangeObject;
             rowsObject = range.Rows;
@@ -302,17 +307,21 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             var columns = Convert.ToInt32(((dynamic)columnsObject).Count, CultureInfo.InvariantCulture);
             if (rows != contents.RowCount || columns != contents.ColumnCount)
                 throw new CommandRefusedException(RefusalCodes.StaleContext, "The planned formula range shape changed.", "Refresh the plan and retry.");
-            object writeValue;
+            object? writeValue;
             if (contents.CellCount == 1) writeValue = ToExcelFormulaValue(contents[0, 0]);
             else
             {
-                var values = new object[rows, columns];
+                var values = new object?[rows, columns];
                 for (var row = 0; row < rows; row++)
                     for (var column = 0; column < columns; column++) values[row, column] = ToExcelFormulaValue(contents[row, column]);
                 writeValue = values;
             }
             ApplicationStateGuard.Run(new ExcelApplicationStateAdapter(applicationObject),
-                ApplicationStateChangeSet.PropertyMutation(), () => range.Formula = writeValue);
+                ApplicationStateChangeSet.PropertyMutation(), () =>
+                {
+                    range.ClearContents();
+                    range.Formula = writeValue;
+                });
         }
         finally
         {
@@ -320,6 +329,7 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             ComRelease.Owned(rowsObject);
             ComRelease.Owned(rangeObject);
             ComRelease.Owned(worksheetObject);
+            ComRelease.Owned(worksheetsObject);
             ComRelease.Owned(workbookObject);
         }
     }
@@ -395,11 +405,11 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             var columnCount = Convert.ToInt32(((dynamic)columnsObject).Count, CultureInfo.InvariantCulture);
             if (rowCount != contents.RowCount || columnCount != contents.ColumnCount)
                 throw new CommandRefusedException(RefusalCodes.StaleContext, "The selection shape changed before the formula write.", "Refresh the preview and retry.");
-            object writeValue;
+            object? writeValue;
             if (contents.CellCount == 1) writeValue = ToExcelFormulaValue(contents[0, 0]);
             else
             {
-                var values = new object[rowCount, columnCount];
+                var values = new object?[rowCount, columnCount];
                 for (var row = 0; row < rowCount; row++)
                     for (var column = 0; column < columnCount; column++)
                         values[row, column] = ToExcelFormulaValue(contents[row, column]);
@@ -408,7 +418,11 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             ApplicationStateGuard.Run(
                 new ExcelApplicationStateAdapter(applicationObject),
                 ApplicationStateChangeSet.PropertyMutation(),
-                () => selection.Formula = writeValue);
+                () =>
+                {
+                    selection.ClearContents();
+                    selection.Formula = writeValue;
+                });
         }
         finally
         {
@@ -427,7 +441,11 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
 
     private static FormulaCellValue ConvertFormulaCell(object? formulaValue, object? calculatedValue)
     {
-        if (formulaValue is null || formulaValue is DBNull) return FormulaCellValue.Blank();
+        if (formulaValue is null || formulaValue is DBNull)
+        {
+            if (calculatedValue is null || calculatedValue is DBNull) return FormulaCellValue.Blank();
+            formulaValue = calculatedValue;
+        }
         if (formulaValue is ErrorWrapper || calculatedValue is ErrorWrapper)
         {
             if (formulaValue is string errorFormula && errorFormula.StartsWith("=", StringComparison.Ordinal))
@@ -442,6 +460,9 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             if (text.StartsWith("=", StringComparison.Ordinal) &&
                 !(calculatedValue is string calculatedText && string.Equals(text, calculatedText, StringComparison.Ordinal)))
                 return FormulaCellValue.Formula(text);
+            if (calculatedValue is bool calculatedBoolean) return FormulaCellValue.Boolean(calculatedBoolean);
+            if (calculatedValue is not null && IsNumeric(calculatedValue))
+                return FormulaCellValue.Number(Convert.ToDouble(calculatedValue, CultureInfo.InvariantCulture));
             return FormulaCellValue.Text(calculatedValue as string ?? text.TrimStart('\''));
         }
         if (formulaValue is bool boolean) return FormulaCellValue.Boolean(boolean);
@@ -450,11 +471,11 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             $"Excel returned unsupported cell value type '{formulaValue.GetType().FullName}'.", "Remove unsupported cell types from the selection.");
     }
 
-    private static object ToExcelFormulaValue(FormulaCellValue value)
+    private static object? ToExcelFormulaValue(FormulaCellValue value)
     {
         switch (value.Kind)
         {
-            case FormulaCellKind.Blank: return string.Empty;
+            case FormulaCellKind.Blank: return null;
             case FormulaCellKind.Formula: return value.InvariantValue;
             case FormulaCellKind.Text: return value.InvariantValue.StartsWith("=", StringComparison.Ordinal) ? "'" + value.InvariantValue : value.InvariantValue;
             case FormulaCellKind.Number: return value.AsNumber();

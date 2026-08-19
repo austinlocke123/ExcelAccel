@@ -7,6 +7,7 @@ using ExcelAccel.Core.Commands;
 using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.ExcelInterop;
 using ExcelAccel.Application.Formulas;
+using ExcelAccel.Application.DataCleaning;
 using System.Windows.Forms;
 
 namespace ExcelAccel.ExcelAddIn;
@@ -190,6 +191,27 @@ public static class DebugSmokeCommands
             if (!result.Succeeded) throw new InvalidOperationException(result.Message);
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.formula.transpose", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DataCleaning", Description = "Debug-only transactional data-cleaning hook.")]
+    public static void DataCleaning()
+    {
+        try
+        {
+            var port = new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var trimDescriptor = DataCleaningCommandCatalog.GetRequired("clean.text.trim_outer");
+            var trimPlan = new DataCleaningCommand(trimDescriptor).PlanTrimOuter(port.CaptureFormulaBlock());
+            var trimResult = new FormulaBlockCommand(trimDescriptor).Execute(trimPlan, port, trimPlan.CommandPlan.PlanHash, UndoRuntime.Store);
+            if (!trimResult.Succeeded) throw new InvalidOperationException(trimResult.Message);
+            var zeroDescriptor = DataCleaningCommandCatalog.GetRequired("clean.display.zero_to_blank");
+            var zeroPlan = new DataCleaningCommand(zeroDescriptor).PlanDisplayConversion(port.CaptureFormulaBlock(), DisplayValueConversion.ZeroToBlank);
+            DiagnosticLog.Info("smoke.data.cleaning.zero_plan",
+                zeroPlan.ChangedCount + ":" + zeroPlan.Before.Contents[0, 2].Kind + ":" + zeroPlan.Before.Contents[0, 2].InvariantValue + ":" + zeroPlan.After[0, 2].Kind);
+            var zeroResult = new FormulaBlockCommand(zeroDescriptor).Execute(zeroPlan, port, zeroPlan.CommandPlan.PlanHash, UndoRuntime.Store);
+            DiagnosticLog.Info("smoke.data.cleaning.result", trimResult.Status + ":" + zeroResult.Status);
+            if (!zeroResult.Succeeded) throw new InvalidOperationException(zeroResult.Message);
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.data.cleaning", exception); throw; }
     }
 }
 #endif
