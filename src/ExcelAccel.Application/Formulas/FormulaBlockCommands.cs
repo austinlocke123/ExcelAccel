@@ -12,13 +12,15 @@ namespace ExcelAccel.Application.Formulas;
 public interface IFormulaBlockPort : ISelectionPort, IPropertyReceiptPort
 {
     FormulaBlockSnapshot CaptureFormulaBlock();
+    FormulaBlockSnapshot CaptureFormulaBlock(SelectionContext target);
     void WriteFormulaBlock(FormulaCellBlock contents);
+    void WriteFormulaBlock(SelectionContext target, FormulaCellBlock contents);
 }
 
 public sealed class FormulaBlockPlan
 {
     public FormulaBlockPlan(CommandPlan commandPlan, FormulaBlockSnapshot before, FormulaCellBlock after,
-        int changedCount, int skippedCount, IEnumerable<string> samples)
+        int changedCount, int skippedCount, IEnumerable<string> samples, FormulaBlockSnapshot? externalSource = null)
     {
         CommandPlan = commandPlan ?? throw new ArgumentNullException(nameof(commandPlan));
         Before = before ?? throw new ArgumentNullException(nameof(before));
@@ -30,6 +32,7 @@ public sealed class FormulaBlockPlan
         ChangedCount = changedCount;
         SkippedCount = skippedCount;
         Samples = Array.AsReadOnly((samples ?? throw new ArgumentNullException(nameof(samples))).Take(10).ToArray());
+        ExternalSource = externalSource;
     }
     public CommandPlan CommandPlan { get; }
     public FormulaBlockSnapshot Before { get; }
@@ -37,6 +40,8 @@ public sealed class FormulaBlockPlan
     public int ChangedCount { get; }
     public int SkippedCount { get; }
     public IReadOnlyList<string> Samples { get; }
+    public FormulaBlockSnapshot? ExternalSource { get; }
+    public bool RequiresExternalSourceRevalidation => ExternalSource is not null;
 }
 
 public enum FormulaCopyDirection
@@ -186,7 +191,14 @@ public sealed class FormulaBlockCommand
         var authorization = CommandExecutionGate.Authorize(_descriptor, plan.CommandPlan, confirmedPlanHash);
         if (!authorization.Allowed) return CommandResult.Refused(plan.CommandPlan, authorization.Message, authorization.RefusalCode);
         if (receiptSink is null) return CommandResult.Refused(plan.CommandPlan, "Formula mutation requires an available bounded undo receipt store.", RefusalCodes.CommandUnavailable);
-        var current = port.CaptureFormulaBlock();
+        if (plan.ExternalSource is not null)
+        {
+            var source = port.CaptureFormulaBlock(plan.ExternalSource.Selection.Context);
+            if (source.FirstRow != plan.ExternalSource.FirstRow || source.FirstColumn != plan.ExternalSource.FirstColumn ||
+                !source.Contents.ContentEquals(plan.ExternalSource.Contents))
+                return CommandResult.Refused(plan.CommandPlan, "The external source range changed after planning.", RefusalCodes.StaleContext);
+        }
+        var current = port.CaptureFormulaBlock(plan.Before.Selection.Context);
         try { RequireSafe(current); }
         catch (CommandRefusedException exception) { return CommandResult.Refused(plan.CommandPlan, exception.Message, exception.RefusalCode); }
         if (!plan.Before.Selection.Context.Equals(current.Selection.Context) ||
@@ -197,8 +209,8 @@ public sealed class FormulaBlockCommand
 
         try
         {
-            port.WriteFormulaBlock(plan.After);
-            var observed = port.CaptureFormulaBlock();
+            port.WriteFormulaBlock(plan.Before.Selection.Context, plan.After);
+            var observed = port.CaptureFormulaBlock(plan.Before.Selection.Context);
             if (!plan.Before.Selection.Context.Equals(observed.Selection.Context) || !plan.After.ContentEquals(observed.Contents))
                 throw new InvalidOperationException("Formula block postcondition mismatch.");
         }
@@ -269,8 +281,8 @@ public sealed class FormulaBlockCommand
     {
         try
         {
-            port.WriteFormulaBlock(before.Contents);
-            var observed = port.CaptureFormulaBlock();
+            port.WriteFormulaBlock(before.Selection.Context, before.Contents);
+            var observed = port.CaptureFormulaBlock(before.Selection.Context);
             return before.Selection.Context.Equals(observed.Selection.Context) && before.Contents.ContentEquals(observed.Contents);
         }
         catch { return false; }

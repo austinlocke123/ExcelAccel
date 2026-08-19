@@ -44,6 +44,16 @@ public static class ExcelAccelNativeMethods
     $formulaSource = $null
     $formulaDestination1 = $null
     $formulaDestination2 = $null
+    $transposeSource = $null
+    $transposeDestination = $null
+    $transposeSource1 = $null
+    $transposeSource2 = $null
+    $transposeSource3 = $null
+    $transposeSource4 = $null
+    $transposeDestination1 = $null
+    $transposeDestination2 = $null
+    $transposeDestination3 = $null
+    $transposeDestination4 = $null
     $quitReturned = $false
 
     try {
@@ -174,6 +184,48 @@ public static class ExcelAccelNativeMethods
             throw 'Optimistic formula block undo did not restore the exact prior matrix.'
         }
 
+        $transposeSource = $worksheet.Range('B20:C21')
+        $transposeDestination = $worksheet.Range('E20:F21')
+        $transposeSource1 = $worksheet.Range('B20')
+        $transposeSource2 = $worksheet.Range('C20')
+        $transposeSource3 = $worksheet.Range('B21')
+        $transposeSource4 = $worksheet.Range('C21')
+        $transposeDestination1 = $worksheet.Range('E20')
+        $transposeDestination2 = $worksheet.Range('F20')
+        $transposeDestination3 = $worksheet.Range('E21')
+        $transposeDestination4 = $worksheet.Range('F21')
+        $transposeSource.ClearContents()
+        $transposeDestination.ClearContents()
+        $transposeSource1.Formula = '=C20'
+        $transposeSource2.Value2 = 7
+        $transposeSource3.Value2 = 'x'
+        $transposeSource4.Formula = '=$D21'
+        [void]$transposeDestination.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.FormulaTranspose')
+        $transposeExact =
+            ([string]$transposeDestination1.Formula -eq '=E21') -and
+            ([string]$transposeDestination2.Value2 -eq 'x') -and
+            ([double]$transposeDestination3.Value2 -eq 7) -and
+            ([string]$transposeDestination4.Formula -eq '=F$4')
+        $transposeSelectionPreserved = ([string]$excel.Selection.Address($false, $false) -eq 'E20:F21')
+        [Console]::WriteLine("formula_transpose_exact=$transposeExact")
+        [Console]::WriteLine("formula_transpose_selection_preserved=$transposeSelectionPreserved")
+        [Console]::Out.Flush()
+        if (-not $transposeExact -or -not $transposeSelectionPreserved) {
+            throw 'Off-selection transpose did not produce the exact result while preserving selection.'
+        }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $transposeUndoExact =
+            ($null -eq $transposeDestination1.Value2) -and
+            ($null -eq $transposeDestination2.Value2) -and
+            ($null -eq $transposeDestination3.Value2) -and
+            ($null -eq $transposeDestination4.Value2)
+        [Console]::WriteLine("formula_transpose_undo_exact=$transposeUndoExact")
+        [Console]::Out.Flush()
+        if (-not $transposeUndoExact) {
+            throw 'Transpose undo did not restore the complete destination matrix.'
+        }
+
         $navigationCell = $worksheet.Range('D5')
         [void]$navigationCell.Select()
         [void]$excel.Run('ExcelAccel.Smoke.NavigateA1')
@@ -288,6 +340,16 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $formulaDestination1
         Release-ComObject $formulaSource
         Release-ComObject $formulaRange
+        Release-ComObject $transposeDestination4
+        Release-ComObject $transposeDestination3
+        Release-ComObject $transposeDestination2
+        Release-ComObject $transposeDestination1
+        Release-ComObject $transposeSource4
+        Release-ComObject $transposeSource3
+        Release-ComObject $transposeSource2
+        Release-ComObject $transposeSource1
+        Release-ComObject $transposeDestination
+        Release-ComObject $transposeSource
         Release-ComObject $multiArea
         Release-ComObject $secondCell
         Release-ComObject $navigationCell

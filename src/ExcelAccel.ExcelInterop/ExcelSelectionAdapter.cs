@@ -149,10 +149,13 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         value = string.Empty;
         try
         {
-            if (!target.Equals(CaptureSelection().Context)) return false;
-            value = propertyId == FormulaBlockCommand.ReceiptPropertyId
-                ? CaptureFormulaBlock().Contents.Serialize()
-                : ReadFormattingProperty(propertyId);
+            if (propertyId == FormulaBlockCommand.ReceiptPropertyId)
+                value = CaptureFormulaBlock(target).Contents.Serialize();
+            else
+            {
+                if (!target.Equals(CaptureSelection().Context)) return false;
+                value = ReadFormattingProperty(propertyId);
+            }
             return true;
         }
         catch (CommandRefusedException) { return false; }
@@ -163,11 +166,13 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
     {
         try
         {
-            if (!target.Equals(CaptureSelection().Context)) return false;
             if (propertyId == FormulaBlockCommand.ReceiptPropertyId)
-                WriteFormulaBlock(FormulaCellBlock.Deserialize(value));
+                WriteFormulaBlock(target, FormulaCellBlock.Deserialize(value));
             else
+            {
+                if (!target.Equals(CaptureSelection().Context)) return false;
                 WriteFormattingProperty(propertyId, value);
+            }
             return true;
         }
         catch (CommandRefusedException) { return false; }
@@ -181,11 +186,151 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         return ExcelComRetry.Execute(() => CaptureFormulaBlockOnce(selection));
     }
 
+    public FormulaBlockSnapshot CaptureFormulaBlock(SelectionContext target)
+    {
+        _verifyExcelThread();
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        return ExcelComRetry.Execute(() => CaptureTargetFormulaBlockOnce(target));
+    }
+
     public void WriteFormulaBlock(FormulaCellBlock contents)
     {
         _verifyExcelThread();
         if (contents is null) throw new ArgumentNullException(nameof(contents));
         ExcelComRetry.Execute(() => WriteFormulaBlockOnce(contents));
+    }
+
+    public void WriteFormulaBlock(SelectionContext target, FormulaCellBlock contents)
+    {
+        _verifyExcelThread();
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        if (contents is null) throw new ArgumentNullException(nameof(contents));
+        ExcelComRetry.Execute(() => WriteTargetFormulaBlockOnce(target, contents));
+    }
+
+    private FormulaBlockSnapshot CaptureTargetFormulaBlockOnce(SelectionContext target)
+    {
+        object? applicationObject = null;
+        object? workbookObject = null;
+        object? worksheetObject = null;
+        object? rangeObject = null;
+        object? areasObject = null;
+        object? rowsObject = null;
+        object? columnsObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            dynamic application = applicationObject;
+            workbookObject = application.ActiveWorkbook;
+            if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open the planned workbook and retry.");
+            RequireWorkbookIdentity(workbookObject, target.WorkbookId);
+            worksheetObject = ((dynamic)workbookObject).Worksheets[target.WorksheetName];
+            dynamic worksheet = worksheetObject;
+            rangeObject = worksheet.Range[target.Address];
+            dynamic range = rangeObject;
+            var address = Convert.ToString(range.Address[false, false, 1, false], CultureInfo.InvariantCulture) ?? string.Empty;
+            var context = new SelectionContext(target.WorkbookId, target.WorksheetName, address);
+            if (!target.Equals(context)) throw new CommandRefusedException(RefusalCodes.StaleContext, "The planned range no longer resolves to the same address.", "Refresh the plan and retry.");
+            rowsObject = range.Rows;
+            columnsObject = range.Columns;
+            var rowCount = Convert.ToInt32(((dynamic)rowsObject).Count, CultureInfo.InvariantCulture);
+            var columnCount = Convert.ToInt32(((dynamic)columnsObject).Count, CultureInfo.InvariantCulture);
+            var firstRow = Convert.ToInt32(range.Row, CultureInfo.InvariantCulture);
+            var firstColumn = Convert.ToInt32(range.Column, CultureInfo.InvariantCulture);
+            var cellCount = checked((long)rowCount * columnCount);
+            if (cellCount > FormulaCellBlock.MaximumCells) throw new CommandRefusedException(RefusalCodes.ResourceLimit, "The range exceeds the bounded formula cell limit.", "Use a smaller range.");
+            areasObject = range.Areas;
+            var spillCheckSupported = TryReadOptionalUnsafeBoolean(rangeObject, "HasSpill", out var hasSpill);
+            var safety = new SelectionSafetyState(
+                Convert.ToInt32(((dynamic)areasObject).Count, CultureInfo.InvariantCulture),
+                ConvertUnsafeBoolean(range.MergeCells),
+                Convert.ToBoolean(worksheet.ProtectContents, CultureInfo.InvariantCulture),
+                Convert.ToBoolean(((dynamic)workbookObject).ReadOnly, CultureInfo.InvariantCulture),
+                ConvertUnsafeBoolean(range.HasArray),
+                spillCheckSupported && hasSpill,
+                spillCheckSupported);
+            var selection = new SelectionSnapshot(context, cellCount, ConvertFormulaState(range.HasFormula),
+                Convert.ToString(range.NumberFormat, CultureInfo.InvariantCulture) ?? "(mixed)", safety,
+                ExcelWorkbookCollaborationAdapter.Capture(workbookObject));
+            object formulaValues = range.Formula;
+            object valueValues = range.Value2;
+            var cells = new FormulaCellValue[rowCount * columnCount];
+            for (var row = 0; row < rowCount; row++)
+                for (var column = 0; column < columnCount; column++)
+                    cells[(row * columnCount) + column] = ConvertFormulaCell(
+                        ArrayValue(formulaValues, row, column), ArrayValue(valueValues, row, column));
+            return new FormulaBlockSnapshot(selection, firstRow, firstColumn, new FormulaCellBlock(rowCount, columnCount, cells));
+        }
+        catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException exception)
+        {
+            throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, $"The planned formula range is unavailable: {exception.Message}", "Open the planned workbook and worksheet, then refresh the plan.");
+        }
+        finally
+        {
+            ComRelease.Owned(columnsObject);
+            ComRelease.Owned(rowsObject);
+            ComRelease.Owned(areasObject);
+            ComRelease.Owned(rangeObject);
+            ComRelease.Owned(worksheetObject);
+            ComRelease.Owned(workbookObject);
+        }
+    }
+
+    private void WriteTargetFormulaBlockOnce(SelectionContext target, FormulaCellBlock contents)
+    {
+        object? applicationObject = null;
+        object? workbookObject = null;
+        object? worksheetObject = null;
+        object? rangeObject = null;
+        object? rowsObject = null;
+        object? columnsObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            dynamic application = applicationObject;
+            workbookObject = application.ActiveWorkbook;
+            if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open the planned workbook and retry.");
+            RequireWorkbookIdentity(workbookObject, target.WorkbookId);
+            worksheetObject = ((dynamic)workbookObject).Worksheets[target.WorksheetName];
+            rangeObject = ((dynamic)worksheetObject).Range[target.Address];
+            dynamic range = rangeObject;
+            rowsObject = range.Rows;
+            columnsObject = range.Columns;
+            var rows = Convert.ToInt32(((dynamic)rowsObject).Count, CultureInfo.InvariantCulture);
+            var columns = Convert.ToInt32(((dynamic)columnsObject).Count, CultureInfo.InvariantCulture);
+            if (rows != contents.RowCount || columns != contents.ColumnCount)
+                throw new CommandRefusedException(RefusalCodes.StaleContext, "The planned formula range shape changed.", "Refresh the plan and retry.");
+            object writeValue;
+            if (contents.CellCount == 1) writeValue = ToExcelFormulaValue(contents[0, 0]);
+            else
+            {
+                var values = new object[rows, columns];
+                for (var row = 0; row < rows; row++)
+                    for (var column = 0; column < columns; column++) values[row, column] = ToExcelFormulaValue(contents[row, column]);
+                writeValue = values;
+            }
+            ApplicationStateGuard.Run(new ExcelApplicationStateAdapter(applicationObject),
+                ApplicationStateChangeSet.PropertyMutation(), () => range.Formula = writeValue);
+        }
+        finally
+        {
+            ComRelease.Owned(columnsObject);
+            ComRelease.Owned(rowsObject);
+            ComRelease.Owned(rangeObject);
+            ComRelease.Owned(worksheetObject);
+            ComRelease.Owned(workbookObject);
+        }
+    }
+
+    private static void RequireWorkbookIdentity(object workbookObject, string expectedWorkbookId)
+    {
+        dynamic workbook = workbookObject;
+        var actual = Convert.ToString(workbook.FullName, CultureInfo.InvariantCulture) ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(actual)) actual = Convert.ToString(workbook.Name, CultureInfo.InvariantCulture) ?? string.Empty;
+        if (!string.Equals(actual, expectedWorkbookId, StringComparison.OrdinalIgnoreCase))
+            throw new CommandRefusedException(RefusalCodes.StaleContext, "The active workbook is not the planned workbook.", "Activate the planned workbook and refresh the command.");
     }
 
     private FormulaBlockSnapshot CaptureFormulaBlockOnce(SelectionSnapshot snapshot)

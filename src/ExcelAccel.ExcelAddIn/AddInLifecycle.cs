@@ -24,6 +24,7 @@ public sealed class AddInLifecycle : IExcelAddIn
             ProfileRuntime.Reset();
             NavigationRuntime.Reset();
             UndoRuntime.Reset();
+            FormulaSourceRuntime.Reset();
             DiagnosticLog.Info("addin.close", "normal");
             RuntimeState.StopCleanly();
         });

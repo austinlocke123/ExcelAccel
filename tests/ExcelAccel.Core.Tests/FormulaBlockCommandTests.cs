@@ -220,11 +220,21 @@ public sealed class FormulaBlockCommandTests
         public bool MutateThenThrowOnce { get; set; }
         public SelectionSnapshot CaptureSelection() => CaptureFormulaBlock().Selection;
         public FormulaBlockSnapshot CaptureFormulaBlock() => new FormulaBlockSnapshot(_template.Selection, _template.FirstRow, _template.FirstColumn, Current);
+        public FormulaBlockSnapshot CaptureFormulaBlock(SelectionContext target)
+        {
+            if (!target.Equals(_template.Selection.Context)) throw new InvalidOperationException("Unexpected target.");
+            return CaptureFormulaBlock();
+        }
         public void WriteFormulaBlock(FormulaCellBlock contents)
         {
             WriteCount++;
             Current = contents;
             if (MutateThenThrowOnce) { MutateThenThrowOnce = false; throw new InvalidOperationException("Injected partial write failure."); }
+        }
+        public void WriteFormulaBlock(SelectionContext target, FormulaCellBlock contents)
+        {
+            if (!target.Equals(_template.Selection.Context)) throw new InvalidOperationException("Unexpected target.");
+            WriteFormulaBlock(contents);
         }
         public void SetNumberFormat(string formatCode) => throw new NotSupportedException();
         public bool TryRead(SelectionContext target, string propertyId, out string value)

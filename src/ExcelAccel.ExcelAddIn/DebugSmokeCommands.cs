@@ -3,6 +3,7 @@ using System;
 using ExcelDna.Integration;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Reliability;
+using ExcelAccel.Core.Commands;
 using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.ExcelInterop;
 using ExcelAccel.Application.Formulas;
@@ -167,6 +168,28 @@ public static class DebugSmokeCommands
             DiagnosticLog.Info("smoke.formula.copy.down", "success");
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.formula.copy.down", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.FormulaTranspose", Description = "Debug-only off-selection formula transpose hook.")]
+    public static void FormulaTranspose()
+    {
+        try
+        {
+            var port = new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var destination = port.CaptureFormulaBlock();
+            var sourceContext = new SelectionContext(destination.Selection.Context.WorkbookId,
+                destination.Selection.Context.WorksheetName, "B20:C21");
+            var source = port.CaptureFormulaBlock(sourceContext);
+            var descriptor = new CommandDescriptor("formula.transpose", 1, "Formula Transpose", CommandImpact.Medium,
+                new[] { "formula", "value" }, true, "smoke", "CAP-FORM-001",
+                CommandContextRequirement.Selection, PreviewPolicy.Threshold, UndoPolicy.SessionPropertyReceipt,
+                changedPropertyPolicy: ChangedPropertyPolicy.DeclaredSubset);
+            var plan = new FormulaAdvancedCommand(descriptor).PlanTranspose(source, destination);
+            var result = new FormulaBlockCommand(descriptor).Execute(plan, port, plan.CommandPlan.PlanHash, UndoRuntime.Store);
+            DiagnosticLog.Info("smoke.formula.transpose.result", result.Status + ":" + result.Message);
+            if (!result.Succeeded) throw new InvalidOperationException(result.Message);
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.formula.transpose", exception); throw; }
     }
 }
 #endif
