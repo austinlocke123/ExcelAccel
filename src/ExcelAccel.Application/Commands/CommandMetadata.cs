@@ -26,6 +26,12 @@ public enum UndoPolicy
     SessionPropertyReceipt = 1,
 }
 
+public enum ChangedPropertyPolicy
+{
+    Exact = 0,
+    DeclaredSubset = 1,
+}
+
 public enum CommandResultStatus
 {
     Success = 0,

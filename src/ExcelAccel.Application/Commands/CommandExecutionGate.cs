@@ -20,10 +20,13 @@ public static class CommandExecutionGate
             throw new ArgumentNullException(nameof(plan));
         }
 
+        var propertiesMatch = descriptor.ChangedPropertyPolicy == ChangedPropertyPolicy.Exact
+            ? descriptor.ChangedProperties.SequenceEqual(plan.ChangedProperties, StringComparer.Ordinal)
+            : plan.ChangedProperties.Count > 0 && plan.ChangedProperties.All(value => descriptor.ChangedProperties.Contains(value, StringComparer.Ordinal));
         if (!string.Equals(descriptor.Id, plan.CommandId, StringComparison.Ordinal) ||
             descriptor.ContractVersion != plan.ContractVersion ||
             descriptor.Impact != plan.Impact ||
-            !descriptor.ChangedProperties.SequenceEqual(plan.ChangedProperties, StringComparer.Ordinal))
+            !propertiesMatch)
         {
             return CanExecuteResult.Refuse(
                 RefusalCodes.ContractMismatch,

@@ -5,12 +5,13 @@ using System.Runtime.InteropServices;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Undo;
+using ExcelAccel.Application.Styles;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Core.Reliability;
 
 namespace ExcelAccel.ExcelInterop;
 
-public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort
+public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort, IStylePort
 {
     private readonly Func<object> _getApplication;
     private readonly Action _verifyExcelThread;
@@ -188,10 +189,19 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             switch (propertyId)
             {
                 case "number_format":
-                    return Convert.ToString(selection.NumberFormat, CultureInfo.InvariantCulture) ?? string.Empty;
+                    return InvariantText(selection.NumberFormat);
                 case "font_color":
                     childObject = selection.Font;
                     return OleColorToHex(((dynamic)childObject).Color);
+                case "font_name":
+                    childObject = selection.Font;
+                    return InvariantText(((dynamic)childObject).Name);
+                case "font_bold":
+                    childObject = selection.Font;
+                    return InvariantBoolean(((dynamic)childObject).Bold);
+                case "font_italic":
+                    childObject = selection.Font;
+                    return InvariantBoolean(((dynamic)childObject).Italic);
                 case "fill_color":
                     childObject = selection.Interior;
                     return OleColorToHex(((dynamic)childObject).Color);
@@ -203,7 +213,7 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
                 case "vertical_alignment":
                     return VerticalAlignmentToken(selection.VerticalAlignment);
                 case "indent_level":
-                    return Convert.ToInt32(selection.IndentLevel, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture);
+                    return selection.IndentLevel is null ? "(mixed)" : Convert.ToInt32(selection.IndentLevel, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture);
                 case "underline":
                     childObject = selection.Font;
                     return UnderlineToken(((dynamic)childObject).Underline);
@@ -270,6 +280,18 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
                         case "font_color":
                             childObject = selection.Font;
                             ((dynamic)childObject).Color = HexToOleColor(invariantValue);
+                            break;
+                        case "font_name":
+                            childObject = selection.Font;
+                            ((dynamic)childObject).Name = invariantValue;
+                            break;
+                        case "font_bold":
+                            childObject = selection.Font;
+                            ((dynamic)childObject).Bold = bool.Parse(invariantValue);
+                            break;
+                        case "font_italic":
+                            childObject = selection.Font;
+                            ((dynamic)childObject).Italic = bool.Parse(invariantValue);
                             break;
                         case "fill_color":
                             childObject = selection.Interior;
@@ -438,6 +460,7 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
 
     private static string OleColorToHex(object value)
     {
+        if (value is null) return "(mixed)";
         var color = Convert.ToInt32(value, CultureInfo.InvariantCulture);
         var red = color & 0xFF;
         var green = (color >> 8) & 0xFF;
@@ -448,8 +471,15 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
     private static string InvariantDimension(object value) =>
         value is null ? "(mixed)" : Convert.ToDouble(value, CultureInfo.InvariantCulture).ToString("0.####", CultureInfo.InvariantCulture);
 
+    private static string InvariantText(object value) =>
+        value is null ? "(mixed)" : Convert.ToString(value, CultureInfo.InvariantCulture) ?? "(mixed)";
+
+    private static string InvariantBoolean(object value) =>
+        value is bool boolean ? boolean.ToString().ToLowerInvariant() : "(mixed)";
+
     private static string HorizontalAlignmentToken(object value)
     {
+        if (value is null) return "(mixed)";
         switch (Convert.ToInt32(value, CultureInfo.InvariantCulture))
         {
             case -4131: return "left";
@@ -475,6 +505,7 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
 
     private static string VerticalAlignmentToken(object value)
     {
+        if (value is null) return "(mixed)";
         switch (Convert.ToInt32(value, CultureInfo.InvariantCulture))
         {
             case -4160: return "top";
@@ -496,6 +527,7 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
 
     private static string UnderlineToken(object value)
     {
+        if (value is null) return "(mixed)";
         switch (Convert.ToInt32(value, CultureInfo.InvariantCulture))
         {
             case 2: return "single";

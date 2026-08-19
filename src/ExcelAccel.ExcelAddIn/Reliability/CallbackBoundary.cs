@@ -32,6 +32,8 @@ internal static class CallbackBoundary
                         ? "success"
                         : result.Status == CommandResultStatus.Failed
                             ? $"failed:{result.DiagnosticId}"
+                            : result.Status == CommandResultStatus.Partial
+                                ? $"partial:{result.DiagnosticId}"
                             : $"refused:{result.RefusalCode}",
                     stopwatch.ElapsedMilliseconds);
                 var detail = result.Succeeded
@@ -41,7 +43,7 @@ internal static class CallbackBoundary
                 {
                     Show(detail, result.Succeeded
                         ? MessageBoxIcon.Information
-                        : result.Status == CommandResultStatus.Failed
+                        : result.Status == CommandResultStatus.Failed || result.Status == CommandResultStatus.Partial
                             ? MessageBoxIcon.Error
                             : MessageBoxIcon.Warning);
                 }

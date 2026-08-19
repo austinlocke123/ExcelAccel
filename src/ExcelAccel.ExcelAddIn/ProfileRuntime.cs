@@ -3,6 +3,7 @@ using System.IO;
 using ExcelAccel.Application.Profiles;
 using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.Persistence.Profiles;
+using ExcelAccel.Application.Styles;
 
 namespace ExcelAccel.ExcelAddIn;
 
@@ -49,6 +50,32 @@ internal static class ProfileRuntime
             var favorites = FavoriteCatalog.Remove(current.Favorites, favoriteId);
             if (favorites.Count == current.Favorites.Count) return false;
             var updated = current.WithFavorites(favorites);
+            new ProfileStore().SaveAtomic(ProfilePath, updated);
+            _current = updated;
+            return true;
+        }
+    }
+
+    public static void SaveLocalStyle(StyleRecipe recipe, bool overwrite)
+    {
+        lock (Sync)
+        {
+            var current = _current ?? (_current = Load());
+            var styles = StyleLibrary.AddOrReplace(current.LocalStyles, recipe, overwrite);
+            var updated = current.WithLocalStyles(styles);
+            new ProfileStore().SaveAtomic(ProfilePath, updated);
+            _current = updated;
+        }
+    }
+
+    public static bool DeleteLocalStyle(string styleId)
+    {
+        lock (Sync)
+        {
+            var current = _current ?? (_current = Load());
+            var styles = StyleLibrary.Delete(current.LocalStyles, styleId);
+            if (styles.Count == current.LocalStyles.Count) return false;
+            var updated = current.WithLocalStyles(styles);
             new ProfileStore().SaveAtomic(ProfilePath, updated);
             _current = updated;
             return true;

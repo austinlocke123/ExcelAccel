@@ -1,14 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExcelAccel.Application.Styles;
 
 namespace ExcelAccel.Application.Profiles;
 
 public sealed class ProfileDefinition
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
     public const int MaximumBindings = 512;
     public const int MaximumFavorites = 128;
+    public const int MaximumLocalStyles = 64;
 
     public ProfileDefinition(
         int schemaVersion,
@@ -25,6 +27,7 @@ public sealed class ProfileDefinition
         IEnumerable<KeyValuePair<string, string>> numberFormats,
         IEnumerable<QuickKeyBinding> quickKeys,
         IEnumerable<FavoriteDefinition> favorites,
+        IEnumerable<StyleRecipe> localStyles,
         long immediatePreviewCellLimit,
         bool wrapSheetNavigation)
     {
@@ -77,6 +80,12 @@ public sealed class ProfileDefinition
         if (normalizedFavorites.Select(value => value.FavoriteId).Distinct(StringComparer.Ordinal).Count() != normalizedFavorites.Length)
             throw new ArgumentException("Favorite IDs must be unique.", nameof(favorites));
         Favorites = normalizedFavorites;
+        var normalizedStyles = (localStyles ?? throw new ArgumentNullException(nameof(localStyles)))
+            .OrderBy(value => value.StyleId, StringComparer.Ordinal).ToArray();
+        if (normalizedStyles.Length > MaximumLocalStyles) throw new ArgumentException($"Profiles may contain at most {MaximumLocalStyles} local styles.", nameof(localStyles));
+        if (normalizedStyles.Any(value => value.Origin != StyleOrigin.Local)) throw new ArgumentException("The user profile may contain local styles only.", nameof(localStyles));
+        if (normalizedStyles.Select(value => value.StyleId).Distinct(StringComparer.Ordinal).Count() != normalizedStyles.Length) throw new ArgumentException("Local style IDs must be unique.", nameof(localStyles));
+        LocalStyles = normalizedStyles;
         if (immediatePreviewCellLimit < 1 || immediatePreviewCellLimit > 1_000_000)
         {
             throw new ArgumentOutOfRangeException(nameof(immediatePreviewCellLimit));
@@ -100,13 +109,20 @@ public sealed class ProfileDefinition
     public IReadOnlyDictionary<string, string> NumberFormats { get; }
     public IReadOnlyList<QuickKeyBinding> QuickKeys { get; }
     public IReadOnlyList<FavoriteDefinition> Favorites { get; }
+    public IReadOnlyList<StyleRecipe> LocalStyles { get; }
     public long ImmediatePreviewCellLimit { get; }
     public bool WrapSheetNavigation { get; }
 
     public ProfileDefinition WithFavorites(IEnumerable<FavoriteDefinition> favorites) => new ProfileDefinition(
         CurrentSchemaVersion, ProfileId, FontColorCycle, FillColorCycle, FontSizeCycle,
         HorizontalAlignmentCycle, VerticalAlignmentCycle, UnderlineCycle, RowHeightCycle,
-        ColumnWidthCycle, AutoColorColors, NumberFormats, QuickKeys, favorites,
+        ColumnWidthCycle, AutoColorColors, NumberFormats, QuickKeys, favorites, LocalStyles,
+        ImmediatePreviewCellLimit, WrapSheetNavigation);
+
+    public ProfileDefinition WithLocalStyles(IEnumerable<StyleRecipe> localStyles) => new ProfileDefinition(
+        CurrentSchemaVersion, ProfileId, FontColorCycle, FillColorCycle, FontSizeCycle,
+        HorizontalAlignmentCycle, VerticalAlignmentCycle, UnderlineCycle, RowHeightCycle,
+        ColumnWidthCycle, AutoColorColors, NumberFormats, QuickKeys, Favorites, localStyles,
         ImmediatePreviewCellLimit, WrapSheetNavigation);
 
     private static IReadOnlyList<string> NormalizeColors(IEnumerable<string> values, string parameterName)

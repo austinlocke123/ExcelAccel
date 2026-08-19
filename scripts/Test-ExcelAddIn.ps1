@@ -37,6 +37,7 @@ public static class ExcelAccelNativeMethods
     $secondCell = $null
     $navigationCell = $null
     $font = $null
+    $interior = $null
     $multiArea = $null
     $mergedRange = $null
     $quitReturned = $false
@@ -71,6 +72,9 @@ public static class ExcelAccelNativeMethods
 
         [void]$excel.Run('ExcelAccel.Smoke.OpenAndCloseCommandSearch')
         [Console]::WriteLine('command_search_ui=opened_and_closed')
+        [Console]::Out.Flush()
+        [void]$excel.Run('ExcelAccel.Smoke.OpenAndCloseStyleLibrary')
+        [Console]::WriteLine('style_library_ui=opened_and_closed')
         [Console]::Out.Flush()
 
         $cell.Value2 = 1234.5
@@ -109,6 +113,30 @@ public static class ExcelAccelNativeMethods
         [Console]::Out.Flush()
         if ($fontColorAfterUndo -ne 0x563412) {
             throw 'Optimistic session undo did not restore the exact prior font color.'
+        }
+
+        $interior = $cell.Interior
+        $font.Bold = $false
+        $font.Size = 11
+        $font.Color = 0x332211
+        $interior.Color = 0x112233
+        $styleValueBefore = $cell.Value2
+        [void]$cell.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.ApplyMajorHeaderStyle')
+        $styleApplied = [bool]$font.Bold -and ([double]$font.Size -eq 14) -and ([int]$font.Color -eq 0xFFFFFF) -and ([int]$interior.Color -eq 0x784E1F)
+        $styleContentPreserved = $styleValueBefore -eq $cell.Value2
+        [Console]::WriteLine("style_applied_exactly=$styleApplied")
+        [Console]::WriteLine("style_content_preserved=$styleContentPreserved")
+        [Console]::Out.Flush()
+        if (-not $styleApplied -or -not $styleContentPreserved) {
+            throw 'The built-in style did not change exactly its declared formatting properties.'
+        }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $styleUndoExact = (-not [bool]$font.Bold) -and ([double]$font.Size -eq 11) -and ([int]$font.Color -eq 0x332211) -and ([int]$interior.Color -eq 0x112233)
+        [Console]::WriteLine("style_batch_undo_exact=$styleUndoExact")
+        [Console]::Out.Flush()
+        if (-not $styleUndoExact) {
+            throw 'One session undo did not restore every built-in style property.'
         }
 
         $navigationCell = $worksheet.Range('D5')
@@ -224,6 +252,7 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $multiArea
         Release-ComObject $secondCell
         Release-ComObject $navigationCell
+        Release-ComObject $interior
         Release-ComObject $font
         Release-ComObject $cell
         Release-ComObject $worksheet
@@ -304,6 +333,10 @@ try {
         'content_preserved=True',
         'font_color_after=0',
         'command_search_ui=opened_and_closed',
+        'style_library_ui=opened_and_closed',
+        'style_applied_exactly=True',
+        'style_content_preserved=True',
+        'style_batch_undo_exact=True',
         'font_color_content_preserved=True',
         'font_color_after_undo=5649426',
         'navigation_address=A1',
