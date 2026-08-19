@@ -64,6 +64,11 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.Freeze' label='Freeze Panes (Preview Required)' keytip='VF' tag='view.panes.freeze' onAction='OnFormattingCommand'/>
                       <button id='ExcelAccel.Unfreeze' label='Unfreeze Panes' keytip='VU' tag='view.panes.unfreeze' onAction='OnFormattingCommand'/>
                     </menu>
+                    <menu id='ExcelAccel.Profiles' label='Profiles' keytip='P' imageMso='FileSaveAs'>
+                      <button id='ExcelAccel.ProfileExport' label='Export Profile...' keytip='E' onAction='OnExportProfile'/>
+                      <button id='ExcelAccel.ProfileImport' label='Import Profile...' keytip='I' onAction='OnImportProfile'/>
+                      <button id='ExcelAccel.BindingExport' label='Export Shortcut Cheat Sheet...' keytip='B' onAction='OnExportBindingCheatSheet'/>
+                    </menu>
                     <menu id='ExcelAccel.Styles' label='Styles' keytip='Y' imageMso='CellStylesGallery'>
                       <button id='ExcelAccel.StyleLibrary' label='Style Library...' keytip='L' onAction='OnOpenStyleLibrary'/>
                       <button id='ExcelAccel.StyleMajorHeader' label='Major Header' keytip='MH' tag='major_header' onAction='OnApplyBuiltInStyle'/>
@@ -138,6 +143,21 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     public void OnApplyBuiltInStyle(IRibbonControl control)
     {
         CallbackBoundary.Run("style.apply_builtin", () => CommandDispatcher.ApplyStyle(control.Tag, requireBuiltIn: true));
+    }
+
+    public void OnExportProfile(IRibbonControl control)
+    {
+        CallbackBoundary.Run("profile.export", CommandDispatcher.ExportProfile);
+    }
+
+    public void OnImportProfile(IRibbonControl control)
+    {
+        CallbackBoundary.Run("profile.import.apply", () => CommandDispatcher.ImportProfile(apply: true));
+    }
+
+    public void OnExportBindingCheatSheet(IRibbonControl control)
+    {
+        CallbackBoundary.Run("bindings.cheat_sheet.export", CommandDispatcher.ExportBindingCheatSheet);
     }
 
     public void OnUndoLast(IRibbonControl control)

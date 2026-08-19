@@ -28,6 +28,11 @@ internal static class ProfileRuntime
         lock (Sync) _current = null;
     }
 
+    public static void Activate(ProfileDefinition profile)
+    {
+        lock (Sync) _current = profile ?? throw new ArgumentNullException(nameof(profile));
+    }
+
     public static bool AddFavorite(FavoriteDefinition favorite)
     {
         lock (Sync)
@@ -96,6 +101,6 @@ internal static class ProfileRuntime
         }
     }
 
-    private static string ProfilePath => Path.Combine(
+    internal static string ProfilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ExcelAccel", "profile.json");
 }

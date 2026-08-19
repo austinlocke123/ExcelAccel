@@ -5,6 +5,7 @@ using ExcelAccel.Application.Navigation;
 using ExcelAccel.Application.Undo;
 using ExcelAccel.Application.Discovery;
 using ExcelAccel.Application.Styles;
+using ExcelAccel.Application.Profiles;
 using ExcelAccel.Core.Commands;
 
 namespace ExcelAccel.Application.Commands;
@@ -70,6 +71,7 @@ public static class BuiltInCommandRegistry
         .Concat(NavigationCommandCatalog.All)
         .Concat(DiscoveryCommandCatalog.All)
         .Concat(StyleCommandCatalog.All)
+        .Concat(ProfileExchangeCommandCatalog.All)
         .OrderBy(command => command.Id, System.StringComparer.Ordinal)
         .ToArray();
 
