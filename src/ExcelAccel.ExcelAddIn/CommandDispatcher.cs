@@ -3,6 +3,11 @@ using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
 using ExcelAccel.Core.Commands;
+using ExcelAccel.Application.Undo;
+using System;
+using System.IO;
+using System.Windows.Forms;
+using ExcelAccel.Persistence.Diagnostics;
 using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.ExcelInterop;
 
@@ -16,6 +21,42 @@ internal static class CommandDispatcher
         var command = new InspectSelectionCommand();
         var plan = command.Plan(port.CaptureSelection());
         return command.Execute(plan, port);
+    }
+
+    public static CommandResult UndoLastProperty()
+    {
+        var port = CreateSelectionAdapter();
+        var workbookId = port.CaptureSelection().Context.WorkbookId;
+        return UndoLastCommand.Execute(workbookId, UndoRuntime.Store, port, DateTimeOffset.UtcNow);
+    }
+
+    public static CommandResult ExportDiagnostics()
+    {
+        const string commandId = "support.diagnostics.export";
+        using (var dialog = new SaveFileDialog
+        {
+            Title = "Export ExcelAccel diagnostics",
+            Filter = "Text file (*.txt)|*.txt",
+            DefaultExt = "txt",
+            AddExtension = true,
+            OverwritePrompt = true,
+            FileName = "excelaccel-support.txt",
+        })
+        {
+            var owner = ExcelWindowOwner.TryCreate();
+            if ((owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner)) != DialogResult.OK)
+                return CommandResult.Refused(commandId, "Diagnostic export was cancelled; no file was written.", "USER_CANCELLED");
+            var bytes = File.Exists(DiagnosticLog.LogPath) ? File.ReadAllBytes(DiagnosticLog.LogPath) : new byte[0];
+            var exporter = new DiagnosticExporter();
+            var plan = exporter.Plan(dialog.FileName, bytes);
+            var confirmation = owner is null
+                ? MessageBox.Show(plan.Manifest + "\n\nCreate this local file?", "ExcelAccel diagnostic manifest", MessageBoxButtons.YesNo, MessageBoxIcon.Information)
+                : MessageBox.Show(owner, plan.Manifest + "\n\nCreate this local file?", "ExcelAccel diagnostic manifest", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (confirmation != DialogResult.Yes)
+                return CommandResult.Refused(commandId, "Diagnostic export was not confirmed; no file was written.", "PREVIEW_NOT_CONFIRMED");
+            exporter.Export(plan, plan.PlanHash, bytes);
+            return CommandResult.Success(commandId, "The sanitized local diagnostic file was created. Nothing was transmitted.");
+        }
     }
 
     public static CommandResult ApplyCurrencyFormat()
@@ -41,7 +82,7 @@ internal static class CommandDispatcher
         }
 
         var plan = command.Plan(snapshot);
-        return command.Execute(plan, port);
+        return command.Execute(plan, port, UndoRuntime.Store);
     }
 
     public static CommandResult ApplyProfileFormatting(string commandId)
@@ -59,7 +100,7 @@ internal static class CommandDispatcher
             return CommandResult.Refused(plan, "This command requires exact-plan preview confirmation, which is not available from the compact Ribbon menu.", RefusalCodes.PreviewRequired);
         }
 
-        return command.Execute(plan, port);
+        return command.Execute(plan, port, receiptSink: UndoRuntime.Store);
     }
 
     public static CommandResult Navigate(string commandId)

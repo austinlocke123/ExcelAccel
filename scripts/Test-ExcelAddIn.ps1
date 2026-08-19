@@ -99,6 +99,13 @@ public static class ExcelAccelNativeMethods
         if ($fontColorAfter -ne 0 -or -not $fontColorPreservedContent) {
             throw 'The profile font-color cycle did not change only the declared property.'
         }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $fontColorAfterUndo = [int]$font.Color
+        [Console]::WriteLine("font_color_after_undo=$fontColorAfterUndo")
+        [Console]::Out.Flush()
+        if ($fontColorAfterUndo -ne 0x563412) {
+            throw 'Optimistic session undo did not restore the exact prior font color.'
+        }
 
         $navigationCell = $worksheet.Range('D5')
         [void]$navigationCell.Select()
@@ -293,6 +300,7 @@ try {
         'content_preserved=True',
         'font_color_after=0',
         'font_color_content_preserved=True',
+        'font_color_after_undo=5649426',
         'navigation_address=A1',
         'state_restored_after_fault=True',
         'stale_property_refused=True',

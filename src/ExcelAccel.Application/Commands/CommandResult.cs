@@ -54,8 +54,11 @@ public sealed class CommandResult
 
     public string ReceiptId { get; }
 
-    public static CommandResult Success(CommandPlan plan, string message) =>
-        new CommandResult(CommandResultStatus.Success, plan.CommandId, message, plan.AffectedCellCount, 0, string.Empty, string.Empty, string.Empty);
+    public static CommandResult Success(CommandPlan plan, string message, string receiptId = "") =>
+        new CommandResult(CommandResultStatus.Success, plan.CommandId, message, plan.AffectedCellCount, 0, string.Empty, string.Empty, receiptId ?? string.Empty);
+
+    public static CommandResult Success(string commandId, string message, long changedCount = 0, string receiptId = "") =>
+        new CommandResult(CommandResultStatus.Success, commandId, message, changedCount, 0, string.Empty, string.Empty, receiptId ?? string.Empty);
 
     public static CommandResult Refused(CommandPlan plan, string reason, string refusalCode = RefusalCodes.SelectionUnsupported) =>
         new CommandResult(CommandResultStatus.Refused, plan.CommandId, reason, 0, 0, refusalCode, string.Empty, string.Empty);

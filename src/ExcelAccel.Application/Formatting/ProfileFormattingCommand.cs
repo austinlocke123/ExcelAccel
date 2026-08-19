@@ -4,6 +4,7 @@ using System.Linq;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Profiles;
 using ExcelAccel.Core.Commands;
+using ExcelAccel.Application.Undo;
 
 namespace ExcelAccel.Application.Formatting;
 
@@ -77,7 +78,7 @@ public sealed class ProfileFormattingCommand
             });
     }
 
-    public CommandResult Execute(CommandPlan plan, IFormattingPort port, string? confirmedPlanHash = null)
+    public CommandResult Execute(CommandPlan plan, IFormattingPort port, string? confirmedPlanHash = null, IPropertyReceiptSink? receiptSink = null)
     {
         if (plan is null)
         {
@@ -125,7 +126,15 @@ public sealed class ProfileFormattingCommand
             return CommandResult.Failed(plan.CommandId, "Excel did not report the planned formatting postcondition.", "POSTCONDITION_MISMATCH");
         }
 
-        return CommandResult.Success(plan, $"Applied {_descriptor.DisplayName} to {plan.AffectedCellCount:N0} cell(s).");
+        var receiptId = string.Empty;
+        if (receiptSink is not null)
+        {
+            receiptId = Guid.NewGuid().ToString("N");
+            var now = DateTimeOffset.UtcNow;
+            receiptSink.Add(new PropertyReceipt(receiptId, plan.CommandId, plan.ContractVersion, plan.Context,
+                propertyId, current, desired, plan.PlanHash, now, now.AddHours(8)));
+        }
+        return CommandResult.Success(plan, $"Applied {_descriptor.DisplayName} to {plan.AffectedCellCount:N0} cell(s).", receiptId);
     }
 
     public static string Next(IReadOnlyList<string> cycle, string current)

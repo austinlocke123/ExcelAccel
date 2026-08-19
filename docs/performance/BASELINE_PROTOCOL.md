@@ -1,6 +1,6 @@
 # WP-P0-07 performance baseline protocol
 
-Status: **Initial implementation; budgets are not frozen**
+Status: **Workload budgets frozen for Phase 1; startup attribution remains open**
 
 ## Scope and authority
 
@@ -27,8 +27,10 @@ Every run MUST record:
 - UTC timestamp and explicit cold/warm classification.
 
 The first approved qualification machine becomes the Phase 1 reference machine.
-Until a human accepts that record, results are exploratory and MUST NOT become a
-CI regression gate.
+The 2026-08-19 qualification record accepts the recorded Windows/Excel x64
+machine as the Phase 1 workload-mechanism reference. The corpus P95 limits are
+now build gates for the measured block-read/property-write mechanisms. Startup
+remains a proxy until Excel-only control measurements isolate add-in-owned cost.
 
 ## Cold and warm protocol
 
@@ -65,11 +67,13 @@ qualification from a single run.
 
 ## Responsiveness interpretation
 
-The harness records the maximum individual Excel-thread block-call duration.
-This is a conservative blocking proxy for PERF-007, not proof that Excel's UI
-message loop remained interactive. Before AC-P0-006 can pass, a reviewed probe
-must independently demonstrate UI heartbeat/progress/cancellation behavior for
-operations whose end-to-end duration exceeds 500 ms.
+Alongside maximum Excel-thread call duration, the harness runs an independent
+background Win32 `WM_NULL` probe against Excel's main window. Every workload
+must produce at least one sample, zero 250 ms timeouts, and a maximum observed
+heartbeat no greater than 500 ms. This proves bounded message-loop response for
+the synthetic workload; it is not an end-user input-latency trace. Commands
+whose end-to-end duration exceeds 500 ms still require their own progress and
+cancellation evidence.
 
 ## Output and privacy
 
@@ -80,12 +84,13 @@ explicit add-in path, or workbook content.
 
 ## Exit gate
 
-WP-P0-07 remains open until:
+WP-P0-07 workload-mechanism qualification completed on 2026-08-19 with three
+clean `qualification` runs. The corpus limits of 100/500/3,000/8,000 ms and the
+250 MB incremental-memory requirement are frozen for Phase 1. Remaining gates
+are deliberately narrower:
 
-- the harness produces repeatable `qualification` distributions;
-- reference machine and corpus are approved;
-- cold/warm variance is reviewed;
-- UI responsiveness and cancellation evidence is recorded;
-- working-set/resource behavior is bounded across repeated runs;
-- Phase 1 P95/memory targets are explicitly frozen or requirements are changed
-  through review.
+- isolate Excel-only launch from add-in-owned startup cost for PERF-001;
+- retain three-run regression evidence when the reference machine, Excel build,
+  add-in runtime, or corpus changes;
+- add feature-specific progress/cancellation and retained-memory evidence for
+  operations that actually exceed 500 ms or retain large snapshots.

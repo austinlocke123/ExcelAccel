@@ -28,30 +28,41 @@ internal static class CallbackBoundary
                 stopwatch.Stop();
                 DiagnosticLog.Info(
                     commandId,
-                    result.Succeeded ? "success" : $"refused:{result.RefusalCode}",
+                    result.Succeeded
+                        ? "success"
+                        : result.Status == CommandResultStatus.Failed
+                            ? $"failed:{result.DiagnosticId}"
+                            : $"refused:{result.RefusalCode}",
                     stopwatch.ElapsedMilliseconds);
-                Show(result.Message, result.Succeeded ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+                var detail = result.Succeeded
+                    ? $"Command: {result.CommandId}\n\n{result.Message}"
+                    : $"Command: {result.CommandId}\n\nReason: {result.Message}\n\nRemediation: Review the current workbook context and retry. If the refusal persists, export diagnostics.\nCode: {result.RefusalCode}\nDiagnostic ID: {result.DiagnosticId}";
+                Show(detail, result.Succeeded
+                    ? MessageBoxIcon.Information
+                    : result.Status == CommandResultStatus.Failed
+                        ? MessageBoxIcon.Error
+                        : MessageBoxIcon.Warning);
             }
             catch (CommandRefusedException exception)
             {
                 stopwatch.Stop();
                 DiagnosticLog.Info(commandId, $"refused:{exception.RefusalCode}", stopwatch.ElapsedMilliseconds);
-                Show(exception.Message, MessageBoxIcon.Warning);
+                Show($"Command: {commandId}\n\nReason: {exception.Message}\n\nRemediation: {exception.Remediation}\nCode: {exception.RefusalCode}", MessageBoxIcon.Warning);
             }
             catch (StateRestoreException exception)
             {
                 stopwatch.Stop();
                 RuntimeState.Quarantine(commandId);
-                DiagnosticLog.Failure(commandId, "STATE_RESTORE_FAILED", exception, stopwatch.ElapsedMilliseconds);
+                var diagnosticId = DiagnosticLog.Failure(commandId, "STATE_RESTORE_FAILED", exception, stopwatch.ElapsedMilliseconds);
                 Show(
-                    "ExcelAccel could not fully restore Excel application state. This command is disabled for the rest of the session; save and restart Excel before continuing.",
+                    $"ExcelAccel could not fully restore Excel application state. This command is disabled for the rest of the session; save and restart Excel before continuing. Diagnostic ID: {diagnosticId}",
                     MessageBoxIcon.Error);
             }
             catch (Exception exception)
             {
                 stopwatch.Stop();
-                DiagnosticLog.Error(commandId, exception, stopwatch.ElapsedMilliseconds);
-                Show("ExcelAccel stopped the command safely. No further work was attempted. See the local diagnostic log for the error type.", MessageBoxIcon.Error);
+                var diagnosticId = DiagnosticLog.Error(commandId, exception, stopwatch.ElapsedMilliseconds);
+                Show($"ExcelAccel stopped the command safely. No further work was attempted. Diagnostic ID: {diagnosticId}", MessageBoxIcon.Error);
             }
         }
     }
@@ -72,7 +83,9 @@ internal static class CallbackBoundary
     {
         try
         {
-            MessageBox.Show(message, "ExcelAccel", MessageBoxButtons.OK, icon);
+            var owner = ExcelWindowOwner.TryCreate();
+            if (owner is null) MessageBox.Show(message, "ExcelAccel", MessageBoxButtons.OK, icon);
+            else MessageBox.Show(owner, message, "ExcelAccel", MessageBoxButtons.OK, icon);
         }
         catch (Exception exception)
         {

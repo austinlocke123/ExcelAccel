@@ -71,6 +71,8 @@ public sealed class CommandFrameworkTests
     [Fact]
     public void RegistryEntriesContainCompleteReleaseMetadata()
     {
+        Assert.Equal(BuiltInCommandRegistry.All.Count,
+            BuiltInCommandRegistry.All.Select(value => value.KeyboardRoute).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Assert.All(BuiltInCommandRegistry.All, descriptor =>
         {
             Assert.False(string.IsNullOrWhiteSpace(descriptor.Id));

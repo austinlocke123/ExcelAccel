@@ -10,6 +10,7 @@ public enum CommandContextRequirement
     Worksheet = 2,
     Selection = 4,
     Window = 8,
+    Application = 16,
 }
 
 public enum PreviewPolicy

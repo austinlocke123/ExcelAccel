@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
+using ExcelAccel.Application.Undo;
 using ExcelAccel.Core.Commands;
 
 namespace ExcelAccel.Application.Commands;
@@ -36,6 +37,32 @@ public static class BuiltInCommandRegistry
             PreviewPolicy.None,
             UndoPolicy.SessionPropertyReceipt,
             new[] { "AC-CMD-001", "AC-FMT-002", "AC-REL-005" }),
+        new CommandDescriptor(
+            UndoLastCommand.Id,
+            1,
+            "Undo Last ExcelAccel Property",
+            CommandImpact.Low,
+            new[] { "qualified_receipt_property" },
+            true,
+            "Ribbon KeyTips: Alt, X, A, U",
+            "CAP-REL-001",
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
+            PreviewPolicy.None,
+            UndoPolicy.None,
+            new[] { "AC-REL-011", "AC-REL-012" }),
+        new CommandDescriptor(
+            "support.diagnostics.export",
+            1,
+            "Export Sanitized Diagnostics",
+            CommandImpact.Medium,
+            new[] { "local_support_file" },
+            false,
+            "Ribbon KeyTips: Alt, X, A, S",
+            "CAP-REL-001",
+            CommandContextRequirement.Application,
+            PreviewPolicy.Mandatory,
+            UndoPolicy.None,
+            new[] { "AC-SEC-002", "AC-SEC-004", "AC-UX-005" }),
         }
         .Concat(Phase1AFormattingCatalog.All)
         .Concat(NavigationCommandCatalog.All)

@@ -20,6 +20,10 @@ for end-user distribution.
 | `agent/phase-0-packaging-trust` | `b30a4ad` | WP-P0-08 packaging and trust | Draft PR #6, stacked on PR #5 |
 | `agent/phase-0-closure` | `b95be00` | Gate ledger, ADR acceptance, boundary enforcement, and reliability soak | Draft PR #7, stacked on PR #6 |
 | `agent/phase-1a-foundation` | `e13d28e` | WP-1A-01 production solution boundaries | Draft PR #8, stacked on PR #7 |
+| `agent/phase-1a-command-runtime` | `5b62b4d` | WP-1A-02/03 command runtime and adapter contracts | Draft PR #9, stacked on PR #8 |
+| `agent/phase-1a-profiles-quick-keys` | `cf01e1b` | WP-1A-04/05 profiles and safe key engine | Draft PR #10, stacked on PR #9 |
+| `agent/phase-1a-formatting-navigation` | `045dcf6` | WP-1A-06/08 formatting and navigation | Draft PR #11, stacked on PR #10 |
+| `agent/phase-1a-safety-runtime` | `ba2289f` | WP-1A-07/09/10/11/12 safety runtime and installer source | Draft PR #12, stacked on PR #11 |
 
 ## Completed engineering work
 
@@ -44,8 +48,9 @@ for end-user distribution.
   ten-session real-Excel reliability soak with natural process exit and XLL
   unlock checks.
 
-Current local verification is 100 unit tests with zero failures and Debug and
-Release builds with zero warnings/errors. See
+Current local verification is 142 unit tests with zero failures, Debug and
+Release builds with zero warnings/errors, and a passing final real-Excel smoke
+with exact property undo and natural process exit. See
 [`evidence/PHASE0_CLOSURE.md`](evidence/PHASE0_CLOSURE.md) for the gate-by-gate
 decision and exact measured evidence, and
 [`evidence/WP-1A-01_FOUNDATION.md`](evidence/WP-1A-01_FOUNDATION.md) for the
@@ -104,6 +109,19 @@ remains exact-preview gated and has no bypassing callback. See
 Next: implement WP-1A-07's deterministic AutoColor planner while keeping its
 execution fail-closed behind the retained performance gate, then implement
 WP-1A-09/10 receipts and recovery.
+
+WP-1A-07 and WP-1A-09 through WP-1A-12 source work is published on
+`agent/phase-1a-safety-runtime` in draft PR #12. AutoColor execution and end-user distribution
+remain fail-closed behind retained external qualification gates. See
+`evidence/WP-1A-07_09_10_11_12_SAFETY_RUNTIME.md` for completed scope and
+remaining release evidence.
+
+Restart point: review the stacked PRs #7 through #12 in order. After merge,
+the next engineering action is qualification—not additional Phase 1A mutation
+scope: complete the reference-machine performance/UI-heartbeat run, CA-signed
+clean-VM installer lifecycle, supported Office build/coexistence/accessibility
+matrix, workbook-close event cleanup evidence, and long-duration soak. Only
+then enable AutoColor or approve end-user distribution.
 
 ## Local-worktree caution
 
