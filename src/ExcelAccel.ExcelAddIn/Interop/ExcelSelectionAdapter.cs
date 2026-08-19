@@ -1,7 +1,10 @@
 using System;
 using System.Globalization;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using ExcelDna.Integration;
 using ExcelAccel.Core.Commands;
+using ExcelAccel.Core.Reliability;
 using ExcelAccel.ExcelAddIn.Reliability;
 
 namespace ExcelAccel.ExcelAddIn.Interop;
@@ -11,10 +14,16 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
     public SelectionSnapshot CaptureSelection()
     {
         RuntimeState.VerifyExcelThread();
+        return ExcelComRetry.Execute(CaptureSelectionOnce);
+    }
+
+    private static SelectionSnapshot CaptureSelectionOnce()
+    {
         object? applicationObject = null;
         object? workbookObject = null;
         object? worksheetObject = null;
         object? selectionObject = null;
+        object? areasObject = null;
 
         try
         {
@@ -26,7 +35,10 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
 
             if (workbookObject is null || worksheetObject is null || selectionObject is null)
             {
-                throw new CommandRefusedException("An open workbook and a cell range selection are required.");
+                throw new CommandRefusedException(
+                    RefusalCodes.SelectionUnsupported,
+                    "An open workbook and a cell range selection are required.",
+                    "Open a workbook and select one rectangular cell range.");
             }
 
             dynamic workbook = workbookObject;
@@ -44,19 +56,39 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
             long cellCount = Convert.ToInt64(selection.CountLarge, CultureInfo.InvariantCulture);
             bool? hasFormula = ConvertFormulaState(selection.HasFormula);
             string numberFormat = Convert.ToString(selection.NumberFormat, CultureInfo.InvariantCulture) ?? "(mixed)";
+            areasObject = selection.Areas;
+            dynamic areas = areasObject;
+            int areaCount = Convert.ToInt32(areas.Count, CultureInfo.InvariantCulture);
+            bool hasMergedCells = ConvertUnsafeBoolean(selection.MergeCells);
+            bool worksheetProtected = Convert.ToBoolean(worksheet.ProtectContents, CultureInfo.InvariantCulture);
+            bool workbookReadOnly = Convert.ToBoolean(workbook.ReadOnly, CultureInfo.InvariantCulture);
+            bool hasLegacyArray = ConvertUnsafeBoolean(selection.HasArray);
+            bool spillCheckSupported = TryReadOptionalUnsafeBoolean(selectionObject, "HasSpill", out var hasDynamicArraySpill);
 
             return new SelectionSnapshot(
                 new SelectionContext(workbookId, worksheetName, address),
                 cellCount,
                 hasFormula,
-                numberFormat);
+                numberFormat,
+                new SelectionSafetyState(
+                    areaCount,
+                    hasMergedCells,
+                    worksheetProtected,
+                    workbookReadOnly,
+                    hasLegacyArray,
+                    hasDynamicArraySpill,
+                    spillCheckSupported));
         }
         catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException exception)
         {
-            throw new CommandRefusedException($"The current Excel selection is not a supported cell range: {exception.Message}");
+            throw new CommandRefusedException(
+                RefusalCodes.SelectionUnsupported,
+                $"The current Excel selection is not a supported cell range: {exception.Message}",
+                "Select one rectangular cell range and try again.");
         }
         finally
         {
+            ComRelease.Owned(areasObject);
             ComRelease.Owned(selectionObject);
             ComRelease.Owned(worksheetObject);
             ComRelease.Owned(workbookObject);
@@ -72,6 +104,11 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
             throw new ArgumentException("A number format is required.", nameof(formatCode));
         }
 
+        ExcelComRetry.Execute(() => SetNumberFormatOnce(formatCode));
+    }
+
+    private static void SetNumberFormatOnce(string formatCode)
+    {
         object? applicationObject = null;
         object? selectionObject = null;
 
@@ -82,18 +119,27 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
             selectionObject = application.Selection;
             if (selectionObject is null)
             {
-                throw new CommandRefusedException("A cell range selection is required.");
+                throw new CommandRefusedException(
+                    RefusalCodes.SelectionUnsupported,
+                    "A cell range selection is required.",
+                    "Select one rectangular cell range and try again.");
             }
 
-            using (var state = ExcelStateGuard.SuppressScreenUpdating(applicationObject))
-            {
-                dynamic selection = selectionObject;
-                selection.NumberFormat = formatCode;
-            }
+            ApplicationStateGuard.Run(
+                new ExcelApplicationStateAdapter(applicationObject),
+                ApplicationStateChangeSet.PropertyMutation(),
+                () =>
+                {
+                    dynamic selection = selectionObject;
+                    selection.NumberFormat = formatCode;
+                });
         }
         catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException exception)
         {
-            throw new CommandRefusedException($"The current Excel selection cannot be formatted: {exception.Message}");
+            throw new CommandRefusedException(
+                RefusalCodes.SelectionUnsupported,
+                $"The current Excel selection cannot be formatted: {exception.Message}",
+                "Select one rectangular cell range and try again.");
         }
         finally
         {
@@ -110,5 +156,36 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
         }
 
         return null;
+    }
+
+    private static bool ConvertUnsafeBoolean(object value)
+    {
+        return !(value is bool boolean) || boolean;
+    }
+
+    private static bool TryReadOptionalUnsafeBoolean(object target, string propertyName, out bool value)
+    {
+        try
+        {
+            var propertyValue = target.GetType().InvokeMember(
+                propertyName,
+                BindingFlags.GetProperty,
+                binder: null,
+                target,
+                args: null,
+                CultureInfo.InvariantCulture);
+            value = ConvertUnsafeBoolean(propertyValue);
+            return true;
+        }
+        catch (MissingMethodException)
+        {
+            value = false;
+            return false;
+        }
+        catch (COMException)
+        {
+            value = false;
+            return false;
+        }
     }
 }

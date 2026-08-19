@@ -9,6 +9,72 @@ public sealed class ApplyCurrencyFormatCommand
     public const string DefaultFormatCode = "$#,##0.00;($#,##0.00);-";
     public const long MaximumCellCount = 50_000;
 
+    public CanExecuteResult CanExecute(SelectionSnapshot snapshot)
+    {
+        if (snapshot is null)
+        {
+            throw new ArgumentNullException(nameof(snapshot));
+        }
+
+        if (snapshot.Safety.AreaCount != 1)
+        {
+            return CanExecuteResult.Refuse(
+                RefusalCodes.MultiAreaUnsupported,
+                "Currency formatting currently requires one contiguous selection.",
+                "Select one rectangular cell range and try again.");
+        }
+
+        if (snapshot.Safety.HasMergedCells)
+        {
+            return CanExecuteResult.Refuse(
+                RefusalCodes.SelectionUnsupported,
+                "Currency formatting is not qualified for merged cells.",
+                "Select an unmerged range and try again.");
+        }
+
+        if (!snapshot.Safety.DynamicArraySpillCheckSupported)
+        {
+            return CanExecuteResult.Refuse(
+                RefusalCodes.ExcelCapabilityMissing,
+                "This Excel build does not expose the required spilled-array safety check.",
+                "Use a qualified Microsoft 365 Excel build.");
+        }
+
+        if (snapshot.Safety.HasLegacyArray || snapshot.Safety.HasDynamicArraySpill)
+        {
+            return CanExecuteResult.Refuse(
+                RefusalCodes.ArrayOrSpillUnsafe,
+                "Currency formatting is not qualified for array or spilled-array selections.",
+                "Select cells outside the array or spill range and try again.");
+        }
+
+        if (snapshot.Safety.WorksheetProtected)
+        {
+            return CanExecuteResult.Refuse(
+                RefusalCodes.ProtectedTarget,
+                "The active worksheet is protected.",
+                "Unprotect the worksheet or select an unprotected target.");
+        }
+
+        if (snapshot.Safety.WorkbookReadOnly)
+        {
+            return CanExecuteResult.Refuse(
+                RefusalCodes.ReadOnlyWorkbook,
+                "The active workbook is read-only.",
+                "Use an editable copy of the workbook.");
+        }
+
+        if (snapshot.CellCount > MaximumCellCount)
+        {
+            return CanExecuteResult.Refuse(
+                RefusalCodes.ResourceLimit,
+                $"The selection contains {snapshot.CellCount:N0} cells; the Phase 0 safety limit is {MaximumCellCount:N0}.",
+                "Select a smaller range and try again.");
+        }
+
+        return CanExecuteResult.Permit();
+    }
+
     public CommandPlan Plan(SelectionSnapshot snapshot)
     {
         if (snapshot is null)
@@ -16,9 +82,10 @@ public sealed class ApplyCurrencyFormatCommand
             throw new ArgumentNullException(nameof(snapshot));
         }
 
-        if (snapshot.CellCount > MaximumCellCount)
+        var canExecute = CanExecute(snapshot);
+        if (!canExecute.Allowed)
         {
-            throw new CommandRefusedException($"The selection contains {snapshot.CellCount:N0} cells; the Phase 0 safety limit is {MaximumCellCount:N0}.");
+            throw new CommandRefusedException(canExecute.RefusalCode, canExecute.Message, canExecute.Remediation);
         }
 
         return new CommandPlan(
@@ -45,12 +112,18 @@ public sealed class ApplyCurrencyFormatCommand
         var current = port.CaptureSelection();
         if (!plan.Context.Equals(current.Context))
         {
-            return CommandResult.Refused(plan, "The Excel selection changed after planning; no formatting was applied.");
+            return CommandResult.Refused(plan, "The Excel selection changed after planning; no formatting was applied.", RefusalCodes.StaleContext);
         }
 
         if (current.CellCount != plan.AffectedCellCount)
         {
-            return CommandResult.Refused(plan, "The selected range changed size after planning; no formatting was applied.");
+            return CommandResult.Refused(plan, "The selected range changed size after planning; no formatting was applied.", RefusalCodes.StaleContext);
+        }
+
+        var canExecute = CanExecute(current);
+        if (!canExecute.Allowed)
+        {
+            return CommandResult.Refused(plan, canExecute.Message, canExecute.RefusalCode);
         }
 
         port.SetNumberFormat(DefaultFormatCode);

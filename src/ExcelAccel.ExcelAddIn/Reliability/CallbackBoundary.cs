@@ -26,14 +26,26 @@ internal static class CallbackBoundary
             {
                 var result = callback();
                 stopwatch.Stop();
-                DiagnosticLog.Info(commandId, result.Succeeded ? "success" : "refused", stopwatch.ElapsedMilliseconds);
+                DiagnosticLog.Info(
+                    commandId,
+                    result.Succeeded ? "success" : $"refused:{result.RefusalCode}",
+                    stopwatch.ElapsedMilliseconds);
                 Show(result.Message, result.Succeeded ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             }
             catch (CommandRefusedException exception)
             {
                 stopwatch.Stop();
-                DiagnosticLog.Info(commandId, "refused", stopwatch.ElapsedMilliseconds);
+                DiagnosticLog.Info(commandId, $"refused:{exception.RefusalCode}", stopwatch.ElapsedMilliseconds);
                 Show(exception.Message, MessageBoxIcon.Warning);
+            }
+            catch (StateRestoreException exception)
+            {
+                stopwatch.Stop();
+                RuntimeState.Quarantine(commandId);
+                DiagnosticLog.Failure(commandId, "STATE_RESTORE_FAILED", exception, stopwatch.ElapsedMilliseconds);
+                Show(
+                    "ExcelAccel could not fully restore Excel application state. This command is disabled for the rest of the session; save and restart Excel before continuing.",
+                    MessageBoxIcon.Error);
             }
             catch (Exception exception)
             {

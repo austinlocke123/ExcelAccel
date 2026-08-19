@@ -4,7 +4,12 @@ namespace ExcelAccel.Core.Commands;
 
 public sealed class SelectionSnapshot
 {
-    public SelectionSnapshot(SelectionContext context, long cellCount, bool? hasFormula, string numberFormat)
+    public SelectionSnapshot(
+        SelectionContext context,
+        long cellCount,
+        bool? hasFormula,
+        string numberFormat,
+        SelectionSafetyState? safety = null)
     {
         if (cellCount < 1)
         {
@@ -15,6 +20,7 @@ public sealed class SelectionSnapshot
         CellCount = cellCount;
         HasFormula = hasFormula;
         NumberFormat = numberFormat ?? string.Empty;
+        Safety = safety ?? SelectionSafetyState.Safe();
     }
 
     public SelectionContext Context { get; }
@@ -24,4 +30,6 @@ public sealed class SelectionSnapshot
     public bool? HasFormula { get; }
 
     public string NumberFormat { get; }
+
+    public SelectionSafetyState Safety { get; }
 }

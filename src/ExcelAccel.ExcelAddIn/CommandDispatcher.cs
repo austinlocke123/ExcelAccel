@@ -16,16 +16,27 @@ internal static class CommandDispatcher
 
     public static CommandResult ApplyCurrencyFormat()
     {
-        if (RuntimeState.IsSafeMode)
+        if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(ApplyCurrencyFormatCommand.Id))
         {
             return CommandResult.Refused(
                 ApplyCurrencyFormatCommand.Id,
-                "ExcelAccel is in safe mode after an unclean prior session. Restart Excel cleanly before using mutation commands.");
+                "ExcelAccel is in safe mode after an unclean prior session. Restart Excel cleanly before using mutation commands.",
+                RefusalCodes.CommandQuarantined);
         }
 
         var port = new ExcelSelectionAdapter();
         var command = new ApplyCurrencyFormatCommand();
-        var plan = command.Plan(port.CaptureSelection());
+        var snapshot = port.CaptureSelection();
+        var canExecute = command.CanExecute(snapshot);
+        if (!canExecute.Allowed)
+        {
+            return CommandResult.Refused(
+                ApplyCurrencyFormatCommand.Id,
+                $"{canExecute.Message} {canExecute.Remediation}".Trim(),
+                canExecute.RefusalCode);
+        }
+
+        var plan = command.Plan(snapshot);
         return command.Execute(plan, port);
     }
 }

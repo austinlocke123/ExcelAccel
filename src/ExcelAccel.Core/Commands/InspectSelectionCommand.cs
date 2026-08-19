@@ -37,7 +37,7 @@ public sealed class InspectSelectionCommand
         var current = port.CaptureSelection();
         if (!plan.Context.Equals(current.Context))
         {
-            return CommandResult.Refused(plan, "The Excel selection changed after planning; run the command again.");
+            return CommandResult.Refused(plan, "The Excel selection changed after planning; run the command again.", RefusalCodes.StaleContext);
         }
 
         var formulaState = current.HasFormula.HasValue
