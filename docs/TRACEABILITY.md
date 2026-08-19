@@ -68,7 +68,8 @@ documents.
 - Default formatting profile values and proposed shortcuts are intentionally
   unspecified.
 - Runtime and minimum Excel build are unresolved.
-- Parser choice and exact formula coverage are unresolved.
+- The parser choice remains unresolved; the proposed formula coverage matrix
+  and hybrid recommendation are WP-P0-05 evidence, not an accepted ADR.
 - AutoSave/coauthoring impact-tier behavior is proposed, not accepted.
 - Reference machine, workbook corpus, and frozen performance budgets are open.
 - Installer/update technology and signing process are open.

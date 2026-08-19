@@ -63,3 +63,25 @@ Each case is marked `parse`, `round_trip`, `transform`, `inspect_only`, or
 - performance on representative formula corpora.
 
 No formula-mutating production command may begin until this ADR is accepted.
+
+## Phase 0 spike finding — 2026-08-18
+
+The first WP-P0-05 slice implemented a dependency-free, pure-core lossless
+syntax/reference prototype and a versioned refusal corpus. The current proposed
+direction is a hybrid with strict ownership boundaries:
+
+1. a pure-core lossless concrete syntax representation owns source spans,
+   deterministic round-trip, resource limits, and explicit reference nodes;
+2. a subsequently qualified expression AST owns semantic transforms only for
+   syntax explicitly marked `transform`;
+3. Excel may act as a build/locale qualification oracle or narrowly scoped
+   translation adapter, but never as the domain representation and never from a
+   worker thread;
+4. names, structured references, external links, dynamic-array operators,
+   unions, and intersections remain inspect-only until their individual
+   transform rules pass corpus qualification.
+
+This finding is not an accepted decision. The prototype deliberately stops
+short of a complete expression AST, real-Excel locale/build qualification,
+third-party dependency comparison, and production transformation. Those gaps
+must close before the deciders change this ADR to `Accepted`.
