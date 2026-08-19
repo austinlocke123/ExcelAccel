@@ -45,6 +45,10 @@ manifest under [`../benchmarks/`](../benchmarks/) define WP-P0-07 measurement
 mechanics. Quick-profile results are exploratory until the reference machine,
 qualification distributions, and budgets receive explicit review.
 
+Packaging artifacts under [`packaging/`](packaging/) define WP-P0-08's local
+integrity/signing boundary and clean-VM procedure. They do not accept ADR-0006
+or authorize a production installer, registry write, or trust-policy change.
+
 The files under [`../PRD/`](../PRD/) are retained source material and review
 history. They are non-normative after this specification is approved.
 

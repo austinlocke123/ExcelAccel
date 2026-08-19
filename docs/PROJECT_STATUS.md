@@ -16,7 +16,8 @@ their implementation gates.
 | `agent/phase-0-adapter-hardening` | `a4949d2` | Excel adapter and state safety | Draft PR #2, stacked on PR #1 |
 | `agent/phase-0-formula-strategy` | `ced68b1` | Formula strategy spike | Draft PR #3, stacked on PR #2 |
 | `agent/phase-0-autosave-coauthoring` | `a85143b` | WP-P0-06 collaboration safety | Draft PR #4, stacked on PR #3 |
-| `agent/phase-0-performance-baseline` | local work in progress | WP-P0-07 performance baseline | Started from `a85143b`; not yet published |
+| `agent/phase-0-performance-baseline` | `29c91e8` | WP-P0-07 performance baseline | Draft PR #5, stacked on PR #4 |
+| `agent/phase-0-packaging-trust` | local work in progress | WP-P0-08 packaging and trust | Started from `29c91e8`; not yet published |
 
 ## Completed engineering work
 
@@ -59,20 +60,28 @@ collaboration policy in [`collaboration/POLICY_MATRIX.md`](collaboration/POLICY_
 
 ## Current work and restart point
 
-**WP-P0-07: performance baseline** is in progress on
-`agent/phase-0-performance-baseline`, stacked from the published WP-P0-06
-commit. Its initial slice contains deterministic distribution/regression math,
-a versioned synthetic corpus, a documented cold/warm protocol, and an isolated
-real-Excel harness. The Quick profile has produced exploratory evidence, but no
-reference machine or budget is accepted or frozen.
+WP-P0-07 has an initial published slice with deterministic
+distribution/regression math, a versioned synthetic corpus, a cold/warm
+protocol, and an isolated real-Excel harness. Its Quick result is exploratory;
+the reference machine and budgets are not accepted or frozen.
 
-On restart, continue by:
+**WP-P0-08: packaging and trust** is in progress on
+`agent/phase-0-packaging-trust`, stacked from WP-P0-07. The initial local slice
+contains manifest/path/hash verification, optional post-pack Authenticode
+signing, production refusal of unsigned/untrusted artifacts, isolated package
+load evidence, a passing sandboxed side-by-side lifecycle rehearsal, ADR-0006,
+and a clean-VM lifecycle protocol.
 
-1. adding an independent UI-heartbeat/progress/cancellation probe;
-2. running the `Qualification` profile in at least three clean sessions;
-3. reviewing whether this machine becomes the approved reference machine;
-4. proposing Phase 1 budgets from measured distributions without silently
-   changing the normative performance requirements.
+On restart, continue WP-P0-08 by:
+
+1. selecting a signed installer/container technology and privilege model;
+2. obtaining a CA-issued code-signing certificate and RFC 3161 timestamp;
+3. running install/startup-load/disable/upgrade/failure-rollback/uninstall on a
+   disposable clean VM;
+4. qualifying exact registry ownership plus MOTW/trusted-publisher/enterprise
+   allowlisting behavior;
+5. returning to the remaining WP-P0-07 UI-heartbeat and full-distribution gates
+   before treating Phase 0 as complete.
 
 ## Local-worktree caution
 

@@ -17,6 +17,7 @@ Status values:
 | [ADR-0003](ADR-0003-session-undo.md) | Proposed | Session-only optimistic property undo |
 | [ADR-0004](ADR-0004-formula-strategy.md) | Open | Formula parser and coverage qualification |
 | [ADR-0005](ADR-0005-autosave-coauthoring.md) | Proposed | Conservative AutoSave/coauthoring policy |
+| [ADR-0006](ADR-0006-packaging-update.md) | Proposed | Signed, versioned, rollback-capable package lifecycle |
 
 Implementation agents MUST NOT treat a proposed or open ADR as accepted. Phase 0
 spikes may be authorized specifically to gather the evidence requested by an
