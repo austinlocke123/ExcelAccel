@@ -48,6 +48,17 @@ public static class DebugSmokeCommands
         catch (Exception exception) { DiagnosticLog.Error("smoke.navigate.a1", exception); }
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Smoke.UndoLastProperty", Description = "Debug-only optimistic undo hook.")]
+    public static void UndoLastProperty()
+    {
+        try
+        {
+            var result = CommandDispatcher.UndoLastProperty();
+            DiagnosticLog.Info("smoke.undo.property", result.Succeeded ? "success" : "refused");
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.undo.property", exception); }
+    }
+
     [ExcelCommand(
         Name = "ExcelAccel.Smoke.ThrowInsideStateGuard",
         Description = "Debug-only state-restoration fault hook; not compiled into Release builds.")]

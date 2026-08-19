@@ -6,6 +6,7 @@ using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Profiles;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Persistence.Profiles;
+using ExcelAccel.Application.Undo;
 using Xunit;
 
 namespace ExcelAccel.Core.Tests;
@@ -90,6 +91,21 @@ public sealed class FormattingCommandTests
 
         Assert.Equal(CommandResultStatus.Refused, command.Execute(plan, port).Status);
         Assert.True(command.Execute(plan, port, plan.PlanHash).Succeeded);
+    }
+
+    [Fact]
+    public void SuccessfulFormattingCreatesQualifiedInMemoryReceipt()
+    {
+        var store = new SessionUndoStore();
+        var port = new FakeFormattingPort("#123456");
+        var command = Phase1AFormattingCatalog.Create("format.font_color.cycle");
+        var plan = command.Plan(new ProfileStore().LoadDefault(), port);
+
+        var result = command.Execute(plan, port, receiptSink: store);
+
+        Assert.True(result.Succeeded);
+        Assert.False(string.IsNullOrWhiteSpace(result.ReceiptId));
+        Assert.Equal(1, store.Count("Book.xlsx"));
     }
 
     private static string PropertyFor(CommandDescriptor descriptor)

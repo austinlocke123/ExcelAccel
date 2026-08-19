@@ -20,6 +20,7 @@ public sealed class ProfileDefinition
         IEnumerable<string> underlineCycle,
         IEnumerable<double> rowHeightCycle,
         IEnumerable<double> columnWidthCycle,
+        IEnumerable<KeyValuePair<string, string>> autoColorColors,
         IEnumerable<KeyValuePair<string, string>> numberFormats,
         IEnumerable<QuickKeyBinding> quickKeys,
         long immediatePreviewCellLimit,
@@ -45,6 +46,7 @@ public sealed class ProfileDefinition
         UnderlineCycle = NormalizeTokens(underlineCycle, nameof(underlineCycle));
         RowHeightCycle = NormalizeDimensions(rowHeightCycle, 3, 409, nameof(rowHeightCycle));
         ColumnWidthCycle = NormalizeDimensions(columnWidthCycle, 1, 255, nameof(columnWidthCycle));
+        AutoColorColors = NormalizeColorMap(autoColorColors, nameof(autoColorColors));
 
         var formats = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var format in numberFormats ?? throw new ArgumentNullException(nameof(numberFormats)))
@@ -84,6 +86,7 @@ public sealed class ProfileDefinition
     public IReadOnlyList<string> UnderlineCycle { get; }
     public IReadOnlyList<double> RowHeightCycle { get; }
     public IReadOnlyList<double> ColumnWidthCycle { get; }
+    public IReadOnlyDictionary<string, string> AutoColorColors { get; }
     public IReadOnlyDictionary<string, string> NumberFormats { get; }
     public IReadOnlyList<QuickKeyBinding> QuickKeys { get; }
     public long ImmediatePreviewCellLimit { get; }
@@ -100,6 +103,21 @@ public sealed class ProfileDefinition
         }
 
         return colors;
+    }
+
+    private static IReadOnlyDictionary<string, string> NormalizeColorMap(IEnumerable<KeyValuePair<string, string>> values, string parameterName)
+    {
+        var result = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var item in values ?? throw new ArgumentNullException(parameterName))
+        {
+            var key = RequireToken(item.Key, parameterName).ToLowerInvariant();
+            var color = NormalizeColors(new[] { item.Value }, parameterName)[0];
+            if (result.ContainsKey(key)) throw new ArgumentException("AutoColor categories must be unique.", parameterName);
+            result.Add(key, color);
+        }
+        var required = new[] { "text", "numeric_hardcode", "same_sheet_formula", "cross_sheet_formula", "external_formula", "error" };
+        if (required.Any(key => !result.ContainsKey(key))) throw new ArgumentException("The AutoColor recipe is incomplete.", parameterName);
+        return result;
     }
 
     private static bool IsHex(char value) =>

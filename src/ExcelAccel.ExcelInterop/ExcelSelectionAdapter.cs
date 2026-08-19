@@ -4,12 +4,13 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
+using ExcelAccel.Application.Undo;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Core.Reliability;
 
 namespace ExcelAccel.ExcelInterop;
 
-public sealed class ExcelSelectionAdapter : IFormattingPort
+public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort
 {
     private readonly Func<object> _getApplication;
     private readonly Action _verifyExcelThread;
@@ -139,6 +140,31 @@ public sealed class ExcelSelectionAdapter : IFormattingPort
         }
 
         ExcelComRetry.Execute(() => WriteFormattingPropertyOnce(propertyId, invariantValue ?? string.Empty));
+    }
+
+    public bool TryRead(SelectionContext target, string propertyId, out string value)
+    {
+        value = string.Empty;
+        try
+        {
+            if (!target.Equals(CaptureSelection().Context)) return false;
+            value = ReadFormattingProperty(propertyId);
+            return true;
+        }
+        catch (CommandRefusedException) { return false; }
+        catch (System.Runtime.InteropServices.COMException) { return false; }
+    }
+
+    public bool TryWrite(SelectionContext target, string propertyId, string value)
+    {
+        try
+        {
+            if (!target.Equals(CaptureSelection().Context)) return false;
+            WriteFormattingProperty(propertyId, value);
+            return true;
+        }
+        catch (CommandRefusedException) { return false; }
+        catch (System.Runtime.InteropServices.COMException) { return false; }
     }
 
     private string ReadFormattingPropertyOnce(string propertyId)

@@ -80,3 +80,10 @@ pointer, load, rollback, disable, and file-removal mechanics only under ignored
 test-only. It never writes Excel startup registration, user installation
 directories, certificate trust, or Office policy and therefore does not satisfy
 the clean-VM lifecycle gate.
+
+`Install-ExcelAccel.ps1` is the Phase 1A per-user installer source. Production
+mode requires a Windows-valid package signature, refuses while Excel is open,
+uses versioned LocalAppData directories, and owns one exact HKCU Excel `OPEN`
+value. It includes install, upgrade, disable, enable, rollback, and uninstall
+actions with `-WhatIf`. This source MUST NOT be treated as qualified until the
+clean-VM procedure above passes with the selected signed installer/container.

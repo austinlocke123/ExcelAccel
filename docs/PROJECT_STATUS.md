@@ -20,6 +20,9 @@ for end-user distribution.
 | `agent/phase-0-packaging-trust` | `b30a4ad` | WP-P0-08 packaging and trust | Draft PR #6, stacked on PR #5 |
 | `agent/phase-0-closure` | `b95be00` | Gate ledger, ADR acceptance, boundary enforcement, and reliability soak | Draft PR #7, stacked on PR #6 |
 | `agent/phase-1a-foundation` | `e13d28e` | WP-1A-01 production solution boundaries | Draft PR #8, stacked on PR #7 |
+| `agent/phase-1a-command-runtime` | `5b62b4d` | WP-1A-02/03 command runtime and adapter contracts | Draft PR #9, stacked on PR #8 |
+| `agent/phase-1a-profiles-quick-keys` | `cf01e1b` | WP-1A-04/05 profiles and safe key engine | Draft PR #10, stacked on PR #9 |
+| `agent/phase-1a-formatting-navigation` | `045dcf6` | WP-1A-06/08 formatting and navigation | Draft PR #11, stacked on PR #10 |
 
 ## Completed engineering work
 
@@ -104,6 +107,12 @@ remains exact-preview gated and has no bypassing callback. See
 Next: implement WP-1A-07's deterministic AutoColor planner while keeping its
 execution fail-closed behind the retained performance gate, then implement
 WP-1A-09/10 receipts and recovery.
+
+WP-1A-07 and WP-1A-09 through WP-1A-12 source work is implemented on
+`agent/phase-1a-safety-runtime`. AutoColor execution and end-user distribution
+remain fail-closed behind retained external qualification gates. See
+`evidence/WP-1A-07_09_10_11_12_SAFETY_RUNTIME.md` for completed scope and
+remaining release evidence.
 
 ## Local-worktree caution
 

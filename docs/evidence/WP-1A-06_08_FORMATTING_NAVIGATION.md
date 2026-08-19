@@ -1,6 +1,6 @@
 # WP-1A-06/08 formatting and navigation evidence
 
-Date: **2026-08-19**  
+Date: **2026-08-19**
 Branch: `agent/phase-1a-formatting-navigation`
 
 ## Implemented scope

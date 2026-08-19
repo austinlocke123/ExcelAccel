@@ -17,6 +17,14 @@
   "underline_cycle": ["none", "single", "double"],
   "row_height_cycle": [12, 15, 18, 24],
   "column_width_cycle": [8.43, 10, 12, 15, 20],
+  "auto_color_colors": {
+    "cross_sheet_formula": "#008000",
+    "error": "#FF0000",
+    "external_formula": "#FF0000",
+    "numeric_hardcode": "#0000FF",
+    "same_sheet_formula": "#000000",
+    "text": "#000000"
+  },
   "quick_keys": [
     { "command_id": "inspect.selection.summary", "sequence": "CTRL+SHIFT+K,I" },
     { "command_id": "format.number.currency", "sequence": "CTRL+SHIFT+K,C" }

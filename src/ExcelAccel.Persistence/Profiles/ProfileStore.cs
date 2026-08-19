@@ -180,13 +180,16 @@ public sealed class ProfileStore
         [JsonProperty("column_width_cycle", Order = 11, Required = Required.Always)]
         public double[] ColumnWidthCycle { get; set; } = Array.Empty<double>();
 
-        [JsonProperty("quick_keys", Order = 12, Required = Required.Always)]
+        [JsonProperty("auto_color_colors", Order = 12, Required = Required.Always)]
+        public SortedDictionary<string, string> AutoColorColors { get; set; } = new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+        [JsonProperty("quick_keys", Order = 13, Required = Required.Always)]
         public QuickKeyDto[] QuickKeys { get; set; } = Array.Empty<QuickKeyDto>();
 
-        [JsonProperty("immediate_preview_cell_limit", Order = 13, Required = Required.Always)]
+        [JsonProperty("immediate_preview_cell_limit", Order = 14, Required = Required.Always)]
         public long ImmediatePreviewCellLimit { get; set; }
 
-        [JsonProperty("wrap_sheet_navigation", Order = 14, Required = Required.Always)]
+        [JsonProperty("wrap_sheet_navigation", Order = 15, Required = Required.Always)]
         public bool WrapSheetNavigation { get; set; }
 
         public ProfileDefinition ToDefinition() => new ProfileDefinition(
@@ -200,6 +203,7 @@ public sealed class ProfileStore
             UnderlineCycle,
             RowHeightCycle,
             ColumnWidthCycle,
+            AutoColorColors,
             NumberFormats,
             QuickKeys.Select(value => new QuickKeyBinding(value.CommandId, value.Sequence)),
             ImmediatePreviewCellLimit,
@@ -217,6 +221,7 @@ public sealed class ProfileStore
             UnderlineCycle = profile.UnderlineCycle.ToArray(),
             RowHeightCycle = profile.RowHeightCycle.ToArray(),
             ColumnWidthCycle = profile.ColumnWidthCycle.ToArray(),
+            AutoColorColors = CopyFormats(profile.AutoColorColors),
             NumberFormats = CopyFormats(profile.NumberFormats),
             QuickKeys = profile.QuickKeys
                 .OrderBy(value => value.CommandId, StringComparer.Ordinal)
