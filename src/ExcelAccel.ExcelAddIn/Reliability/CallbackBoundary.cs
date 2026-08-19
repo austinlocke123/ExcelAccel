@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Windows.Forms;
-using ExcelAccel.Core.Commands;
+using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Reliability;
 
 namespace ExcelAccel.ExcelAddIn.Reliability;

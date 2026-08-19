@@ -1,4 +1,6 @@
-namespace ExcelAccel.Core.Commands;
+using ExcelAccel.Core.Commands;
+
+namespace ExcelAccel.Application.Commands;
 
 public interface ISelectionPort
 {

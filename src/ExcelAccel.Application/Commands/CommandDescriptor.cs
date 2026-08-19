@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExcelAccel.Core.Commands;
 
-namespace ExcelAccel.Core.Commands;
+namespace ExcelAccel.Application.Commands;
 
 public sealed class CommandDescriptor
 {

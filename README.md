@@ -8,6 +8,8 @@ It contains a real 64-bit Excel-DNA `.xll`, a pure command core, reliability
 boundaries, one read-only command, and one property-scoped formatting command.
 It is not yet qualified for distribution; retained formula, performance,
 collaboration, and clean-machine gates remain fail-closed.
+WP-1A-01 now separates Core, Application, ExcelInterop, and the thin Excel-DNA
+host with an enforced acyclic dependency graph.
 
 ## Start here
 
@@ -30,6 +32,7 @@ collaboration, and clean-machine gates remain fail-closed.
 17. [Package and trust protocol](docs/packaging/PACKAGE_AND_TRUST_PROTOCOL.md)
 18. [WP-P0-08 packaging evidence](docs/evidence/WP-P0-08_PACKAGING_TRUST.md)
 19. [Phase 0 closure and gate ledger](docs/evidence/PHASE0_CLOSURE.md)
+20. [WP-1A-01 production foundation evidence](docs/evidence/WP-1A-01_FOUNDATION.md)
 
 ## Build and test
 

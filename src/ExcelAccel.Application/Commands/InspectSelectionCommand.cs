@@ -1,6 +1,7 @@
 using System;
+using ExcelAccel.Core.Commands;
 
-namespace ExcelAccel.Core.Commands;
+namespace ExcelAccel.Application.Commands;
 
 public sealed class InspectSelectionCommand
 {

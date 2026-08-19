@@ -1,6 +1,7 @@
-using ExcelAccel.Core.Commands;
-using ExcelAccel.ExcelAddIn.Interop;
+using ExcelDna.Integration;
+using ExcelAccel.Application.Commands;
 using ExcelAccel.ExcelAddIn.Reliability;
+using ExcelAccel.ExcelInterop;
 
 namespace ExcelAccel.ExcelAddIn;
 
@@ -8,7 +9,7 @@ internal static class CommandDispatcher
 {
     public static CommandResult InspectSelection()
     {
-        var port = new ExcelSelectionAdapter();
+        var port = CreateSelectionAdapter();
         var command = new InspectSelectionCommand();
         var plan = command.Plan(port.CaptureSelection());
         return command.Execute(plan, port);
@@ -24,7 +25,7 @@ internal static class CommandDispatcher
                 RefusalCodes.CommandQuarantined);
         }
 
-        var port = new ExcelSelectionAdapter();
+        var port = CreateSelectionAdapter();
         var command = new ApplyCurrencyFormatCommand();
         var snapshot = port.CaptureSelection();
         var canExecute = command.CanExecute(snapshot);
@@ -39,4 +40,7 @@ internal static class CommandDispatcher
         var plan = command.Plan(snapshot);
         return command.Execute(plan, port);
     }
+
+    private static ExcelSelectionAdapter CreateSelectionAdapter() =>
+        new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
 }

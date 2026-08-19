@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace ExcelAccel.ExcelAddIn.Interop;
+namespace ExcelAccel.ExcelInterop;
 
 internal static class ComRelease
 {

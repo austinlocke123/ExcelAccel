@@ -2,22 +2,30 @@ using System;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using ExcelDna.Integration;
+using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Core.Reliability;
-using ExcelAccel.ExcelAddIn.Reliability;
 
-namespace ExcelAccel.ExcelAddIn.Interop;
+namespace ExcelAccel.ExcelInterop;
 
-internal sealed class ExcelSelectionAdapter : ISelectionPort
+public sealed class ExcelSelectionAdapter : ISelectionPort
 {
+    private readonly Func<object> _getApplication;
+    private readonly Action _verifyExcelThread;
+
+    public ExcelSelectionAdapter(Func<object> getApplication, Action verifyExcelThread)
+    {
+        _getApplication = getApplication ?? throw new ArgumentNullException(nameof(getApplication));
+        _verifyExcelThread = verifyExcelThread ?? throw new ArgumentNullException(nameof(verifyExcelThread));
+    }
+
     public SelectionSnapshot CaptureSelection()
     {
-        RuntimeState.VerifyExcelThread();
+        _verifyExcelThread();
         return ExcelComRetry.Execute(CaptureSelectionOnce);
     }
 
-    private static SelectionSnapshot CaptureSelectionOnce()
+    private SelectionSnapshot CaptureSelectionOnce()
     {
         object? applicationObject = null;
         object? workbookObject = null;
@@ -27,7 +35,7 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
 
         try
         {
-            applicationObject = ExcelDnaUtil.Application;
+            applicationObject = _getApplication();
             dynamic application = applicationObject;
             workbookObject = application.ActiveWorkbook;
             worksheetObject = application.ActiveSheet;
@@ -100,7 +108,7 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
 
     public void SetNumberFormat(string formatCode)
     {
-        RuntimeState.VerifyExcelThread();
+        _verifyExcelThread();
         if (string.IsNullOrWhiteSpace(formatCode))
         {
             throw new ArgumentException("A number format is required.", nameof(formatCode));
@@ -109,14 +117,14 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
         ExcelComRetry.Execute(() => SetNumberFormatOnce(formatCode));
     }
 
-    private static void SetNumberFormatOnce(string formatCode)
+    private void SetNumberFormatOnce(string formatCode)
     {
         object? applicationObject = null;
         object? selectionObject = null;
 
         try
         {
-            applicationObject = ExcelDnaUtil.Application;
+            applicationObject = _getApplication();
             dynamic application = applicationObject;
             selectionObject = application.Selection;
             if (selectionObject is null)
