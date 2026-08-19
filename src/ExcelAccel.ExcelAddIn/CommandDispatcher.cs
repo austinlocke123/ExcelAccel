@@ -67,6 +67,9 @@ internal static class CommandDispatcher
                 (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(descriptor.Id)))
                 return CanExecuteResult.Refuse(RefusalCodes.CommandQuarantined, "Workbook mutation is disabled in safe mode or quarantine.", "Restart Excel cleanly before retrying.");
             if (descriptor.Id == ApplyCurrencyFormatCommand.Id) return new ApplyCurrencyFormatCommand().CanExecute(snapshot);
+            if ((descriptor.Id == "formula.transpose" || descriptor.Id == "paste.formulas_only") &&
+                !FormulaSourceRuntime.TryGet(out _, out var sourceReason))
+                return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, sourceReason, "Select the source and run Capture Formula Source first.");
             if (descriptor.Impact != CommandImpact.ReadOnly && descriptor.ContextRequirement.HasFlag(CommandContextRequirement.Selection))
             {
                 if (snapshot.Safety.AreaCount != 1 || snapshot.Safety.HasMergedCells)
@@ -343,6 +346,7 @@ internal static class CommandDispatcher
     {
         if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(commandId))
             return CommandResult.Refused(commandId, "Formula mutation is disabled in safe mode or quarantine.", RefusalCodes.CommandQuarantined);
+        if (commandId == "formula.source.capture") return FormulaSourceRuntime.Capture();
         var descriptor = FormulaCommandCatalog.GetRequired(commandId);
         var port = CreateSelectionAdapter();
         var command = new FormulaBlockCommand(descriptor);
@@ -351,6 +355,16 @@ internal static class CommandDispatcher
         FormulaBlockPlan plan;
         switch (commandId)
         {
+            case "formula.transpose":
+                if (!FormulaSourceRuntime.TryGet(out var source, out var reason) || source is null)
+                    return CommandResult.Refused(commandId, reason, RefusalCodes.CommandUnavailable);
+                plan = new FormulaAdvancedCommand(descriptor).PlanTranspose(source, snapshot);
+                break;
+            case "paste.formulas_only":
+                if (!FormulaSourceRuntime.TryGet(out var pasteSource, out var pasteReason) || pasteSource is null)
+                    return CommandResult.Refused(commandId, pasteReason, RefusalCodes.CommandUnavailable);
+                plan = new FormulaAdvancedCommand(descriptor).PlanPasteFormulas(pasteSource, snapshot, previewLimit);
+                break;
             case "formula.copy.down":
                 plan = command.PlanCopy(snapshot, FormulaCopyDirection.Down, previewLimit);
                 break;

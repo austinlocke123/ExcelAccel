@@ -82,6 +82,9 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.StyleTotal' label='Total' keytip='T' tag='total' onAction='OnApplyBuiltInStyle'/>
                     </menu>
                     <menu id='ExcelAccel.Formulas' label='Formulas' keytip='M' imageMso='FunctionWizard'>
+                      <button id='ExcelAccel.FormulaSourceCapture' label='Capture Formula Source' keytip='SC' tag='formula.source.capture' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaTranspose' label='Transpose Captured Source Here...' keytip='TP' tag='formula.transpose' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.PasteFormulasOnly' label='Paste Formulas Only' keytip='PF' tag='paste.formulas_only' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaCopyDown' label='Smart Copy Down' keytip='CD' tag='formula.copy.down' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaCopyRight' label='Smart Copy Right' keytip='CR' tag='formula.copy.right' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaIfError' label='Toggle IFERROR' keytip='IE' tag='formula.iferror.toggle' onAction='OnFormulaCommand'/>

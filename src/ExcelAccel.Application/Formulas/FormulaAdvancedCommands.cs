@@ -101,7 +101,7 @@ public sealed class FormulaAdvancedCommand
             {
                 Pair("source_context", source.Selection.Context.ToString()),
                 Pair("source_sha256", source.Contents.Fingerprint),
-            }, PreconditionFingerprint.Create(source.Contents.Serialize(), destination.Contents.Serialize()), requiresExternalSourceRevalidation: true);
+            }, PreconditionFingerprint.Create(source.Contents.Serialize(), destination.Contents.Serialize()), externalSource: source);
     }
 
     public FormulaBlockPlan PlanFormulaFromAbove(FormulaBlockSnapshot sourceRow, FormulaBlockSnapshot destination,
@@ -132,7 +132,54 @@ public sealed class FormulaAdvancedCommand
         return Build(destination, after, changed, 0, samples, overwrites > 0 || changed > immediatePreviewLimit,
             $"Fill {changed:N0} destination cell(s) from the immediately adjacent formula row above.",
             new[] { "formula" }, new[] { Pair("source_sha256", sourceRow.Contents.Fingerprint) },
-            PreconditionFingerprint.Create(sourceRow.Contents.Serialize(), destination.Contents.Serialize()), requiresExternalSourceRevalidation: true);
+            PreconditionFingerprint.Create(sourceRow.Contents.Serialize(), destination.Contents.Serialize()), externalSource: sourceRow);
+    }
+
+    public FormulaBlockPlan PlanPasteFormulas(FormulaBlockSnapshot source, FormulaBlockSnapshot destination,
+        int immediatePreviewLimit = FormulaBlockCommand.DefaultImmediatePreviewLimit)
+    {
+        RequireSafe(source);
+        RequireSafe(destination);
+        if (!SameSheet(source, destination))
+            throw Refuse(RefusalCodes.SelectionUnsupported, "Initial formulas-only paste requires source and destination on the same worksheet.");
+        if (RangesOverlap(source, destination))
+            throw Refuse(RefusalCodes.SelectionUnsupported, "Initial formulas-only paste refuses overlapping source and destination ranges.");
+        if (destination.Contents.RowCount % source.Contents.RowCount != 0 ||
+            destination.Contents.ColumnCount % source.Contents.ColumnCount != 0)
+            throw Refuse(RefusalCodes.SelectionUnsupported, "Destination dimensions must be exact whole multiples of the captured source dimensions.");
+        var formulaSources = source.Contents.Cells.Count(value => value.IsFormula);
+        if (formulaSources == 0) throw Refuse(RefusalCodes.SelectionUnsupported, "The captured source contains no formulas to paste.");
+        var changed = 0;
+        var skipped = 0;
+        var overwrites = 0;
+        var samples = new List<string>();
+        var after = destination.Contents.Map((row, column, current) =>
+        {
+            var sourceRow = row % source.Contents.RowCount;
+            var sourceColumn = column % source.Contents.ColumnCount;
+            var sourceCell = source.Contents[sourceRow, sourceColumn];
+            if (!sourceCell.IsFormula) { skipped++; return current; }
+            var rowDelta = (destination.FirstRow + row) - (source.FirstRow + sourceRow);
+            var columnDelta = (destination.FirstColumn + column) - (source.FirstColumn + sourceColumn);
+            var transformed = _transformer.Translate(sourceCell.InvariantValue, rowDelta, columnDelta);
+            if (!transformed.IsSuccess) throw Refuse(transformed.RefusalCode!, transformed.Message!);
+            var proposed = FormulaCellValue.Formula(transformed.Formula!);
+            if (current.Equals(proposed)) return current;
+            changed++;
+            if (!current.IsBlank) overwrites++;
+            AddSample(samples, row, column, current, proposed);
+            return proposed;
+        });
+        var repeated = destination.Contents.RowCount != source.Contents.RowCount || destination.Contents.ColumnCount != source.Contents.ColumnCount;
+        return Build(destination, after, changed, skipped, samples,
+            repeated || overwrites > 0 || changed > immediatePreviewLimit,
+            $"Paste formulas only from {source.Contents.RowCount:N0}×{source.Contents.ColumnCount:N0} source into {destination.Contents.RowCount:N0}×{destination.Contents.ColumnCount:N0} destination: {changed:N0} changed, {skipped:N0} non-formula source mappings skipped.",
+            new[] { "formula" }, new[]
+            {
+                Pair("source_context", source.Selection.Context.ToString()),
+                Pair("source_sha256", source.Contents.Fingerprint),
+                Pair("repetition", repeated ? "whole_multiple" : "exact_shape"),
+            }, PreconditionFingerprint.Create(source.Contents.Serialize(), destination.Contents.Serialize()), externalSource: source);
     }
 
     public FormulaBlockPlan PlanNumericSequence(FormulaBlockSnapshot destination, double start, double step,
@@ -208,7 +255,7 @@ public sealed class FormulaAdvancedCommand
     private FormulaBlockPlan Build(FormulaBlockSnapshot before, FormulaCellBlock after, int changed, int skipped,
         IEnumerable<string> samples, bool requiresPreview, string summary, IEnumerable<string> changedProperties,
         IEnumerable<KeyValuePair<string, string>> arguments, string preconditionFingerprint,
-        bool requiresExternalSourceRevalidation = false)
+        FormulaBlockSnapshot? externalSource = null)
     {
         var fullArguments = arguments.Concat(new[]
         {
@@ -219,7 +266,7 @@ public sealed class FormulaAdvancedCommand
         });
         var commandPlan = new CommandPlan(_descriptor.Id, _descriptor.Impact, before.Selection.Context,
             changedProperties, changed, summary, preconditionFingerprint, _descriptor.ContractVersion, requiresPreview, fullArguments);
-        return new FormulaBlockPlan(commandPlan, before, after, changed, skipped, samples, requiresExternalSourceRevalidation);
+        return new FormulaBlockPlan(commandPlan, before, after, changed, skipped, samples, externalSource);
     }
 
     private static void RequireSafe(FormulaBlockSnapshot snapshot)
@@ -234,6 +281,11 @@ public sealed class FormulaAdvancedCommand
     private static bool SameSheet(FormulaBlockSnapshot first, FormulaBlockSnapshot second) =>
         string.Equals(first.Selection.Context.WorkbookId, second.Selection.Context.WorkbookId, StringComparison.Ordinal) &&
         string.Equals(first.Selection.Context.WorksheetName, second.Selection.Context.WorksheetName, StringComparison.Ordinal);
+    private static bool RangesOverlap(FormulaBlockSnapshot first, FormulaBlockSnapshot second) =>
+        first.FirstRow <= second.FirstRow + second.Contents.RowCount - 1 &&
+        second.FirstRow <= first.FirstRow + first.Contents.RowCount - 1 &&
+        first.FirstColumn <= second.FirstColumn + second.Contents.ColumnCount - 1 &&
+        second.FirstColumn <= first.FirstColumn + first.Contents.ColumnCount - 1;
     private static KeyValuePair<string, string> Pair(string key, string value) => new KeyValuePair<string, string>(key, value);
     private static void AddSample(ICollection<string> samples, int row, int column, FormulaCellValue before, FormulaCellValue after)
     {

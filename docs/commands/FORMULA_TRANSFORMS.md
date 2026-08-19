@@ -13,8 +13,9 @@ typed-matrix adapter with exact revalidation, verification, compensation, and
 bounded optimistic undo. See `docs/evidence/WP-1B-05_07_FORMULA_COMMANDS.md`.
 Spacing, transpose, formula-from-above, and typed numeric/date fill semantics are
 implemented at the pure/application layer. Operations with a separate source
-range remain execution-gated until exact off-selection source revalidation is
-qualified; see `docs/evidence/WP-1B-06_08_ADVANCED_FORMULA_PLANNERS.md`.
+range use qualified selection-preserving off-selection revalidation. Transpose
+and formulas-only paste are registered through the bounded internal source;
+see `docs/evidence/WP-1B-06_08_ADVANCED_FORMULA_PLANNERS.md`.
 
 ## Common formula boundary
 
