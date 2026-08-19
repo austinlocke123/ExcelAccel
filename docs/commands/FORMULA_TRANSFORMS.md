@@ -1,8 +1,13 @@
 # Formula, paste, and fill command contracts
 
-Status: **Draft for review**  
-Capability: CAP-FORM-001  
+Status: **Approved contract; implementation qualification in progress**
+Capability: CAP-FORM-001
 Earliest phase: 1B, after ADR-0004 is accepted
+
+Implementation note (2026-08-19): ADR-0004 now accepts a narrow A1-only
+transformation boundary. Inspect-only syntax and R1C1 mutation remain
+fail-closed. Formula-edit reference toggle remains host-disabled pending a safe
+caret/edit-text API; its pure transformation contract is implemented and tested.
 
 ## Common formula boundary
 
