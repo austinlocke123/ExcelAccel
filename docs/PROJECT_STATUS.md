@@ -2,38 +2,25 @@
 
 Snapshot date: **2026-08-19**
 
-Status: **Phase 1B engineering checkpoint passed; stacked review and external
-release qualification remain.**
+Status: **Phase 1B is integrated on `main`; lightweight post-merge verification
+passed and the next implementation package is Phase 2 WP-2-01.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
 runtime, and the Phase 1B daily-speed feature core. It is not qualified for
 end-user distribution and is not an Excel for the web add-in.
 
-## Published branch stack
+## Integrated baseline
 
-The repository uses deliberately stacked draft PRs. Review and merge in order;
-each PR's base is the branch immediately above it.
+PRs #1 through #24 were reviewed, retargeted, and merged into `main` in strict
+parent-before-child order on 2026-08-19. The integrated baseline is merge commit
+`9091d79`; its tree matches the qualified `agent/phase-1b-qualification` head.
 
-| PR | Branch / commit | Scope |
-|---:|---|---|
-| #1..#7 | Phase 0 stack through `agent/phase-0-closure` | Excel-DNA host, adapter/state safety, formula/collaboration/performance/package spikes, closure ledger |
-| #8..#12 | Phase 1A stack through `agent/phase-1a-safety-runtime` / `1914e28` | architecture, command runtime, profiles/keys, formatting/navigation, safety/undo/recovery/installer source |
-| #13 | `agent/phase-1b-search-favorites` / `71fbef5` | command search and favorites |
-| #14 | `agent/phase-1b-style-recipes` / `316380e` | style recipes and batch undo |
-| #15 | `agent/phase-1b-profile-exchange` / `641c77e` | offline profile/binding exchange |
-| #16 | `agent/phase-1b-formula-foundation` / `03576c5` | narrow A1 formula foundation and ADR evidence |
-| #17 | `agent/phase-1b-formula-commands` / `6986125` | transactional Smart Copy, IFERROR, sign, and unit commands |
-| #18 | `agent/phase-1b-paste-fill` / `4163cbe` | transpose, source capture, formulas-only paste, advanced planners |
-| #19 | `agent/phase-1b-data-cleaning` / `3c73a57` | Unicode cleaning and display conversions |
-| #20 | `agent/phase-1b-selection-tools` / `40fe68c` | deterministic selection tools |
-| #21 | `agent/phase-1b-typed-conversions` / `0b52466` | typed text/number/date conversions |
-| #22 | `agent/phase-1b-paste-values-fill` / `efdc4ab` | values-only paste, formula/value above, spacing and sequences host routes |
-| #23 | `agent/phase-1b-formats-paste` / `81acd6d` | bounded formats-only transaction and receipt-failure rollback |
-| #24 | `agent/phase-1b-qualification` / `952da2d` | WP-1B-12 fault/locale/performance/soak evidence and restart guide |
-
-Current local branch: `agent/phase-1b-qualification`, published as draft PR #24
-stacked on PR #23.
+| PRs | Integrated scope |
+|---:|---|
+| #1..#7 | Phase 0 Excel-DNA host, adapter/state safety, formula/collaboration/performance/package spikes, and closure ledger |
+| #8..#12 | Phase 1A architecture, command runtime, profiles/keys, formatting/navigation, safety/undo/recovery, and installer source |
+| #13..#24 | Phase 1B discovery, styles, profiles, formula/paste/fill commands, data cleaning, selection tools, bounded formats paste, and qualification evidence |
 
 ## Phase 1B delivered behavior
 
@@ -59,10 +46,17 @@ receipt-storage failure rolls the completed mutation back.
 
 ## Current verification
 
-- **288/288 Release tests passed.**
-- Debug and Release builds: **zero warnings, zero errors**.
-- Complete packed-XLL hidden-Excel smoke: passed; bounded Phase 1B feature suite
-  measured **1,286 ms**; workbook closed and Excel exited naturally.
+- Post-merge Release build: **zero warnings, zero errors**.
+- Post-merge Release tests: **288/288 passed**.
+- Post-merge Debug build: **zero warnings, zero errors**.
+- Post-merge packed-XLL hidden-Excel smoke: passed; bounded Phase 1B feature
+  suite measured **2,400 ms**; workbook closed and Excel exited naturally.
+- Post-merge three-session check: **3/3 passed**; every Excel process exited
+  naturally and the XLL unlocked after every run. Feature-suite P95 was
+  **1,544 ms**, session P95 was **8,280.5087 ms**, handle-count P95 was **1,856**
+  with range **8**, and no Excel process survived the check.
+- Phase 1B qualification smoke measured the bounded feature suite at
+  **1,286 ms**.
 - Ten fresh-process soak: **10/10 passed**, all Excel processes exited naturally,
   and the packed XLL unlocked after every run.
 - Soak P95: feature suite **1,532 ms**; working set **322,646,016 bytes**;
@@ -74,6 +68,8 @@ Detailed evidence: `docs/evidence/WP-1B-12_QUALIFICATION.md`.
 
 ## Deliberate retained gates
 
+The following feature gates remain closed but do **not** block Phase 2:
+
 - Live formula-edit reference toggle remains unregistered because no exact,
   crash-safe caret/edit-text API has been proven. No hooks or injected
   keystrokes are used.
@@ -82,20 +78,22 @@ Detailed evidence: `docs/evidence/WP-1B-12_QUALIFICATION.md`.
 - Formats-only paste is capped at 100 cells and nine explicit properties.
 - Unknown collaboration state and medium/high-impact collaborative mutation
   remain refused.
-- AutoColor enablement, attributed startup cost, long-duration single-process
-  retention, supported Office/coexistence/accessibility matrix, CA-signed
-  installer, clean-VM lifecycle, and enterprise trust remain release gates.
+- AutoColor remains disabled.
+
+Attributed startup cost, long-duration single-process retention, the supported
+Office/coexistence/accessibility matrix, CA-signed installer, clean-VM lifecycle,
+and enterprise trust remain deferred distribution gates. They are required when
+broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. Review and merge the draft stack in order, especially PRs #13 through #24;
-   do not merge a child before its base.
-2. Review the WP-1B-12 qualification PR and the retained gates above.
-3. After the stack is integrated, rerun Release tests, the full hidden-Excel
-   smoke, and at least a three-session soak on the merged commit.
-4. Then choose explicitly between external release qualification and Phase 2
-   WP-2-01 (reference snapshot/index and direct precedents). Do not enable a
-   retained gate implicitly while starting Phase 2.
+1. Review and merge the post-merge status update.
+2. Start Phase 2 WP-2-01: reference snapshot/index and direct precedents.
+3. Keep all retained gates above closed unless a dedicated work package supplies
+   their missing evidence.
+4. Continue the normal per-package Release tests and use the short real-Excel
+   smoke whenever a package changes the Excel adapter, host, or command wiring.
+5. Resume heavier release qualification only when distribution is approaching.
 
 ## Local-worktree caution
 
