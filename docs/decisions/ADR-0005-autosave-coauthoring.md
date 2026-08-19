@@ -52,3 +52,27 @@ coverage must not be assumed to be a complete transaction/version log.
 - supported build/channel matrix;
 - protection, read-only, and shared-file transitions;
 - command cancellation and add-in shutdown during relevant states.
+
+## Phase 0 spike finding — 2026-08-18
+
+The first WP-P0-06 slice supports the proposed policy with two important
+qualification limits:
+
+1. A read of `Workbook.AutoSaveOn == false` cannot distinguish user-disabled
+   AutoSave from an unavailable/disabled toggle without attempting a write.
+   The adapter therefore reports `OffOrDisabled`; it never writes the property
+   to disambiguate it.
+2. `Workbook.MultiUserEditing` identifies Excel's legacy shared-list mode, not
+   modern Microsoft 365 coauthoring. AutoSave on or a cloud URL implies
+   potential modern collaboration, while a local-looking synchronized path with
+   AutoSave off remains `Unknown`, not exclusive.
+
+The prototype uses event-driven monotonic invalidation only as an advisory fast
+signal. Every mutating execution still compares the current workbook identity,
+revision, exact-property fingerprint, collaboration state, and a separately
+held bounded lease. Read-only, low-, medium-, and high-impact policies are
+defined in [`POLICY_MATRIX.md`](../collaboration/POLICY_MATRIX.md).
+
+This does not accept the ADR. Production remote-change event wiring, real cloud
+coauthor sessions, AutoSave on/off/disabled fixtures, build/channel coverage,
+and undo behavior remain unresolved.

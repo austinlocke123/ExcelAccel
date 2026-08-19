@@ -87,6 +87,25 @@ public sealed class CommandExecutionTests
         Assert.Equal(0, port.NumberFormatWriteCount);
     }
 
+    [Fact]
+    public void CurrencyFormatRefusesInterveningPlannedPropertyChange()
+    {
+        var port = new FakeSelectionPort(Snapshot("A1", 1));
+        var command = new ApplyCurrencyFormatCommand();
+        var plan = command.Plan(port.CaptureSelection());
+        port.Current = new SelectionSnapshot(
+            new SelectionContext("Book.xlsx", "Sheet1", "A1"),
+            1,
+            false,
+            "0.00");
+
+        var result = command.Execute(plan, port);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(RefusalCodes.StaleContext, result.RefusalCode);
+        Assert.Equal(0, port.NumberFormatWriteCount);
+    }
+
     private static SelectionSnapshot Snapshot(string address, long count) =>
         new SelectionSnapshot(new SelectionContext("Book.xlsx", "Sheet1", address), count, false, "General");
 

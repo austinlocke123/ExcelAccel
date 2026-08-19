@@ -1,6 +1,7 @@
 #if DEBUG
 using System;
 using ExcelDna.Integration;
+using ExcelAccel.Core.Commands;
 using ExcelAccel.Core.Reliability;
 using ExcelAccel.ExcelAddIn.Interop;
 using ExcelAccel.ExcelAddIn.Reliability;
@@ -48,6 +49,28 @@ public static class DebugSmokeCommands
         catch (Exception exception)
         {
             DiagnosticLog.Error("smoke.state.restore", exception);
+        }
+    }
+
+    [ExcelCommand(
+        Name = "ExcelAccel.Smoke.ApplyCurrencyFormatAfterInterveningChange",
+        Description = "Debug-only stale-property hook; not compiled into Release builds.")]
+    public static void ApplyCurrencyFormatAfterInterveningChange()
+    {
+        try
+        {
+            var port = new ExcelSelectionAdapter();
+            var command = new ApplyCurrencyFormatCommand();
+            var plan = command.Plan(port.CaptureSelection());
+            port.SetNumberFormat("0.00");
+            var result = command.Execute(plan, port);
+            DiagnosticLog.Info(
+                "smoke.format.number.currency.stale",
+                result.RefusalCode ?? (result.Succeeded ? "unexpected_success" : "refused_without_code"));
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.format.number.currency.stale", exception);
         }
     }
 }

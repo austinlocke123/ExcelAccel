@@ -70,7 +70,8 @@ documents.
 - Runtime and minimum Excel build are unresolved.
 - The parser choice remains unresolved; the proposed formula coverage matrix
   and hybrid recommendation are WP-P0-05 evidence, not an accepted ADR.
-- AutoSave/coauthoring impact-tier behavior is proposed, not accepted.
+- AutoSave/coauthoring impact-tier behavior has a tested proposed matrix, but
+  cloud/remote-event build evidence and ADR-0005 acceptance remain open.
 - Reference machine, workbook corpus, and frozen performance budgets are open.
 - Installer/update technology and signing process are open.
 

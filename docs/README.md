@@ -6,6 +6,9 @@ This folder is the reviewable engineering baseline for ExcelAccel. It separates
 facts that change at different rates and prevents an implementation agent from
 treating an idea, a design option, and an accepted requirement as equivalent.
 
+For the current branch stack, completed work, open gates, and recommended
+restart point, see [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+
 ## Document authority
 
 When documents disagree, use this order and open a review issue rather than
@@ -32,6 +35,10 @@ silently choosing an interpretation:
 Prototype coverage artifacts under [`formulas/`](formulas/) are evidence for an
 open decision. They become authoritative only when the governing ADR and corpus
 are explicitly accepted.
+
+Prototype policy artifacts under [`collaboration/`](collaboration/) have the
+same status: they document conservative evidence for ADR-0005 and do not enable
+otherwise-gated mutations.
 
 The files under [`../PRD/`](../PRD/) are retained source material and review
 history. They are non-normative after this specification is approved.

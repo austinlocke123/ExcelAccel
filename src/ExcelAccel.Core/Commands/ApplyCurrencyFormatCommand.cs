@@ -94,7 +94,8 @@ public sealed class ApplyCurrencyFormatCommand
             snapshot.Context,
             new[] { ChangedProperty },
             snapshot.CellCount,
-            $"Set only NumberFormat on {snapshot.CellCount:N0} selected cell(s).");
+            $"Set only NumberFormat on {snapshot.CellCount:N0} selected cell(s).",
+            PreconditionFingerprint.Create(snapshot.NumberFormat));
     }
 
     public CommandResult Execute(CommandPlan plan, ISelectionPort port)
@@ -118,6 +119,17 @@ public sealed class ApplyCurrencyFormatCommand
         if (current.CellCount != plan.AffectedCellCount)
         {
             return CommandResult.Refused(plan, "The selected range changed size after planning; no formatting was applied.", RefusalCodes.StaleContext);
+        }
+
+        if (!string.Equals(
+                plan.PreconditionFingerprint,
+                PreconditionFingerprint.Create(current.NumberFormat),
+                StringComparison.Ordinal))
+        {
+            return CommandResult.Refused(
+                plan,
+                "The planned number-format property changed after planning; no formatting was applied.",
+                RefusalCodes.StaleContext);
         }
 
         var canExecute = CanExecute(current);
