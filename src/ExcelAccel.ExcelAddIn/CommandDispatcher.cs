@@ -10,11 +10,73 @@ using System.Windows.Forms;
 using ExcelAccel.Persistence.Diagnostics;
 using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.ExcelInterop;
+using ExcelAccel.Application.Profiles;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace ExcelAccel.ExcelAddIn;
 
 internal static class CommandDispatcher
 {
+    public static CommandResult InvokeRegistered(string commandId, IReadOnlyDictionary<string, string>? arguments, InvocationSource source)
+    {
+        if (string.IsNullOrWhiteSpace(commandId))
+            return CommandResult.Refused("command.invoke", "A command ID is required.", RefusalCodes.CommandUnavailable);
+        var fixedArguments = arguments ?? new Dictionary<string, string>();
+        if (fixedArguments.Count != 0)
+            return CommandResult.Refused(commandId, "This command does not yet accept fixed invocation arguments.", RefusalCodes.ContractMismatch);
+        DiagnosticLog.Info(commandId, $"invocation_source:{source.ToString().ToLowerInvariant()}");
+        if (commandId == InspectSelectionCommand.Id) return InspectSelection();
+        if (commandId == ApplyCurrencyFormatCommand.Id) return ApplyCurrencyFormat();
+        if (commandId == UndoLastCommand.Id) return UndoLastProperty();
+        if (commandId == "support.diagnostics.export") return ExportDiagnostics();
+        if (commandId == "command.search.open") return CommandSearchRuntime.Open();
+        if (commandId.StartsWith("favorite.", StringComparison.Ordinal))
+            return CommandResult.Refused(commandId, "Select a concrete command or favorite in Command Search.", RefusalCodes.CommandUnavailable);
+        if (Phase1AFormattingCatalog.All.Any(value => value.Id == commandId)) return ApplyProfileFormatting(commandId);
+        if (NavigationCommandCatalog.All.Any(value => value.Id == commandId)) return Navigate(commandId);
+        return CommandResult.Refused(commandId, "The registered command has no available host dispatcher.", RefusalCodes.CommandUnavailable);
+    }
+
+    public static Func<CommandDescriptor, CanExecuteResult> CaptureAvailability()
+    {
+        SelectionSnapshot? snapshot = null;
+        CommandRefusedException? captureFailure = null;
+        try { snapshot = CreateSelectionAdapter().CaptureSelection(); }
+        catch (CommandRefusedException exception) { captureFailure = exception; }
+
+        return descriptor =>
+        {
+            if (descriptor.ContextRequirement == CommandContextRequirement.Application ||
+                descriptor.Id.StartsWith("favorite.", StringComparison.Ordinal) || descriptor.Id == "command.search.open")
+                return CanExecuteResult.Permit();
+            if (snapshot is null)
+                return CanExecuteResult.Refuse(captureFailure?.RefusalCode ?? RefusalCodes.CommandUnavailable,
+                    captureFailure?.Message ?? "Excel context is unavailable.", captureFailure?.Remediation ?? "Open a workbook and select a cell range.");
+            if (descriptor.Impact != CommandImpact.ReadOnly &&
+                !descriptor.ChangedProperties.Contains("user_profile_favorites") &&
+                (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(descriptor.Id)))
+                return CanExecuteResult.Refuse(RefusalCodes.CommandQuarantined, "Workbook mutation is disabled in safe mode or quarantine.", "Restart Excel cleanly before retrying.");
+            if (descriptor.Id == ApplyCurrencyFormatCommand.Id) return new ApplyCurrencyFormatCommand().CanExecute(snapshot);
+            if (descriptor.Impact != CommandImpact.ReadOnly && descriptor.ContextRequirement.HasFlag(CommandContextRequirement.Selection))
+            {
+                if (snapshot.Safety.AreaCount != 1 || snapshot.Safety.HasMergedCells)
+                    return CanExecuteResult.Refuse(RefusalCodes.SelectionUnsupported, "The command requires one unmerged rectangular selection.", "Select one unmerged range.");
+                if (snapshot.Safety.WorksheetProtected || snapshot.Safety.WorkbookReadOnly)
+                    return CanExecuteResult.Refuse(RefusalCodes.ProtectedTarget, "The target is protected or read-only.", "Use an editable, unprotected target.");
+                if (!snapshot.Safety.DynamicArraySpillCheckSupported || snapshot.Safety.HasLegacyArray || snapshot.Safety.HasDynamicArraySpill)
+                    return CanExecuteResult.Refuse(RefusalCodes.ArrayOrSpillUnsafe, "The selection intersects an unqualified array or spill state.", "Select cells outside array/spill ranges.");
+                if (snapshot.CellCount > ProfileFormattingCommand.MaximumCellCount)
+                    return CanExecuteResult.Refuse(RefusalCodes.ResourceLimit, "The selection exceeds the immediate command limit.", "Select a smaller range.");
+            }
+            if (descriptor.Id == "navigate.history.back" && NavigationRuntime.Session.HistoryCount < 2)
+                return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, "No prior navigation location is available.", "Navigate first, then retry.");
+            if ((descriptor.Id == "navigate.bookmark.next_session" || descriptor.Id == "navigate.bookmark.previous_session") && NavigationRuntime.Session.BookmarkCount == 0)
+                return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, "No session bookmark is available.", "Add a session bookmark first.");
+            return CanExecuteResult.Permit();
+        };
+    }
+
     public static CommandResult InspectSelection()
     {
         var port = CreateSelectionAdapter();

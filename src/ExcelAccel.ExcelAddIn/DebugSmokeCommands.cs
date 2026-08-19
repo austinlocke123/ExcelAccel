@@ -5,11 +5,30 @@ using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Reliability;
 using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.ExcelInterop;
+using System.Windows.Forms;
 
 namespace ExcelAccel.ExcelAddIn;
 
 public static class DebugSmokeCommands
 {
+    [ExcelCommand(Name = "ExcelAccel.Smoke.OpenAndCloseCommandSearch", Description = "Debug-only command-search UI lifecycle hook.")]
+    public static void OpenAndCloseCommandSearch()
+    {
+        try
+        {
+            var result = CommandSearchRuntime.Open();
+            if (!result.Succeeded) throw new InvalidOperationException(result.Message);
+            System.Windows.Forms.Application.DoEvents();
+            CommandSearchRuntime.Reset();
+            DiagnosticLog.Info("smoke.command.search", "opened_and_closed");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.command.search", exception);
+            throw;
+        }
+    }
+
     [ExcelCommand(
         Name = "ExcelAccel.Smoke.ApplyCurrencyFormat",
         Description = "Debug-only integration hook; not compiled into Release builds.")]

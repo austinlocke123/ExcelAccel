@@ -19,7 +19,12 @@ public sealed class CommandDescriptor
         CommandContextRequirement contextRequirement = CommandContextRequirement.Selection,
         PreviewPolicy previewPolicy = PreviewPolicy.None,
         UndoPolicy undoPolicy = UndoPolicy.None,
-        IEnumerable<string>? acceptanceIds = null)
+        IEnumerable<string>? acceptanceIds = null,
+        string category = "General",
+        string? description = null,
+        IEnumerable<string>? aliases = null,
+        string? shortcutLabel = null,
+        bool inheritsReferencedPolicy = false)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -58,6 +63,16 @@ public sealed class CommandDescriptor
             .Distinct(StringComparer.Ordinal)
             .OrderBy(value => value, StringComparer.Ordinal)
             .ToArray();
+        Category = string.IsNullOrWhiteSpace(category) ? "General" : category.Trim();
+        Description = string.IsNullOrWhiteSpace(description) ? DisplayName : description!.Trim();
+        Aliases = (aliases ?? Array.Empty<string>())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        ShortcutLabel = string.IsNullOrWhiteSpace(shortcutLabel) ? KeyboardRoute : shortcutLabel!.Trim();
+        InheritsReferencedPolicy = inheritsReferencedPolicy;
 
         if (Impact == CommandImpact.ReadOnly && ChangedProperties.Count != 0)
         {
@@ -88,4 +103,14 @@ public sealed class CommandDescriptor
     public UndoPolicy UndoPolicy { get; }
 
     public IReadOnlyList<string> AcceptanceIds { get; }
+
+    public string Category { get; }
+
+    public string Description { get; }
+
+    public IReadOnlyList<string> Aliases { get; }
+
+    public string ShortcutLabel { get; }
+
+    public bool InheritsReferencedPolicy { get; }
 }

@@ -186,14 +186,23 @@ public sealed class ProfileStore
         [JsonProperty("quick_keys", Order = 13, Required = Required.Always)]
         public QuickKeyDto[] QuickKeys { get; set; } = Array.Empty<QuickKeyDto>();
 
-        [JsonProperty("immediate_preview_cell_limit", Order = 14, Required = Required.Always)]
+        [JsonProperty("favorites", Order = 14, Required = Required.Default)]
+        public FavoriteDto[]? Favorites { get; set; }
+
+        [JsonProperty("immediate_preview_cell_limit", Order = 15, Required = Required.Always)]
         public long ImmediatePreviewCellLimit { get; set; }
 
-        [JsonProperty("wrap_sheet_navigation", Order = 15, Required = Required.Always)]
+        [JsonProperty("wrap_sheet_navigation", Order = 16, Required = Required.Always)]
         public bool WrapSheetNavigation { get; set; }
 
-        public ProfileDefinition ToDefinition() => new ProfileDefinition(
-            SchemaVersion,
+        public ProfileDefinition ToDefinition()
+        {
+            if (SchemaVersion != 2 && SchemaVersion != ProfileDefinition.CurrentSchemaVersion)
+                throw new InvalidDataException($"Profile schema {SchemaVersion} is not supported.");
+            if (SchemaVersion == ProfileDefinition.CurrentSchemaVersion && Favorites is null)
+                throw new InvalidDataException("Schema v3 profiles require a favorites array.");
+            return new ProfileDefinition(
+            ProfileDefinition.CurrentSchemaVersion,
             ProfileId,
             FontColorCycle,
             FillColorCycle,
@@ -206,8 +215,10 @@ public sealed class ProfileStore
             AutoColorColors,
             NumberFormats,
             QuickKeys.Select(value => new QuickKeyBinding(value.CommandId, value.Sequence)),
+            (Favorites ?? Array.Empty<FavoriteDto>()).Select(value => value.ToDefinition()),
             ImmediatePreviewCellLimit,
             WrapSheetNavigation);
+        }
 
         public static ProfileDto From(ProfileDefinition profile) => new ProfileDto
         {
@@ -226,6 +237,10 @@ public sealed class ProfileStore
             QuickKeys = profile.QuickKeys
                 .OrderBy(value => value.CommandId, StringComparer.Ordinal)
                 .Select(value => new QuickKeyDto { CommandId = value.CommandId, Sequence = value.Sequence })
+                .ToArray(),
+            Favorites = profile.Favorites
+                .OrderBy(value => value.FavoriteId, StringComparer.Ordinal)
+                .Select(FavoriteDto.From)
                 .ToArray(),
             ImmediatePreviewCellLimit = profile.ImmediatePreviewCellLimit,
             WrapSheetNavigation = profile.WrapSheetNavigation,
@@ -250,5 +265,37 @@ public sealed class ProfileStore
 
         [JsonProperty("sequence", Order = 2, Required = Required.Always)]
         public string Sequence { get; set; } = string.Empty;
+    }
+
+    private sealed class FavoriteDto
+    {
+        [JsonProperty("favorite_id", Order = 1, Required = Required.Always)]
+        public string FavoriteId { get; set; } = string.Empty;
+
+        [JsonProperty("command_id", Order = 2, Required = Required.Always)]
+        public string CommandId { get; set; } = string.Empty;
+
+        [JsonProperty("contract_version", Order = 3, Required = Required.Always)]
+        public int ContractVersion { get; set; }
+
+        [JsonProperty("arguments", Order = 4, Required = Required.Always)]
+        public SortedDictionary<string, string> Arguments { get; set; } = new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+        public FavoriteDefinition ToDefinition() => new FavoriteDefinition(FavoriteId, CommandId, ContractVersion, Arguments);
+
+        public static FavoriteDto From(FavoriteDefinition favorite) => new FavoriteDto
+        {
+            FavoriteId = favorite.FavoriteId,
+            CommandId = favorite.CommandId,
+            ContractVersion = favorite.ContractVersion,
+            Arguments = CopyArguments(favorite.Arguments),
+        };
+
+        private static SortedDictionary<string, string> CopyArguments(IReadOnlyDictionary<string, string> source)
+        {
+            var result = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var item in source) result.Add(item.Key, item.Value);
+            return result;
+        }
     }
 }

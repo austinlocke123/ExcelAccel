@@ -27,5 +27,6 @@ public static class NavigationCommandCatalog
     public static IEnumerable<CommandDescriptor> All => Commands;
     private static CommandDescriptor D(string id, string name, string route, string acceptance) =>
         new CommandDescriptor(id, 1, name, CommandImpact.ReadOnly, new string[0], true, route, "CAP-NAV-001",
-            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet, PreviewPolicy.None, UndoPolicy.None, new[] { acceptance });
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet, PreviewPolicy.None, UndoPolicy.None, new[] { acceptance },
+            "Navigation", $"Navigate to {name.ToLowerInvariant()} without changing workbook content.", shortcutLabel: route);
 }

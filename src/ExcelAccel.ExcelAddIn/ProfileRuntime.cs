@@ -27,13 +27,40 @@ internal static class ProfileRuntime
         lock (Sync) _current = null;
     }
 
+    public static bool AddFavorite(FavoriteDefinition favorite)
+    {
+        lock (Sync)
+        {
+            var current = _current ?? (_current = Load());
+            var favorites = FavoriteCatalog.Add(current.Favorites, favorite);
+            if (ReferenceEquals(favorites, current.Favorites)) return false;
+            var updated = current.WithFavorites(favorites);
+            new ProfileStore().SaveAtomic(ProfilePath, updated);
+            _current = updated;
+            return true;
+        }
+    }
+
+    public static bool RemoveFavorite(string favoriteId)
+    {
+        lock (Sync)
+        {
+            var current = _current ?? (_current = Load());
+            var favorites = FavoriteCatalog.Remove(current.Favorites, favoriteId);
+            if (favorites.Count == current.Favorites.Count) return false;
+            var updated = current.WithFavorites(favorites);
+            new ProfileStore().SaveAtomic(ProfilePath, updated);
+            _current = updated;
+            return true;
+        }
+    }
+
     private static ProfileDefinition Load()
     {
         var store = new ProfileStore();
-        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ExcelAccel", "profile.json");
         try
         {
-            return store.LoadOrDefault(path);
+            return store.LoadOrDefault(ProfilePath);
         }
         catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is ArgumentException)
         {
@@ -41,4 +68,7 @@ internal static class ProfileRuntime
             return store.LoadDefault();
         }
     }
+
+    private static string ProfilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ExcelAccel", "profile.json");
 }

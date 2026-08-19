@@ -12,6 +12,14 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
               <tabs>
                 <tab id='ExcelAccel.Tab' label='ExcelAccel' keytip='XA'>
                   <group id='ExcelAccel.Group.Diagnostics' label='Safe Tools'>
+                    <button id='ExcelAccel.CommandSearch'
+                            label='Search Commands'
+                            keytip='Q'
+                            size='large'
+                            imageMso='FindDialog'
+                            screentip='Search ExcelAccel commands'
+                            supertip='Searches local command metadata and shows current availability without scanning or changing the workbook.'
+                            onAction='OnOpenCommandSearch'/>
                     <button id='ExcelAccel.InspectSelection'
                             label='Inspect Selection'
                             keytip='I'
@@ -85,6 +93,11 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         CallbackBoundary.Run(InspectSelectionCommand.Id, () =>
             CommandDispatcher.InspectSelection());
+    }
+
+    public void OnOpenCommandSearch(IRibbonControl control)
+    {
+        CallbackBoundary.Run("command.search.open", CommandSearchRuntime.Open, showResult: false);
     }
 
     public void OnApplyCurrencyFormat(IRibbonControl control)

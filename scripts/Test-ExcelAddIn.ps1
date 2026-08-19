@@ -69,6 +69,10 @@ public static class ExcelAccelNativeMethods
             throw "The health function returned '$version'."
         }
 
+        [void]$excel.Run('ExcelAccel.Smoke.OpenAndCloseCommandSearch')
+        [Console]::WriteLine('command_search_ui=opened_and_closed')
+        [Console]::Out.Flush()
+
         $cell.Value2 = 1234.5
         $cell.NumberFormat = 'General'
         $valueBefore = $cell.Value2
@@ -299,6 +303,7 @@ try {
         'currency_format=$#,##0.00;($#,##0.00);-',
         'content_preserved=True',
         'font_color_after=0',
+        'command_search_ui=opened_and_closed',
         'font_color_content_preserved=True',
         'font_color_after_undo=5649426',
         'navigation_address=A1',
