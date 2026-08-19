@@ -94,10 +94,16 @@ atomic replace/backup storage, and a pure Quick Key conflict/timeout/edit-mode
 engine. Live key interception remains disabled until WP-1A-11 can qualify host
 registration and cleanup without risking normal Excel typing.
 
-Do not start with formula transforms, AutoColor, installer mutation, or broad
-workbook commands: those are still behind their retained gates. The first
-Phase 1A slice should consolidate production interfaces, dependency direction,
-and test enforcement without expanding workbook mutation authority.
+WP-1A-06/08 is implemented on `agent/phase-1a-formatting-navigation`: the Phase
+1A formatting catalog has property-scoped plans, stale-state refusal,
+postcondition verification, a profile-v2 recipe, and real-Excel coverage;
+navigation is read-only with bounded session history/bookmarks. Freeze panes
+remains exact-preview gated and has no bypassing callback. See
+`evidence/WP-1A-06_08_FORMATTING_NAVIGATION.md`.
+
+Next: implement WP-1A-07's deterministic AutoColor planner while keeping its
+execution fail-closed behind the retained performance gate, then implement
+WP-1A-09/10 receipts and recovery.
 
 ## Local-worktree caution
 

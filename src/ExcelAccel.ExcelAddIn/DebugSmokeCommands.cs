@@ -26,6 +26,28 @@ public static class DebugSmokeCommands
         }
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Smoke.ApplyFontColorCycle", Description = "Debug-only profile formatting hook.")]
+    public static void ApplyFontColorCycle()
+    {
+        try
+        {
+            var result = CommandDispatcher.ApplyProfileFormatting("format.font_color.cycle");
+            DiagnosticLog.Info("smoke.format.font_color.cycle", result.Succeeded ? "success" : "refused");
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.format.font_color.cycle", exception); }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.NavigateA1", Description = "Debug-only navigation hook.")]
+    public static void NavigateA1()
+    {
+        try
+        {
+            var result = CommandDispatcher.Navigate("navigate.cell.a1");
+            DiagnosticLog.Info("smoke.navigate.a1", result.Succeeded ? "success" : "refused");
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.navigate.a1", exception); }
+    }
+
     [ExcelCommand(
         Name = "ExcelAccel.Smoke.ThrowInsideStateGuard",
         Description = "Debug-only state-restoration fault hook; not compiled into Release builds.")]

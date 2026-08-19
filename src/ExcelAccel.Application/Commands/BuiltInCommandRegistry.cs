@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
+using ExcelAccel.Application.Formatting;
+using ExcelAccel.Application.Navigation;
 using ExcelAccel.Core.Commands;
 
 namespace ExcelAccel.Application.Commands;
@@ -6,7 +9,7 @@ namespace ExcelAccel.Application.Commands;
 public static class BuiltInCommandRegistry
 {
     private static readonly IReadOnlyList<CommandDescriptor> Commands = new[]
-    {
+        {
         new CommandDescriptor(
             InspectSelectionCommand.Id,
             1,
@@ -33,7 +36,11 @@ public static class BuiltInCommandRegistry
             PreviewPolicy.None,
             UndoPolicy.SessionPropertyReceipt,
             new[] { "AC-CMD-001", "AC-FMT-002", "AC-REL-005" }),
-    };
+        }
+        .Concat(Phase1AFormattingCatalog.All)
+        .Concat(NavigationCommandCatalog.All)
+        .OrderBy(command => command.Id, System.StringComparer.Ordinal)
+        .ToArray();
 
     public static IReadOnlyList<CommandDescriptor> All => Commands;
 
