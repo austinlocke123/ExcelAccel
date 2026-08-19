@@ -194,8 +194,7 @@ public sealed class FormulaBlockCommand
         if (plan.ExternalSource is not null)
         {
             var source = port.CaptureFormulaBlock(plan.ExternalSource.Selection.Context);
-            if (source.FirstRow != plan.ExternalSource.FirstRow || source.FirstColumn != plan.ExternalSource.FirstColumn ||
-                !source.Contents.ContentEquals(plan.ExternalSource.Contents))
+            if (!plan.ExternalSource.SourceContentEquals(source))
                 return CommandResult.Refused(plan.CommandPlan, "The external source range changed after planning.", RefusalCodes.StaleContext);
         }
         var current = port.CaptureFormulaBlock(plan.Before.Selection.Context);

@@ -251,5 +251,62 @@ public static class DebugSmokeCommands
         var result = new FormulaBlockCommand(descriptor).Execute(plan, port, plan.CommandPlan.PlanHash, UndoRuntime.Store);
         if (!result.Succeeded) throw new InvalidOperationException(commandId + ": " + result.Message);
     }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.PasteValues", Description = "Debug-only values-only paste hook.")]
+    public static void PasteValues()
+    {
+        ExecuteAdvanced("paste.values_only", (port, destination, descriptor) =>
+        {
+            var source = port.CaptureFormulaBlock(new SelectionContext(destination.Selection.Context.WorkbookId,
+                destination.Selection.Context.WorksheetName, "A60:B60"));
+            return new FormulaAdvancedCommand(descriptor).PlanPasteValues(source, destination);
+        });
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.FormulaFromAbove", Description = "Debug-only formula-from-above hook.")]
+    public static void FormulaFromAbove()
+    {
+        ExecuteAdvanced("fill.formula_from_above", (port, destination, descriptor) =>
+        {
+            var source = port.CaptureFormulaBlock(new SelectionContext(destination.Selection.Context.WorkbookId,
+                destination.Selection.Context.WorksheetName, "A70:B70"));
+            return new FormulaAdvancedCommand(descriptor).PlanFormulaFromAbove(source, destination);
+        });
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.ValueFromAbove", Description = "Debug-only value-from-above hook.")]
+    public static void ValueFromAbove()
+    {
+        ExecuteAdvanced("fill.value_from_above", (port, destination, descriptor) =>
+        {
+            var source = port.CaptureFormulaBlock(new SelectionContext(destination.Selection.Context.WorkbookId,
+                destination.Selection.Context.WorksheetName, "A70:B70"));
+            return new FormulaAdvancedCommand(descriptor).PlanValueFromAbove(source, destination);
+        });
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.NumericSequence", Description = "Debug-only numeric-sequence hook.")]
+    public static void NumericSequence() => ExecuteAdvanced("fill.numeric_sequence", (port, destination, descriptor) =>
+        new FormulaAdvancedCommand(descriptor).PlanNumericSequence(destination, 1, 2, SequenceFillDirection.Right));
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DateSequence", Description = "Debug-only date-sequence hook.")]
+    public static void DateSequence() => ExecuteAdvanced("fill.date_sequence", (port, destination, descriptor) =>
+        new FormulaAdvancedCommand(descriptor).PlanDateSequence(destination, new DateTime(2026, 8, 19), 7,
+            SequenceFillDirection.Right, port.CaptureDateSystem()));
+
+    private static void ExecuteAdvanced(string commandId,
+        Func<ExcelSelectionAdapter, FormulaBlockSnapshot, CommandDescriptor, FormulaBlockPlan> planFactory)
+    {
+        try
+        {
+            var port = new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var descriptor = FormulaCommandCatalog.GetRequired(commandId);
+            var plan = planFactory(port, port.CaptureFormulaBlock(), descriptor);
+            var result = new FormulaBlockCommand(descriptor).Execute(plan, port, plan.CommandPlan.PlanHash, UndoRuntime.Store);
+            DiagnosticLog.Info("smoke." + commandId, result.Status + ":" + result.Message);
+            if (!result.Succeeded) throw new InvalidOperationException(commandId + ": " + result.Message);
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke." + commandId, exception); throw; }
+    }
 }
 #endif

@@ -11,10 +11,11 @@ caret/edit-text API; its pure transformation contract is implemented and tested.
 Smart Copy Down/Right, IFERROR, sign, and unit commands now use a transactional
 typed-matrix adapter with exact revalidation, verification, compensation, and
 bounded optimistic undo. See `docs/evidence/WP-1B-05_07_FORMULA_COMMANDS.md`.
-Spacing, transpose, formula-from-above, and typed numeric/date fill semantics are
-implemented at the pure/application layer. Operations with a separate source
-range use qualified selection-preserving off-selection revalidation. Transpose
-and formulas-only paste are registered through the bounded internal source;
+Spacing, transpose, formula/value-from-above, and typed numeric/date fill are
+registered with explicit parameter dialogs where required. Operations with a
+separate source range use qualified selection-preserving off-selection
+revalidation, including calculated-value fingerprints for value-only commands.
+Transpose and formulas/values-only paste use the bounded internal source;
 see `docs/evidence/WP-1B-06_08_ADVANCED_FORMULA_PLANNERS.md`.
 
 ## Common formula boundary

@@ -74,6 +74,30 @@ public static class ExcelAccelNativeMethods
     $typedExistingNumber = $null
     $typedInvalid = $null
     $typedFormula = $null
+    $pasteValueSource = $null
+    $pasteValueDestination = $null
+    $pasteValueSourceFormula = $null
+    $pasteValueSourceText = $null
+    $pasteValueDestination1 = $null
+    $pasteValueDestination2 = $null
+    $pasteValueDestination3 = $null
+    $pasteValueDestination4 = $null
+    $aboveSource = $null
+    $aboveDestination = $null
+    $aboveSource1 = $null
+    $aboveSource2 = $null
+    $aboveDestination1 = $null
+    $aboveDestination2 = $null
+    $aboveDestination3 = $null
+    $aboveDestination4 = $null
+    $aboveInput1 = $null
+    $aboveInput2 = $null
+    $aboveAbsolute = $null
+    $sequenceRange = $null
+    $sequence1 = $null
+    $sequence2 = $null
+    $sequence3 = $null
+    $sequence4 = $null
     $quitReturned = $false
 
     try {
@@ -370,6 +394,114 @@ public static class ExcelAccelNativeMethods
             throw 'Typed conversion receipts did not restore the exact prior matrix.'
         }
 
+        $pasteValueSource = $worksheet.Range('A60:B60')
+        $pasteValueDestination = $worksheet.Range('D60:E61')
+        $pasteValueSourceFormula = $worksheet.Range('A60')
+        $pasteValueSourceText = $worksheet.Range('B60')
+        $pasteValueDestination1 = $worksheet.Range('D60')
+        $pasteValueDestination2 = $worksheet.Range('E60')
+        $pasteValueDestination3 = $worksheet.Range('D61')
+        $pasteValueDestination4 = $worksheet.Range('E61')
+        $pasteValueSourceFormula.Formula = '=10+5'
+        $pasteValueSourceText.Value2 = 'source'
+        $pasteValueDestination1.Formula = '=99'
+        $pasteValueDestination2.Value2 = 'old'
+        $pasteValueDestination3.Value2 = 8
+        $pasteValueDestination4.ClearContents()
+        $excel.Calculate()
+        [void]$pasteValueDestination.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.PasteValues')
+        $pasteValuesExact =
+            ([double]$pasteValueDestination1.Value2 -eq 15) -and
+            ([string]$pasteValueDestination2.Value2 -eq 'source') -and
+            ([double]$pasteValueDestination3.Value2 -eq 15) -and
+            ([string]$pasteValueDestination4.Value2 -eq 'source') -and
+            ([string]$pasteValueSourceFormula.Formula -eq '=10+5') -and
+            ([string]$pasteValueSourceText.Value2 -eq 'source')
+        [Console]::WriteLine("paste_values_underlying_exact=$pasteValuesExact")
+        [Console]::Out.Flush()
+        if (-not $pasteValuesExact) { throw 'Values-only paste did not use exact underlying values.' }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $pasteValuesUndoExact =
+            ([string]$pasteValueDestination1.Formula -eq '=99') -and
+            ([string]$pasteValueDestination2.Value2 -eq 'old') -and
+            ([double]$pasteValueDestination3.Value2 -eq 8) -and
+            ($null -eq $pasteValueDestination4.Value2)
+        [Console]::WriteLine("paste_values_undo_exact=$pasteValuesUndoExact")
+        [Console]::Out.Flush()
+        if (-not $pasteValuesUndoExact) { throw 'Values-only paste undo did not restore destination formulas and values.' }
+
+        $aboveSource = $worksheet.Range('A70:B70')
+        $aboveDestination = $worksheet.Range('A71:B72')
+        $aboveSource1 = $worksheet.Range('A70')
+        $aboveSource2 = $worksheet.Range('B70')
+        $aboveDestination1 = $worksheet.Range('A71')
+        $aboveDestination2 = $worksheet.Range('B71')
+        $aboveDestination3 = $worksheet.Range('A72')
+        $aboveDestination4 = $worksheet.Range('B72')
+        $aboveInput1 = $worksheet.Range('C70')
+        $aboveInput2 = $worksheet.Range('D70')
+        $aboveAbsolute = $worksheet.Range('D1')
+        $aboveInput1.Value2 = 5
+        $aboveInput2.Value2 = 6
+        $aboveAbsolute.Value2 = 10
+        $aboveSource1.Formula = '=C70+$D$1'
+        $aboveSource2.Formula = '=D70'
+        $aboveDestination.ClearContents()
+        $excel.Calculate()
+        [void]$aboveDestination.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.FormulaFromAbove')
+        $formulaAboveExact =
+            ([string]$aboveDestination1.Formula -eq '=C71+$D$1') -and
+            ([string]$aboveDestination2.Formula -eq '=D71') -and
+            ([string]$aboveDestination3.Formula -eq '=C72+$D$1') -and
+            ([string]$aboveDestination4.Formula -eq '=D72')
+        [Console]::WriteLine("formula_from_above_exact=$formulaAboveExact")
+        [Console]::Out.Flush()
+        if (-not $formulaAboveExact) { throw 'Formula-from-above translation was not exact.' }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        [void]$aboveDestination.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.ValueFromAbove')
+        $valueAboveExact =
+            ([double]$aboveDestination1.Value2 -eq 15) -and
+            ([double]$aboveDestination2.Value2 -eq 6) -and
+            ([double]$aboveDestination3.Value2 -eq 15) -and
+            ([double]$aboveDestination4.Value2 -eq 6) -and
+            ([string]$aboveSource1.Formula -eq '=C70+$D$1') -and
+            ([string]$aboveSource2.Formula -eq '=D70')
+        [Console]::WriteLine("value_from_above_exact=$valueAboveExact")
+        [Console]::Out.Flush()
+        if (-not $valueAboveExact) { throw 'Value-from-above did not use exact underlying formula values.' }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+
+        $sequenceRange = $worksheet.Range('G70:H71')
+        $sequence1 = $worksheet.Range('G70')
+        $sequence2 = $worksheet.Range('H70')
+        $sequence3 = $worksheet.Range('G71')
+        $sequence4 = $worksheet.Range('H71')
+        $sequenceRange.ClearContents()
+        [void]$sequenceRange.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.NumericSequence')
+        $numericSequenceExact =
+            ([double]$sequence1.Value2 -eq 1) -and ([double]$sequence2.Value2 -eq 3) -and
+            ([double]$sequence3.Value2 -eq 5) -and ([double]$sequence4.Value2 -eq 7)
+        [Console]::WriteLine("numeric_sequence_exact=$numericSequenceExact")
+        [Console]::Out.Flush()
+        if (-not $numericSequenceExact) { throw 'Numeric sequence did not follow explicit row-major direction.' }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        [void]$sequenceRange.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.DateSequence')
+        $dateStartSerial = [DateTime]::ParseExact('2026-08-19', 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture).ToOADate()
+        $dateSequenceExact =
+            ([double]$sequence1.Value2 -eq $dateStartSerial) -and
+            ([double]$sequence2.Value2 -eq ($dateStartSerial + 7)) -and
+            ([double]$sequence3.Value2 -eq ($dateStartSerial + 14)) -and
+            ([double]$sequence4.Value2 -eq ($dateStartSerial + 21))
+        [Console]::WriteLine("date_sequence_exact=$dateSequenceExact")
+        [Console]::Out.Flush()
+        if (-not $dateSequenceExact) { throw 'Date sequence did not follow the workbook 1900 date system and explicit direction.' }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+
         $navigationCell = $worksheet.Range('D5')
         [void]$navigationCell.Select()
         [void]$excel.Run('ExcelAccel.Smoke.NavigateA1')
@@ -514,6 +646,30 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $typedDate
         Release-ComObject $typedNumber
         Release-ComObject $typedRange
+        Release-ComObject $sequence4
+        Release-ComObject $sequence3
+        Release-ComObject $sequence2
+        Release-ComObject $sequence1
+        Release-ComObject $sequenceRange
+        Release-ComObject $aboveAbsolute
+        Release-ComObject $aboveInput2
+        Release-ComObject $aboveInput1
+        Release-ComObject $aboveDestination4
+        Release-ComObject $aboveDestination3
+        Release-ComObject $aboveDestination2
+        Release-ComObject $aboveDestination1
+        Release-ComObject $aboveSource2
+        Release-ComObject $aboveSource1
+        Release-ComObject $aboveDestination
+        Release-ComObject $aboveSource
+        Release-ComObject $pasteValueDestination4
+        Release-ComObject $pasteValueDestination3
+        Release-ComObject $pasteValueDestination2
+        Release-ComObject $pasteValueDestination1
+        Release-ComObject $pasteValueSourceText
+        Release-ComObject $pasteValueSourceFormula
+        Release-ComObject $pasteValueDestination
+        Release-ComObject $pasteValueSource
         Release-ComObject $multiArea
         Release-ComObject $secondCell
         Release-ComObject $navigationCell
@@ -609,6 +765,12 @@ try {
         'selection_content_preserved=True',
         'typed_conversions_exact=True',
         'typed_conversions_undo_exact=True',
+        'paste_values_underlying_exact=True',
+        'paste_values_undo_exact=True',
+        'formula_from_above_exact=True',
+        'value_from_above_exact=True',
+        'numeric_sequence_exact=True',
+        'date_sequence_exact=True',
         'state_restored_after_fault=True',
         'stale_property_refused=True',
         'protected_target_refused=True',

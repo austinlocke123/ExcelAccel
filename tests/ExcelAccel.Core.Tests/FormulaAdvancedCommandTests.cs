@@ -185,6 +185,68 @@ public sealed class FormulaAdvancedCommandTests
         Assert.Throws<CommandRefusedException>(() => command.PlanPasteFormulas(source, overlap));
     }
 
+    [Fact]
+    public void ValuesOnlyPasteUsesUnderlyingFormulaResultsAndReportsFormulaReplacement()
+    {
+        var source = Snapshot(Block(1, 2, FormulaCellValue.Formula("=1+1"), FormulaCellValue.Text("x")), 1, 1, "$A$1:$B$1",
+            Values(1, 2, UnderlyingCellValue.Number(2), UnderlyingCellValue.Text("x")));
+        var destination = Snapshot(Block(2, 2,
+            FormulaCellValue.Formula("=99"), FormulaCellValue.Blank(),
+            FormulaCellValue.Number(8), FormulaCellValue.Text("old")), 5, 4, "$D$5:$E$6");
+
+        var plan = Command("paste.values_only", new[] { "value" }).PlanPasteValues(source, destination);
+
+        Assert.Equal(2, plan.After[0, 0].AsNumber());
+        Assert.Equal("x", plan.After[0, 1].InvariantValue);
+        Assert.Equal(2, plan.After[1, 0].AsNumber());
+        Assert.Equal("x", plan.After[1, 1].InvariantValue);
+        Assert.DoesNotContain(plan.After.Cells, value => value.IsFormula);
+        Assert.Equal("2", plan.CommandPlan.Arguments["source_formula_mappings"]);
+        Assert.Equal("1", plan.CommandPlan.Arguments["destination_formula_replacements"]);
+        Assert.True(plan.CommandPlan.RequiresPreview);
+    }
+
+    [Fact]
+    public void ValuesOnlyPasteRevalidatesCalculatedSourceValuesBeforeWriting()
+    {
+        var source = Snapshot(Block(1, 1, FormulaCellValue.Formula("=A1")), 1, 1, "$A$1",
+            Values(1, 1, UnderlyingCellValue.Number(2)));
+        var changedSource = Snapshot(source.Contents, 1, 1, "$A$1", Values(1, 1, UnderlyingCellValue.Number(3)));
+        var destination = Snapshot(Block(1, 1, FormulaCellValue.Blank()), 5, 4, "$D$5");
+        var descriptor = Descriptor("paste.values_only", new[] { "value" }, ChangedPropertyPolicy.Exact);
+        var plan = new FormulaAdvancedCommand(descriptor).PlanPasteValues(source, destination);
+        var port = new FakePort(destination, changedSource);
+
+        var result = new FormulaBlockCommand(descriptor).Execute(plan, port, plan.CommandPlan.PlanHash, new SessionUndoStore());
+
+        Assert.Equal(CommandResultStatus.Refused, result.Status);
+        Assert.Equal(RefusalCodes.StaleContext, result.RefusalCode);
+        Assert.Equal(0, port.WriteCount);
+    }
+
+    [Fact]
+    public void ValueFromAboveUsesEachUnderlyingValueAndRefusesErrors()
+    {
+        var source = Snapshot(Block(1, 2, FormulaCellValue.Formula("=1+1"), FormulaCellValue.Text("x")), 4, 1, "$A$4:$B$4",
+            Values(1, 2, UnderlyingCellValue.Number(2), UnderlyingCellValue.Text("x")));
+        var destination = Snapshot(Block(2, 2,
+            FormulaCellValue.Blank(), FormulaCellValue.Blank(), FormulaCellValue.Blank(), FormulaCellValue.Blank()), 5, 1, "$A$5:$B$6");
+
+        var plan = Command("fill.value_from_above", new[] { "value" }).PlanValueFromAbove(source, destination);
+
+        Assert.Equal(2, plan.After[0, 0].AsNumber());
+        Assert.Equal("x", plan.After[0, 1].InvariantValue);
+        Assert.Equal(2, plan.After[1, 0].AsNumber());
+        Assert.Equal("x", plan.After[1, 1].InvariantValue);
+        Assert.True(plan.CommandPlan.RequiresPreview);
+
+        var errorSource = Snapshot(Block(1, 1, FormulaCellValue.Formula("=1/0")), 4, 1, "$A$4",
+            Values(1, 1, UnderlyingCellValue.Error(-2146826281)));
+        var oneCell = Snapshot(Block(1, 1, FormulaCellValue.Blank()), 5, 1, "$A$5");
+        Assert.Throws<CommandRefusedException>(() =>
+            Command("fill.value_from_above", new[] { "value" }).PlanValueFromAbove(errorSource, oneCell));
+    }
+
     private static FormulaAdvancedCommand Command(string id, IEnumerable<string> properties,
         ChangedPropertyPolicy policy = ChangedPropertyPolicy.Exact) => new FormulaAdvancedCommand(Descriptor(id, properties, policy));
 
@@ -194,8 +256,10 @@ public sealed class FormulaAdvancedCommandTests
             changedPropertyPolicy: policy);
 
     private static FormulaCellBlock Block(int rows, int columns, params FormulaCellValue[] values) => new FormulaCellBlock(rows, columns, values);
-    private static FormulaBlockSnapshot Snapshot(FormulaCellBlock block, int firstRow, int firstColumn, string address = "$A$1:$Z$99") =>
-        new FormulaBlockSnapshot(new SelectionSnapshot(new SelectionContext("book", "Sheet1", address), block.CellCount, null, "General", SelectionSafetyState.Safe()), firstRow, firstColumn, block);
+    private static UnderlyingValueBlock Values(int rows, int columns, params UnderlyingCellValue[] values) => new UnderlyingValueBlock(rows, columns, values);
+    private static FormulaBlockSnapshot Snapshot(FormulaCellBlock block, int firstRow, int firstColumn, string address = "$A$1:$Z$99",
+        UnderlyingValueBlock? underlyingValues = null) =>
+        new FormulaBlockSnapshot(new SelectionSnapshot(new SelectionContext("book", "Sheet1", address), block.CellCount, null, "General", SelectionSafetyState.Safe()), firstRow, firstColumn, block, underlyingValues);
 
     private sealed class FakePort : IFormulaBlockPort
     {
@@ -205,7 +269,7 @@ public sealed class FormulaAdvancedCommandTests
         public FormulaCellBlock Current { get; private set; }
         public int WriteCount { get; private set; }
         public SelectionSnapshot CaptureSelection() => CaptureFormulaBlock().Selection;
-        public FormulaBlockSnapshot CaptureFormulaBlock() => new FormulaBlockSnapshot(_snapshot.Selection, _snapshot.FirstRow, _snapshot.FirstColumn, Current);
+        public FormulaBlockSnapshot CaptureFormulaBlock() => new FormulaBlockSnapshot(_snapshot.Selection, _snapshot.FirstRow, _snapshot.FirstColumn, Current, _snapshot.UnderlyingValues);
         public FormulaBlockSnapshot CaptureFormulaBlock(SelectionContext target)
         {
             if (target.Equals(_snapshot.Selection.Context)) return CaptureFormulaBlock();

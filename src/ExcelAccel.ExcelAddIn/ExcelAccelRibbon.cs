@@ -85,8 +85,15 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.FormulaSourceCapture' label='Capture Formula Source' keytip='SC' tag='formula.source.capture' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaTranspose' label='Transpose Captured Source Here...' keytip='TP' tag='formula.transpose' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.PasteFormulasOnly' label='Paste Formulas Only' keytip='PF' tag='paste.formulas_only' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.PasteValuesOnly' label='Paste Values Only...' keytip='PV' tag='paste.values_only' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaCopyDown' label='Smart Copy Down' keytip='CD' tag='formula.copy.down' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaCopyRight' label='Smart Copy Right' keytip='CR' tag='formula.copy.right' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaSpacingRows' label='Space Formulas by Rows...' keytip='SR' tag='formula.spacing.rows' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaSpacingColumns' label='Space Formulas by Columns...' keytip='SL' tag='formula.spacing.columns' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FillFormulaAbove' label='Fill Formula from Above' keytip='FA' tag='fill.formula_from_above' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FillValueAbove' label='Fill Value from Above...' keytip='VA' tag='fill.value_from_above' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FillNumericSequence' label='Fill Numeric Sequence...' keytip='NS' tag='fill.numeric_sequence' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FillDateSequence' label='Fill Date Sequence...' keytip='DS' tag='fill.date_sequence' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaIfError' label='Toggle IFERROR' keytip='IE' tag='formula.iferror.toggle' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaReverseSign' label='Reverse Sign' keytip='RS' tag='formula.sign.reverse' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaToThousands' label='To Thousands (÷1,000)' keytip='UT' tag='formula.units.to_thousands' onAction='OnFormulaCommand'/>

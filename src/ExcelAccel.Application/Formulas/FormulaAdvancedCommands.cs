@@ -135,6 +135,45 @@ public sealed class FormulaAdvancedCommand
             PreconditionFingerprint.Create(sourceRow.Contents.Serialize(), destination.Contents.Serialize()), externalSource: sourceRow);
     }
 
+    public FormulaBlockPlan PlanValueFromAbove(FormulaBlockSnapshot sourceRow, FormulaBlockSnapshot destination,
+        int immediatePreviewLimit = FormulaBlockCommand.DefaultImmediatePreviewLimit)
+    {
+        RequireSafe(sourceRow);
+        RequireSafe(destination);
+        if (sourceRow.UnderlyingValues is null) throw Refuse(RefusalCodes.ExcelCapabilityMissing, "Underlying source values are unavailable.");
+        if (sourceRow.Contents.RowCount != 1 || sourceRow.Contents.ColumnCount != destination.Contents.ColumnCount ||
+            sourceRow.FirstRow + 1 != destination.FirstRow || sourceRow.FirstColumn != destination.FirstColumn ||
+            !SameSheet(sourceRow, destination))
+            throw Refuse(RefusalCodes.SelectionUnsupported, "The source must be the single immediately adjacent row above the destination.");
+        var changed = 0;
+        var formulaSources = 0;
+        var formulaDestinations = 0;
+        var overwrites = 0;
+        var samples = new List<string>();
+        var after = destination.Contents.Map((row, column, current) =>
+        {
+            var source = ToWritableValue(sourceRow.UnderlyingValues[0, column]);
+            if (sourceRow.Contents[0, column].IsFormula) formulaSources++;
+            if (current.Equals(source)) return current;
+            changed++;
+            if (!current.IsBlank) overwrites++;
+            if (current.IsFormula) formulaDestinations++;
+            AddSample(samples, row, column, current, source);
+            return source;
+        });
+        return Build(destination, after, changed, 0, samples,
+            formulaSources > 0 || formulaDestinations > 0 || overwrites > 0 || changed > immediatePreviewLimit,
+            $"Fill {changed:N0} destination cell(s) from underlying values immediately above; {formulaSources:N0} formula source mapping(s), {formulaDestinations:N0} destination formula replacement(s).",
+            new[] { "value" }, new[]
+            {
+                Pair("source_sha256", sourceRow.Contents.Fingerprint),
+                Pair("source_values_sha256", sourceRow.UnderlyingValues.Fingerprint),
+                Pair("formula_source_mappings", formulaSources.ToString(CultureInfo.InvariantCulture)),
+                Pair("formula_destination_replacements", formulaDestinations.ToString(CultureInfo.InvariantCulture)),
+            }, PreconditionFingerprint.Create(sourceRow.Contents.Serialize(), sourceRow.UnderlyingValues.Fingerprint,
+                destination.Contents.Serialize()), externalSource: sourceRow);
+    }
+
     public FormulaBlockPlan PlanPasteFormulas(FormulaBlockSnapshot source, FormulaBlockSnapshot destination,
         int immediatePreviewLimit = FormulaBlockCommand.DefaultImmediatePreviewLimit)
     {
@@ -180,6 +219,52 @@ public sealed class FormulaAdvancedCommand
                 Pair("source_sha256", source.Contents.Fingerprint),
                 Pair("repetition", repeated ? "whole_multiple" : "exact_shape"),
             }, PreconditionFingerprint.Create(source.Contents.Serialize(), destination.Contents.Serialize()), externalSource: source);
+    }
+
+    public FormulaBlockPlan PlanPasteValues(FormulaBlockSnapshot source, FormulaBlockSnapshot destination)
+    {
+        RequireSafe(source);
+        RequireSafe(destination);
+        if (source.UnderlyingValues is null) throw Refuse(RefusalCodes.ExcelCapabilityMissing, "Underlying captured source values are unavailable.");
+        if (!SameSheet(source, destination))
+            throw Refuse(RefusalCodes.SelectionUnsupported, "Initial values-only paste requires source and destination on the same worksheet.");
+        if (RangesOverlap(source, destination))
+            throw Refuse(RefusalCodes.SelectionUnsupported, "Initial values-only paste refuses overlapping source and destination ranges.");
+        if (destination.Contents.RowCount % source.Contents.RowCount != 0 ||
+            destination.Contents.ColumnCount % source.Contents.ColumnCount != 0)
+            throw Refuse(RefusalCodes.SelectionUnsupported, "Destination dimensions must be exact whole multiples of the captured source dimensions.");
+        var changed = 0;
+        var sourceFormulaMappings = 0;
+        var destinationFormulaReplacements = 0;
+        var overwrites = 0;
+        var samples = new List<string>();
+        var after = destination.Contents.Map((row, column, current) =>
+        {
+            var sourceRow = row % source.Contents.RowCount;
+            var sourceColumn = column % source.Contents.ColumnCount;
+            var proposed = ToWritableValue(source.UnderlyingValues[sourceRow, sourceColumn]);
+            if (source.Contents[sourceRow, sourceColumn].IsFormula) sourceFormulaMappings++;
+            if (current.Equals(proposed)) return current;
+            changed++;
+            if (!current.IsBlank) overwrites++;
+            if (current.IsFormula) destinationFormulaReplacements++;
+            AddSample(samples, row, column, current, proposed);
+            return proposed;
+        });
+        var repeated = destination.Contents.RowCount != source.Contents.RowCount || destination.Contents.ColumnCount != source.Contents.ColumnCount;
+        return Build(destination, after, changed, 0, samples, requiresPreview: true,
+            $"Paste underlying values from {source.Contents.RowCount:N0}Ã—{source.Contents.ColumnCount:N0} source into {destination.Contents.RowCount:N0}Ã—{destination.Contents.ColumnCount:N0} destination: {changed:N0} changed, {sourceFormulaMappings:N0} formula-source mapping(s), {destinationFormulaReplacements:N0} destination formula replacement(s).",
+            new[] { "value" }, new[]
+            {
+                Pair("source_context", source.Selection.Context.ToString()),
+                Pair("source_sha256", source.Contents.Fingerprint),
+                Pair("source_values_sha256", source.UnderlyingValues.Fingerprint),
+                Pair("repetition", repeated ? "whole_multiple" : "exact_shape"),
+                Pair("source_formula_mappings", sourceFormulaMappings.ToString(CultureInfo.InvariantCulture)),
+                Pair("destination_formula_replacements", destinationFormulaReplacements.ToString(CultureInfo.InvariantCulture)),
+                Pair("nonblank_overwrites", overwrites.ToString(CultureInfo.InvariantCulture)),
+            }, PreconditionFingerprint.Create(source.Contents.Serialize(), source.UnderlyingValues.Fingerprint,
+                destination.Contents.Serialize()), externalSource: source);
     }
 
     public FormulaBlockPlan PlanNumericSequence(FormulaBlockSnapshot destination, double start, double step,
@@ -286,6 +371,19 @@ public sealed class FormulaAdvancedCommand
         second.FirstRow <= first.FirstRow + first.Contents.RowCount - 1 &&
         first.FirstColumn <= second.FirstColumn + second.Contents.ColumnCount - 1 &&
         second.FirstColumn <= first.FirstColumn + first.Contents.ColumnCount - 1;
+    private static FormulaCellValue ToWritableValue(UnderlyingCellValue value)
+    {
+        switch (value.Kind)
+        {
+            case UnderlyingValueKind.Blank: return FormulaCellValue.Blank();
+            case UnderlyingValueKind.Text: return FormulaCellValue.Text(value.InvariantValue);
+            case UnderlyingValueKind.Number: return FormulaCellValue.Number(value.AsNumber());
+            case UnderlyingValueKind.Boolean: return FormulaCellValue.Boolean(value.InvariantValue == "true");
+            case UnderlyingValueKind.Error:
+                throw Refuse(RefusalCodes.SelectionUnsupported, "Values-only operations refuse calculated error values in the source.");
+            default: throw Refuse(RefusalCodes.ExcelCapabilityMissing, "The underlying value kind is unsupported.");
+        }
+    }
     private static KeyValuePair<string, string> Pair(string key, string value) => new KeyValuePair<string, string>(key, value);
     private static void AddSample(ICollection<string> samples, int row, int column, FormulaCellValue before, FormulaCellValue after)
     {

@@ -71,7 +71,7 @@ internal static class CommandDispatcher
                 (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(descriptor.Id)))
                 return CanExecuteResult.Refuse(RefusalCodes.CommandQuarantined, "Workbook mutation is disabled in safe mode or quarantine.", "Restart Excel cleanly before retrying.");
             if (descriptor.Id == ApplyCurrencyFormatCommand.Id) return new ApplyCurrencyFormatCommand().CanExecute(snapshot);
-            if ((descriptor.Id == "formula.transpose" || descriptor.Id == "paste.formulas_only") &&
+            if ((descriptor.Id == "formula.transpose" || descriptor.Id == "paste.formulas_only" || descriptor.Id == "paste.values_only") &&
                 !FormulaSourceRuntime.TryGet(out _, out var sourceReason))
                 return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, sourceReason, "Select the source and run Capture Formula Source first.");
             if (descriptor.Impact != CommandImpact.ReadOnly && descriptor.ContextRequirement.HasFlag(CommandContextRequirement.Selection))
@@ -369,11 +369,42 @@ internal static class CommandDispatcher
                     return CommandResult.Refused(commandId, pasteReason, RefusalCodes.CommandUnavailable);
                 plan = new FormulaAdvancedCommand(descriptor).PlanPasteFormulas(pasteSource, snapshot, previewLimit);
                 break;
+            case "paste.values_only":
+                if (!FormulaSourceRuntime.TryGet(out var valueSource, out var valueReason) || valueSource is null)
+                    return CommandResult.Refused(commandId, valueReason, RefusalCodes.CommandUnavailable);
+                plan = new FormulaAdvancedCommand(descriptor).PlanPasteValues(valueSource, snapshot);
+                break;
             case "formula.copy.down":
                 plan = command.PlanCopy(snapshot, FormulaCopyDirection.Down, previewLimit);
                 break;
             case "formula.copy.right":
                 plan = command.PlanCopy(snapshot, FormulaCopyDirection.Right, previewLimit);
+                break;
+            case "formula.spacing.rows":
+                if (!FormulaParameterDialog.TryGetSpacingInterval("Space Formulas by Rows", out var rowInterval))
+                    return CommandResult.Refused(commandId, "Formula spacing parameter entry was cancelled.", "USER_CANCELLED");
+                plan = new FormulaAdvancedCommand(descriptor).PlanSpacing(snapshot, FormulaSpacingDirection.Rows, rowInterval, previewLimit);
+                break;
+            case "formula.spacing.columns":
+                if (!FormulaParameterDialog.TryGetSpacingInterval("Space Formulas by Columns", out var columnInterval))
+                    return CommandResult.Refused(commandId, "Formula spacing parameter entry was cancelled.", "USER_CANCELLED");
+                plan = new FormulaAdvancedCommand(descriptor).PlanSpacing(snapshot, FormulaSpacingDirection.Columns, columnInterval, previewLimit);
+                break;
+            case "fill.formula_from_above":
+                plan = new FormulaAdvancedCommand(descriptor).PlanFormulaFromAbove(CaptureAbove(port, snapshot), snapshot, previewLimit);
+                break;
+            case "fill.value_from_above":
+                plan = new FormulaAdvancedCommand(descriptor).PlanValueFromAbove(CaptureAbove(port, snapshot), snapshot, previewLimit);
+                break;
+            case "fill.numeric_sequence":
+                if (!FormulaParameterDialog.TryGetNumericSequence(out var numericStart, out var numericStep, out var numericDirection))
+                    return CommandResult.Refused(commandId, "Numeric sequence parameter entry was cancelled.", "USER_CANCELLED");
+                plan = new FormulaAdvancedCommand(descriptor).PlanNumericSequence(snapshot, numericStart, numericStep, numericDirection);
+                break;
+            case "fill.date_sequence":
+                if (!FormulaParameterDialog.TryGetDateSequence(out var dateStart, out var dateStep, out var dateDirection))
+                    return CommandResult.Refused(commandId, "Date sequence parameter entry was cancelled.", "USER_CANCELLED");
+                plan = new FormulaAdvancedCommand(descriptor).PlanDateSequence(snapshot, dateStart, dateStep, dateDirection, port.CaptureDateSystem());
                 break;
             case "formula.iferror.toggle":
                 plan = command.PlanIfError(snapshot, ProfileRuntime.Current.FormulaIfErrorFallback, previewLimit);
@@ -409,6 +440,16 @@ internal static class CommandDispatcher
             confirmation = plan.CommandPlan.PlanHash;
         }
         return command.Execute(plan, port, confirmation, UndoRuntime.Store);
+    }
+
+    private static FormulaBlockSnapshot CaptureAbove(ExcelSelectionAdapter port, FormulaBlockSnapshot destination)
+    {
+        if (destination.FirstRow <= 1)
+            throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "The selected destination has no immediately adjacent row above.", "Select a destination below row 1.");
+        var address = new SelectionArea(destination.FirstRow - 1, destination.FirstColumn,
+            destination.FirstRow - 1, destination.FirstColumn + destination.Contents.ColumnCount - 1).Address;
+        return port.CaptureFormulaBlock(new SelectionContext(destination.Selection.Context.WorkbookId,
+            destination.Selection.Context.WorksheetName, address));
     }
 
     public static CommandResult ApplyDataCleaningCommand(string commandId)

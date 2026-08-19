@@ -1,66 +1,71 @@
-# WP-1B-06/08 advanced formula planner checkpoint
+# WP-1B-06/08 advanced formula and fill evidence
 
 Date: 2026-08-19
 
-## Implemented and qualified in pure/application layers
+## Implemented planners and commands
 
-- Formula row/column spacing with explicit interval, exact destination set,
-  A1 translation, overwrite detection, preview threshold, and complete samples.
-- Formula transpose position mapping across exact source/destination dimensions.
-- Transpose of relative coordinate values and absolute/relative anchor kinds by
-  axis, while preserving constants as constants and excluding formatting.
-- Formula-from-above using one exact adjacent source row and per-destination row
-  translation.
-- Numeric sequence fill with finite typed start/step and explicit row-first or
-  column-first direction.
-- Date sequence fill from a typed `DateTime`, integer day step, explicit
-  direction, and explicit Excel 1900/1904 date system. The 1900 leap-year bug is
-  modeled intentionally (`1900-02-28 = 59`, `1900-03-01 = 61`).
+- Formula row/column spacing uses an explicit interval, exact destination set,
+  parsed A1 translation, overwrite detection, and bounded preview.
+- Formula transpose maps positions and relative coordinate axes across exact
+  source/destination dimensions while preserving constants and excluding
+  formatting.
+- Formula-from-above translates each exact adjacent source-column formula into
+  every destination row.
+- Value-from-above copies each adjacent source's underlying calculated value,
+  never its formula or displayed text.
+- Formulas-only and values-only paste use one internal captured-source model,
+  refuse overlap and non-multiple shapes, and support exact-shape or explicit
+  whole-multiple repetition.
+- Numeric sequence fill uses finite invariant start/step and explicit row-major
+  or column-major direction.
+- Date sequence fill uses an exact `yyyy-MM-dd` date, integer day step, explicit
+  direction, and the active workbook's detected Excel 1900/1904 date system.
+  The 1900 leap-year bug is modeled intentionally (`1900-02-28 = 59`,
+  `1900-03-01 = 61`).
 
-## Execution status
+## Host and transaction boundary
 
-Spacing and numeric/date plans operate on the selected destination snapshot and
-can use the qualified transactional block executor. Ribbon parameter collection
-has not yet been added, so they are not registered as runnable commands.
+Spacing and numeric/date fill are registered Ribbon/Search commands. Accessible
+modal parameter dialogs collect the typed values and validate them without
+consulting neighboring cells or process locale. Cancellation occurs before a
+plan or mutation. Required previews authorize the exact plan hash only.
 
-The selection-preserving source adapter is now qualified. It resolves the exact
-active-workbook/worksheet/address plan without selecting or activating the
-source, captures its current safety/content matrix on Excel's owning thread, and
-compares it before destination mutation. A stale or unavailable source refuses
-before writing. Targeted destination write, verification, compensation, and
-undo likewise do not depend on the current selection.
+The selection-preserving source adapter resolves an exact active-workbook,
+worksheet, and address without selecting the source. It captures formula/value
+identity plus a separate typed underlying `Value2` matrix. A value-only plan
+fingerprints both; execution revalidates both immediately before any destination
+write. Formula-result error values refuse the complete plan.
 
-The Ribbon exposes `Capture Formula Source` and `Transpose Captured Source Here`.
-The in-memory source expires after 30 minutes, is cleared on add-in shutdown,
+The internal source expires after 30 minutes, is cleared on add-in shutdown,
 never uses the Windows/Office clipboard, and never persists workbook content.
-Transpose always requires confirmation of the exact source/destination plan.
-Formula-from-above uses the same qualified adapter semantics but still needs its
-final Ribbon destination/source-range composition.
+Formula and value paste report repetitions and overwrites; value paste also
+reports formula-source mappings and destination-formula replacements. All
+commands use bounded full-block write, exact verification, compensation, and
+optimistic session undo. Source cells and destination formatting are untouched.
 
-`Paste Formulas Only` is also registered against this internal source. It never
-uses the system clipboard, transfers formula cells only, preserves destination
-cells mapped from source constants, translates every supported formula by the
-exact source/destination displacement, refuses overlap and non-multiple shapes,
-and supports only explicit exact-shape or whole-multiple repetition. Repetition,
-nonblank overwrite, or threshold-sized changes require exact-plan confirmation.
+Text constants are written with Excel's input apostrophe marker so numeric/date-
+like text cannot be silently coerced. The marker is absent from `Value2` and
+subsequent typed snapshots.
 
 ## Verification
 
-- Release suite: **236 passed**, zero failed.
-- Golden tests cover spacing destination sets, transpose position/reference
-  mapping, mixed anchors, constants, exact source adjacency, two fill directions,
-  Excel date epochs/leap behavior, time-component refusal, and the pre-write
-  external-source gate.
-- Debug and Release solution builds remain zero warnings and zero errors.
-- Packed-XLL hidden Excel smoke transposes a mixed formula/value 2×2 source into
-  an off-selection destination, verifies exact formulas/constants, verifies the
-  destination selection never changes, restores all four destination cells with
-  one undo, and exits Excel naturally with no surviving process.
+- Release suite: **281 passed**, zero failed.
+- Debug solution build: zero warnings and zero errors.
+- Golden tests cover spacing sets, transpose position/reference mapping, mixed
+  anchors, constants, exact source adjacency, both fill directions, Excel date
+  epochs/leap behavior, time-component refusal, values-only repetition,
+  formula-to-value counts, calculated error refusal, and stale calculated-value
+  refusal before destination write.
+- Packed-XLL hidden Excel smoke verifies mixed transpose, calculated formula
+  results in values-only paste, exact formula and value fill from above,
+  invariant numeric sequence, workbook-date-system sequence, source
+  preservation, and exact reverse undo for each destination.
+- All previous formatting/style/data/selection/fault checks pass, the workbook
+  closes, and Excel exits naturally with no surviving process.
 
 ## Remaining WP-1B-08 work
 
-- add underlying-value capture for values-only paste/value-from-above;
-- add the approved formatting snapshot for formats-only paste;
-- add value-from-above using captured underlying calculated values;
-- expose typed parameter UI only after exact-plan confirmation behavior is wired;
-- rerun packed-XLL smoke, fault injection, performance, and soak.
+- Add the approved property-scoped formatting snapshot and transaction for
+  formats-only paste.
+- Run consolidated Phase 1B fault, locale, performance, and soak qualification
+  in WP-1B-12.
