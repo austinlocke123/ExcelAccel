@@ -8,6 +8,9 @@ Implementation note (2026-08-19): ADR-0004 now accepts a narrow A1-only
 transformation boundary. Inspect-only syntax and R1C1 mutation remain
 fail-closed. Formula-edit reference toggle remains host-disabled pending a safe
 caret/edit-text API; its pure transformation contract is implemented and tested.
+Smart Copy Down/Right, IFERROR, sign, and unit commands now use a transactional
+typed-matrix adapter with exact revalidation, verification, compensation, and
+bounded optimistic undo. See `docs/evidence/WP-1B-05_07_FORMULA_COMMANDS.md`.
 
 ## Common formula boundary
 

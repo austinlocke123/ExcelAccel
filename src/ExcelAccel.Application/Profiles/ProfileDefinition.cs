@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExcelAccel.Application.Styles;
+using ExcelAccel.Core.Formulas;
 
 namespace ExcelAccel.Application.Profiles;
 
 public sealed class ProfileDefinition
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
     public const int MaximumBindings = 512;
     public const int MaximumFavorites = 128;
     public const int MaximumLocalStyles = 64;
@@ -29,7 +30,8 @@ public sealed class ProfileDefinition
         IEnumerable<FavoriteDefinition> favorites,
         IEnumerable<StyleRecipe> localStyles,
         long immediatePreviewCellLimit,
-        bool wrapSheetNavigation)
+        bool wrapSheetNavigation,
+        string formulaIfErrorFallback = "0")
     {
         if (schemaVersion != CurrentSchemaVersion)
         {
@@ -93,6 +95,7 @@ public sealed class ProfileDefinition
 
         ImmediatePreviewCellLimit = immediatePreviewCellLimit;
         WrapSheetNavigation = wrapSheetNavigation;
+        FormulaIfErrorFallback = ValidateFormulaFallback(formulaIfErrorFallback);
     }
 
     public int SchemaVersion { get; }
@@ -112,18 +115,29 @@ public sealed class ProfileDefinition
     public IReadOnlyList<StyleRecipe> LocalStyles { get; }
     public long ImmediatePreviewCellLimit { get; }
     public bool WrapSheetNavigation { get; }
+    public string FormulaIfErrorFallback { get; }
 
     public ProfileDefinition WithFavorites(IEnumerable<FavoriteDefinition> favorites) => new ProfileDefinition(
         CurrentSchemaVersion, ProfileId, FontColorCycle, FillColorCycle, FontSizeCycle,
         HorizontalAlignmentCycle, VerticalAlignmentCycle, UnderlineCycle, RowHeightCycle,
         ColumnWidthCycle, AutoColorColors, NumberFormats, QuickKeys, favorites, LocalStyles,
-        ImmediatePreviewCellLimit, WrapSheetNavigation);
+        ImmediatePreviewCellLimit, WrapSheetNavigation, FormulaIfErrorFallback);
 
     public ProfileDefinition WithLocalStyles(IEnumerable<StyleRecipe> localStyles) => new ProfileDefinition(
         CurrentSchemaVersion, ProfileId, FontColorCycle, FillColorCycle, FontSizeCycle,
         HorizontalAlignmentCycle, VerticalAlignmentCycle, UnderlineCycle, RowHeightCycle,
         ColumnWidthCycle, AutoColorColors, NumberFormats, QuickKeys, Favorites, localStyles,
-        ImmediatePreviewCellLimit, WrapSheetNavigation);
+        ImmediatePreviewCellLimit, WrapSheetNavigation, FormulaIfErrorFallback);
+
+    private static string ValidateFormulaFallback(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 1024 || value[0] == '=')
+            throw new ArgumentException("The IFERROR fallback must be a 1-1,024 character expression without a leading '='.", nameof(value));
+        var result = new FormulaParser().Parse("=" + value, FormulaParseOptions.DefaultA1);
+        if (!result.IsSuccess || result.Document!.Disposition == FormulaCoverageDisposition.InspectOnly)
+            throw new ArgumentException("The IFERROR fallback is outside the qualified A1 formula subset.", nameof(value));
+        return value;
+    }
 
     private static IReadOnlyList<string> NormalizeColors(IEnumerable<string> values, string parameterName)
     {

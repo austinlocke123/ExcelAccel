@@ -100,7 +100,8 @@ public sealed class UndoResult
 public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchReceiptSink
 {
     public const int MaximumReceiptsPerWorkbook = 20;
-    public const int MaximumValueCharacters = 65_536;
+    public const int MaximumValueCharacters = 1_000_000;
+    public const int MaximumValueCharactersPerWorkbook = 4_000_000;
     private readonly object _sync = new object();
     private readonly Dictionary<string, LinkedList<PropertyBatchReceipt>> _byWorkbook = new Dictionary<string, LinkedList<PropertyBatchReceipt>>(StringComparer.Ordinal);
 
@@ -127,7 +128,8 @@ public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchRecei
             if (!_byWorkbook.TryGetValue(receipt.Target.WorkbookId, out var receipts))
                 _byWorkbook.Add(receipt.Target.WorkbookId, receipts = new LinkedList<PropertyBatchReceipt>());
             receipts.AddLast(receipt);
-            while (receipts.Count > MaximumReceiptsPerWorkbook) receipts.RemoveFirst();
+            while (receipts.Count > MaximumReceiptsPerWorkbook || ReceiptCharacters(receipts) > MaximumValueCharactersPerWorkbook)
+                receipts.RemoveFirst();
         }
     }
 
@@ -144,7 +146,7 @@ public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchRecei
         }
         if (now > receipt.ExpiresUtc) return new UndoResult(UndoOutcome.Expired, "The latest receipt expired and was discarded.", receipt.ReceiptId);
         foreach (var change in receipt.Changes)
-            if (!port.TryRead(receipt.Target, change.PropertyId, out var current) || !string.Equals(current, change.AfterValue, StringComparison.OrdinalIgnoreCase))
+            if (!port.TryRead(receipt.Target, change.PropertyId, out var current) || !ValuesMatch(change.PropertyId, current, change.AfterValue))
                 return new UndoResult(UndoOutcome.Stale, "Undo refused because the target or a receipt property changed after the command.", receipt.ReceiptId);
 
         var restored = new List<PropertyChange>();
@@ -156,17 +158,26 @@ public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchRecei
             // means no write occurred.
             var compensating = restored.Concat(new[] { change }).ToArray();
             var rollbackComplete = compensating.All(value => port.TryWrite(receipt.Target, value.PropertyId, value.AfterValue)) &&
-                compensating.All(value => port.TryRead(receipt.Target, value.PropertyId, out var observedAfter) && string.Equals(observedAfter, value.AfterValue, StringComparison.OrdinalIgnoreCase));
+                compensating.All(value => port.TryRead(receipt.Target, value.PropertyId, out var observedAfter) && ValuesMatch(value.PropertyId, observedAfter, value.AfterValue));
             return new UndoResult(UndoOutcome.WriteFailed, rollbackComplete
                 ? "Undo could not write the complete before-state; already restored properties were returned to the post-command state."
                 : "Undo failed and could not fully return already restored properties to the post-command state; inspect the target.", receipt.ReceiptId);
         }
         foreach (var change in receipt.Changes)
-            if (!port.TryRead(receipt.Target, change.PropertyId, out var observed) || !string.Equals(observed, change.BeforeValue, StringComparison.OrdinalIgnoreCase))
+            if (!port.TryRead(receipt.Target, change.PropertyId, out var observed) || !ValuesMatch(change.PropertyId, observed, change.BeforeValue))
                 return new UndoResult(UndoOutcome.VerificationFailed, "Undo postcondition verification failed for one or more receipt properties; inspect the target.", receipt.ReceiptId);
         return new UndoResult(UndoOutcome.Success, $"Restored {receipt.Changes.Count} unchanged ExcelAccel propert{(receipt.Changes.Count == 1 ? "y" : "ies")}.", receipt.ReceiptId);
     }
 
     public void ClearWorkbook(string workbookId) { lock (_sync) _byWorkbook.Remove(workbookId); }
     public void ClearAll() { lock (_sync) _byWorkbook.Clear(); }
+
+    private static int ReceiptCharacters(IEnumerable<PropertyBatchReceipt> receipts) =>
+        receipts.Sum(receipt => receipt.Changes.Sum(change => checked(change.BeforeValue.Length + change.AfterValue.Length)));
+
+    private static bool ValuesMatch(string propertyId, string first, string second) =>
+        string.Equals(first, second,
+            string.Equals(propertyId, "cell_contents_v1", StringComparison.Ordinal)
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase);
 }
