@@ -11,4 +11,8 @@ public static class RefusalCodes
     public const string ResourceLimit = "RESOURCE_LIMIT";
     public const string ExcelCapabilityMissing = "EXCEL_CAPABILITY_MISSING";
     public const string CommandQuarantined = "COMMAND_QUARANTINED";
+    public const string ContractMismatch = "CONTRACT_MISMATCH";
+    public const string PreviewRequired = "PREVIEW_REQUIRED";
+    public const string EditMode = "EDIT_MODE";
+    public const string CommandUnavailable = "COMMAND_UNAVAILABLE";
 }

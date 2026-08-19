@@ -35,6 +35,12 @@ public sealed class InspectSelectionCommand
             throw new ArgumentNullException(nameof(port));
         }
 
+        var authorization = CommandExecutionGate.Authorize(BuiltInCommandRegistry.GetRequired(Id), plan);
+        if (!authorization.Allowed)
+        {
+            return CommandResult.Refused(plan, authorization.Message, authorization.RefusalCode);
+        }
+
         var current = port.CaptureSelection();
         if (!plan.Context.Equals(current.Context))
         {

@@ -14,7 +14,12 @@ public sealed class CommandDescriptor
         CommandImpact impact,
         IEnumerable<string> changedProperties,
         bool hasFixedParameters,
-        string keyboardRoute)
+        string keyboardRoute,
+        string capabilityId = "CAP-CMD-001",
+        CommandContextRequirement contextRequirement = CommandContextRequirement.Selection,
+        PreviewPolicy previewPolicy = PreviewPolicy.None,
+        UndoPolicy undoPolicy = UndoPolicy.None,
+        IEnumerable<string>? acceptanceIds = null)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -35,9 +40,29 @@ public sealed class CommandDescriptor
         ContractVersion = contractVersion;
         DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
         Impact = impact;
-        ChangedProperties = (changedProperties ?? throw new ArgumentNullException(nameof(changedProperties))).ToArray();
+        ChangedProperties = (changedProperties ?? throw new ArgumentNullException(nameof(changedProperties)))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
         HasFixedParameters = hasFixedParameters;
         KeyboardRoute = keyboardRoute;
+        CapabilityId = string.IsNullOrWhiteSpace(capabilityId)
+            ? throw new ArgumentException("A capability ID is required.", nameof(capabilityId))
+            : capabilityId;
+        ContextRequirement = contextRequirement;
+        PreviewPolicy = previewPolicy;
+        UndoPolicy = undoPolicy;
+        AcceptanceIds = (acceptanceIds ?? Array.Empty<string>())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+
+        if (Impact == CommandImpact.ReadOnly && ChangedProperties.Count != 0)
+        {
+            throw new ArgumentException("A read-only command cannot declare changed properties.", nameof(changedProperties));
+        }
     }
 
     public string Id { get; }
@@ -53,4 +78,14 @@ public sealed class CommandDescriptor
     public bool HasFixedParameters { get; }
 
     public string KeyboardRoute { get; }
+
+    public string CapabilityId { get; }
+
+    public CommandContextRequirement ContextRequirement { get; }
+
+    public PreviewPolicy PreviewPolicy { get; }
+
+    public UndoPolicy UndoPolicy { get; }
+
+    public IReadOnlyList<string> AcceptanceIds { get; }
 }

@@ -14,7 +14,12 @@ public static class BuiltInCommandRegistry
             CommandImpact.ReadOnly,
             new string[0],
             true,
-            "Ribbon KeyTips: Alt, X, A, I"),
+            "Ribbon KeyTips: Alt, X, A, I",
+            "CAP-CMD-001",
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
+            PreviewPolicy.None,
+            UndoPolicy.None,
+            new[] { "AC-CMD-001", "AC-CMD-002" }),
         new CommandDescriptor(
             ApplyCurrencyFormatCommand.Id,
             1,
@@ -22,8 +27,31 @@ public static class BuiltInCommandRegistry
             CommandImpact.Low,
             new[] { ApplyCurrencyFormatCommand.ChangedProperty },
             true,
-            "Ribbon KeyTips: Alt, X, A, C"),
+            "Ribbon KeyTips: Alt, X, A, C",
+            "CAP-FMT-001",
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
+            PreviewPolicy.None,
+            UndoPolicy.SessionPropertyReceipt,
+            new[] { "AC-CMD-001", "AC-FMT-002", "AC-REL-005" }),
     };
 
     public static IReadOnlyList<CommandDescriptor> All => Commands;
+
+    public static CommandDescriptor GetRequired(string commandId)
+    {
+        if (string.IsNullOrWhiteSpace(commandId))
+        {
+            throw new System.ArgumentException("A command ID is required.", nameof(commandId));
+        }
+
+        foreach (var command in Commands)
+        {
+            if (string.Equals(command.Id, commandId, System.StringComparison.Ordinal))
+            {
+                return command;
+            }
+        }
+
+        throw new System.Collections.Generic.KeyNotFoundException($"Command '{commandId}' is not registered.");
+    }
 }

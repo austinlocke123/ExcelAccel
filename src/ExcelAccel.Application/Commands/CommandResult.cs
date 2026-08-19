@@ -4,31 +4,73 @@ namespace ExcelAccel.Application.Commands;
 
 public sealed class CommandResult
 {
-    private CommandResult(bool succeeded, string commandId, string message, long affectedCellCount, string refusalCode)
+    private CommandResult(
+        CommandResultStatus status,
+        string commandId,
+        string message,
+        long changedCount,
+        long skippedCount,
+        string refusalCode,
+        string diagnosticId,
+        string receiptId)
     {
-        Succeeded = succeeded;
+        if (changedCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(changedCount));
+        }
+
+        if (skippedCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(skippedCount));
+        }
+
+        Status = status;
         CommandId = commandId;
         Message = message;
-        AffectedCellCount = affectedCellCount;
+        ChangedCount = changedCount;
+        SkippedCount = skippedCount;
         RefusalCode = refusalCode;
+        DiagnosticId = diagnosticId;
+        ReceiptId = receiptId;
     }
 
-    public bool Succeeded { get; }
+    public bool Succeeded => Status == CommandResultStatus.Success;
+
+    public CommandResultStatus Status { get; }
 
     public string CommandId { get; }
 
     public string Message { get; }
 
-    public long AffectedCellCount { get; }
+    public long AffectedCellCount => ChangedCount;
+
+    public long ChangedCount { get; }
+
+    public long SkippedCount { get; }
 
     public string RefusalCode { get; }
 
+    public string DiagnosticId { get; }
+
+    public string ReceiptId { get; }
+
     public static CommandResult Success(CommandPlan plan, string message) =>
-        new CommandResult(true, plan.CommandId, message, plan.AffectedCellCount, string.Empty);
+        new CommandResult(CommandResultStatus.Success, plan.CommandId, message, plan.AffectedCellCount, 0, string.Empty, string.Empty, string.Empty);
 
     public static CommandResult Refused(CommandPlan plan, string reason, string refusalCode = RefusalCodes.SelectionUnsupported) =>
-        new CommandResult(false, plan.CommandId, reason, 0, refusalCode);
+        new CommandResult(CommandResultStatus.Refused, plan.CommandId, reason, 0, 0, refusalCode, string.Empty, string.Empty);
 
     public static CommandResult Refused(string commandId, string reason, string refusalCode = RefusalCodes.SelectionUnsupported) =>
-        new CommandResult(false, commandId ?? throw new ArgumentNullException(nameof(commandId)), reason, 0, refusalCode);
+        new CommandResult(CommandResultStatus.Refused, commandId ?? throw new ArgumentNullException(nameof(commandId)), reason, 0, 0, refusalCode, string.Empty, string.Empty);
+
+    public static CommandResult Failed(string commandId, string reason, string diagnosticId) =>
+        new CommandResult(
+            CommandResultStatus.Failed,
+            commandId ?? throw new ArgumentNullException(nameof(commandId)),
+            reason ?? string.Empty,
+            0,
+            0,
+            string.Empty,
+            diagnosticId ?? string.Empty,
+            string.Empty);
 }

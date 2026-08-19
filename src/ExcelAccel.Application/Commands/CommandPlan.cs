@@ -14,7 +14,10 @@ public sealed class CommandPlan
         IEnumerable<string> changedProperties,
         long affectedCellCount,
         string summary,
-        string preconditionFingerprint = "")
+        string preconditionFingerprint = "",
+        int contractVersion = 1,
+        bool requiresPreview = false,
+        IEnumerable<KeyValuePair<string, string>>? arguments = null)
     {
         if (string.IsNullOrWhiteSpace(commandId))
         {
@@ -26,16 +29,43 @@ public sealed class CommandPlan
             throw new ArgumentOutOfRangeException(nameof(affectedCellCount));
         }
 
+        if (contractVersion < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(contractVersion));
+        }
+
         CommandId = commandId;
         Impact = impact;
         Context = context ?? throw new ArgumentNullException(nameof(context));
         ChangedProperties = (changedProperties ?? throw new ArgumentNullException(nameof(changedProperties)))
             .Where(property => !string.IsNullOrWhiteSpace(property))
             .Distinct(StringComparer.Ordinal)
+            .OrderBy(property => property, StringComparer.Ordinal)
             .ToArray();
         AffectedCellCount = affectedCellCount;
         Summary = summary ?? string.Empty;
         PreconditionFingerprint = preconditionFingerprint ?? throw new ArgumentNullException(nameof(preconditionFingerprint));
+        ContractVersion = contractVersion;
+        RequiresPreview = requiresPreview;
+        var normalizedArguments = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        if (arguments is not null)
+        {
+            foreach (var argument in arguments)
+            {
+                if (string.IsNullOrWhiteSpace(argument.Key))
+                {
+                    throw new ArgumentException("Argument keys cannot be empty.", nameof(arguments));
+                }
+
+                if (normalizedArguments.ContainsKey(argument.Key))
+                {
+                    throw new ArgumentException($"Duplicate argument key '{argument.Key}'.", nameof(arguments));
+                }
+
+                normalizedArguments.Add(argument.Key, argument.Value ?? string.Empty);
+            }
+        }
+        Arguments = normalizedArguments;
 
         if (Impact == CommandImpact.ReadOnly && ChangedProperties.Count != 0)
         {
@@ -61,4 +91,14 @@ public sealed class CommandPlan
     public string Summary { get; }
 
     public string PreconditionFingerprint { get; }
+
+    public int ContractVersion { get; }
+
+    public bool RequiresPreview { get; }
+
+    public IReadOnlyDictionary<string, string> Arguments { get; }
+
+    public string CanonicalJson => CanonicalPlanSerializer.Serialize(this);
+
+    public string PlanHash => CanonicalPlanSerializer.Hash(this);
 }
