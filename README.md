@@ -23,6 +23,8 @@ one read-only command, and one property-scoped formatting command.
 12. [Excel adapter and state-guard evidence](docs/evidence/WP-P0-04_ADAPTER_STATE_GUARD.md)
 13. [Formula strategy spike evidence](docs/evidence/WP-P0-05_FORMULA_STRATEGY.md)
 14. [AutoSave and coauthoring spike evidence](docs/evidence/WP-P0-06_AUTOSAVE_COAUTHORING.md)
+15. [Performance baseline protocol](docs/performance/BASELINE_PROTOCOL.md)
+16. [WP-P0-07 performance evidence](docs/evidence/WP-P0-07_PERFORMANCE_BASELINE.md)
 
 ## Build and test
 
@@ -37,6 +39,7 @@ dotnet test ExcelAccel.sln --configuration Debug --no-build --no-restore
 ./scripts/Test-ExcelAddIn.ps1
 ./scripts/Test-ExcelFormulaOracle.ps1
 ./scripts/Test-ExcelCollaborationSignals.ps1
+./scripts/Test-ExcelPerformance.ps1 -Profile Quick
 ```
 
 The packed debug add-in is produced at
@@ -51,6 +54,9 @@ script does not register a formula command.
 The collaboration-signal script performs read-only AutoSave and legacy-sharing
 probes in a temporary workbook, demonstrates intervening-property detection,
 and requires clean process exit.
+The performance script uses only generated temporary workbooks and writes
+machine-specific JSON under ignored `.tools/performance/`; `Quick` validates the
+harness, while `Qualification` is required before budgets can be proposed.
 
 ## Source material
 
@@ -62,7 +68,7 @@ inputs to the Markdown specification, not the normative implementation source.
 
 ## Current boundary
 
-Only Phase 0 vertical-slice, reliability, formula-strategy, and collaboration-
-safety prototype work is implemented. Feature families remain governed by
-their command contracts and phase gates; successful spikes do not mark proposed
-ADRs or the broader acceptance matrix complete.
+Only Phase 0 vertical-slice, reliability, formula-strategy, collaboration-
+safety, and performance-baseline prototype work is implemented. Feature
+families remain governed by their command contracts and phase gates; successful
+spikes do not mark proposed ADRs or the broader acceptance matrix complete.

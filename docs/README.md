@@ -40,6 +40,11 @@ Prototype policy artifacts under [`collaboration/`](collaboration/) have the
 same status: they document conservative evidence for ADR-0005 and do not enable
 otherwise-gated mutations.
 
+Performance artifacts under [`performance/`](performance/) and the versioned
+manifest under [`../benchmarks/`](../benchmarks/) define WP-P0-07 measurement
+mechanics. Quick-profile results are exploratory until the reference machine,
+qualification distributions, and budgets receive explicit review.
+
 The files under [`../PRD/`](../PRD/) are retained source material and review
 history. They are non-normative after this specification is approved.
 

@@ -72,7 +72,9 @@ documents.
   and hybrid recommendation are WP-P0-05 evidence, not an accepted ADR.
 - AutoSave/coauthoring impact-tier behavior has a tested proposed matrix, but
   cloud/remote-event build evidence and ADR-0005 acceptance remain open.
-- Reference machine, workbook corpus, and frozen performance budgets are open.
+- WP-P0-07 now has an initial synthetic corpus, distribution math, and isolated
+  real-Excel Quick harness. Reference-machine acceptance, qualification
+  distributions, UI-heartbeat evidence, and frozen budgets remain open.
 - Installer/update technology and signing process are open.
 
 These gaps are deliberate stop signs, not invitations for implementation agents

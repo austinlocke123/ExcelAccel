@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "fixture_id": "excelaccel-performance-v1",
+  "profiles": {
+    "quick": {
+      "startup_samples": 3,
+      "warmup_iterations": 1,
+      "measured_iterations": 5
+    },
+    "qualification": {
+      "startup_samples": 15,
+      "warmup_iterations": 5,
+      "measured_iterations": 30
+    }
+  },
+  "workloads": [
+    {
+      "id": "block_read_1000",
+      "operation": "block_read",
+      "rows": 100,
+      "columns": 10,
+      "sheets": 1,
+      "governing_requirement": "PERF-002",
+      "provisional_p95_ms": 100
+    },
+    {
+      "id": "property_write_10000",
+      "operation": "property_write",
+      "rows": 1000,
+      "columns": 10,
+      "sheets": 1,
+      "governing_requirement": "PERF-003",
+      "provisional_p95_ms": 500
+    },
+    {
+      "id": "block_read_100000",
+      "operation": "block_read",
+      "rows": 1000,
+      "columns": 100,
+      "sheets": 1,
+      "governing_requirement": "PERF-004",
+      "provisional_p95_ms": 3000
+    },
+    {
+      "id": "workbook_read_250000",
+      "operation": "workbook_read",
+      "rows": 125,
+      "columns": 100,
+      "sheets": 20,
+      "governing_requirement": "PERF-005",
+      "provisional_p95_ms": 8000
+    }
+  ]
+}

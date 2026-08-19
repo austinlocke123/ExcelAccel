@@ -15,7 +15,8 @@ their implementation gates.
 | `agent/phase-0-excel-addin` | `6f9ad45` | Phase 0 Excel add-in vertical slice | Draft PR #1 |
 | `agent/phase-0-adapter-hardening` | `a4949d2` | Excel adapter and state safety | Draft PR #2, stacked on PR #1 |
 | `agent/phase-0-formula-strategy` | `ced68b1` | Formula strategy spike | Draft PR #3, stacked on PR #2 |
-| `agent/phase-0-autosave-coauthoring` | this status snapshot | WP-P0-06 collaboration safety | Approved for publication |
+| `agent/phase-0-autosave-coauthoring` | `a85143b` | WP-P0-06 collaboration safety | Draft PR #4, stacked on PR #3 |
+| `agent/phase-0-performance-baseline` | local work in progress | WP-P0-07 performance baseline | Started from `a85143b`; not yet published |
 
 ## Completed engineering work
 
@@ -56,22 +57,22 @@ collaboration policy in [`collaboration/POLICY_MATRIX.md`](collaboration/POLICY_
 - Feature-family implementation must not begin merely because a spike passed;
   the gates in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) still apply.
 
-## Recommended restart point
+## Current work and restart point
 
-Start **WP-P0-07: performance baseline** on a new branch stacked from the
-published WP-P0-06 commit.
+**WP-P0-07: performance baseline** is in progress on
+`agent/phase-0-performance-baseline`, stacked from the published WP-P0-06
+commit. Its initial slice contains deterministic distribution/regression math,
+a versioned synthetic corpus, a documented cold/warm protocol, and an isolated
+real-Excel harness. The Quick profile has produced exploratory evidence, but no
+reference machine or budget is accepted or frozen.
 
-The first slice should:
+On restart, continue by:
 
-1. inventory PERF-001 through PERF-010 and AC-P0-006/AC-PERF-001;
-2. define the reference-machine record and versioned benchmark-workbook corpus;
-3. implement a repeatable cold/warm measurement harness for startup, block
-   snapshot, property write, cancellation, UI responsiveness, and variance;
-4. keep benchmarks outside production command paths and prevent generated
-   workbooks or machine-specific output from being committed accidentally;
-5. run Debug/Release unit validation plus real-Excel cleanup and lock checks;
-6. publish evidence and proposed Phase 1 budgets without silently changing the
-   normative performance requirements.
+1. adding an independent UI-heartbeat/progress/cancellation probe;
+2. running the `Qualification` profile in at least three clean sessions;
+3. reviewing whether this machine becomes the approved reference machine;
+4. proposing Phase 1 budgets from measured distributions without silently
+   changing the normative performance requirements.
 
 ## Local-worktree caution
 
