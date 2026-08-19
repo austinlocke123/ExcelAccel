@@ -68,6 +68,12 @@ public static class ExcelAccelNativeMethods
     $selectionFormula1 = $null
     $selectionFormula2 = $null
     $selectionText = $null
+    $typedRange = $null
+    $typedNumber = $null
+    $typedDate = $null
+    $typedExistingNumber = $null
+    $typedInvalid = $null
+    $typedFormula = $null
     $quitReturned = $false
 
     try {
@@ -320,6 +326,50 @@ public static class ExcelAccelNativeMethods
             throw 'Numeric-hardcode selection was not exact or changed workbook content.'
         }
 
+        $typedRange = $worksheet.Range('A50:E50')
+        $typedNumber = $worksheet.Range('A50')
+        $typedDate = $worksheet.Range('B50')
+        $typedExistingNumber = $worksheet.Range('C50')
+        $typedInvalid = $worksheet.Range('D50')
+        $typedFormula = $worksheet.Range('E50')
+        $typedNumber.NumberFormat = '@'
+        $typedDate.NumberFormat = '@'
+        $typedInvalid.NumberFormat = '@'
+        $typedNumber.Value2 = '$1,234.50'
+        $typedDate.Value2 = '2026/08/19'
+        $typedExistingNumber.Value2 = 12.5
+        $typedInvalid.Value2 = '12,34'
+        $typedFormula.Formula = '=1+1'
+        [void]$typedRange.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.TypedDataConversions')
+        $typedExact =
+            ([string]$typedNumber.Value2 -eq '1234.5') -and
+            ([string]$typedDate.Value2 -eq '2026-08-19') -and
+            ([string]$typedExistingNumber.Value2 -eq '12.5') -and
+            ([string]$typedInvalid.Value2 -eq '12,34') -and
+            ([string]$typedFormula.Formula -eq '=1+1') -and
+            ([string]$typedNumber.Value2.GetType().FullName -eq 'System.String') -and
+            ([string]$typedExistingNumber.Value2.GetType().FullName -eq 'System.String')
+        [Console]::WriteLine("typed_conversions_exact=$typedExact")
+        [Console]::Out.Flush()
+        if (-not $typedExact) {
+            throw 'Typed number/date conversions were not exact or changed a formula/nonmatch.'
+        }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $typedUndoExact =
+            ([string]$typedNumber.Value2 -eq '$1,234.50') -and
+            ([string]$typedDate.Value2 -eq '2026/08/19') -and
+            ([double]$typedExistingNumber.Value2 -eq 12.5) -and
+            ([string]$typedInvalid.Value2 -eq '12,34') -and
+            ([string]$typedFormula.Formula -eq '=1+1')
+        [Console]::WriteLine("typed_conversions_undo_exact=$typedUndoExact")
+        [Console]::Out.Flush()
+        if (-not $typedUndoExact) {
+            throw 'Typed conversion receipts did not restore the exact prior matrix.'
+        }
+
         $navigationCell = $worksheet.Range('D5')
         [void]$navigationCell.Select()
         [void]$excel.Run('ExcelAccel.Smoke.NavigateA1')
@@ -458,6 +508,12 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $selectionNumber2
         Release-ComObject $selectionNumber1
         Release-ComObject $selectionRange
+        Release-ComObject $typedFormula
+        Release-ComObject $typedInvalid
+        Release-ComObject $typedExistingNumber
+        Release-ComObject $typedDate
+        Release-ComObject $typedNumber
+        Release-ComObject $typedRange
         Release-ComObject $multiArea
         Release-ComObject $secondCell
         Release-ComObject $navigationCell
@@ -551,6 +607,8 @@ try {
         'navigation_address=A1',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
+        'typed_conversions_exact=True',
+        'typed_conversions_undo_exact=True',
         'state_restored_after_fault=True',
         'stale_property_refused=True',
         'protected_target_refused=True',

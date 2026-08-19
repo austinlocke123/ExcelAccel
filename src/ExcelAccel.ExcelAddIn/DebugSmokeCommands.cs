@@ -225,5 +225,31 @@ public static class DebugSmokeCommands
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.selection.numeric_hardcodes", exception); throw; }
     }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.TypedDataConversions", Description = "Debug-only typed conversion hook.")]
+    public static void TypedDataConversions()
+    {
+        try
+        {
+            var port = new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            ExecuteDataPlan("clean.convert.text_to_number", command =>
+                command.PlanTextToNumber(port.CaptureFormulaBlock(), TextNumberConversionOptions.InvariantFinancial), port);
+            ExecuteDataPlan("clean.convert.date_normalize", command =>
+                command.PlanNormalizeDateText(port.CaptureFormulaBlock(), new[] { "yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd" }, "yyyy-MM-dd"), port);
+            ExecuteDataPlan("clean.convert.number_to_text", command =>
+                command.PlanNumberToText(port.CaptureFormulaBlock(), "0.################"), port);
+            DiagnosticLog.Info("smoke.data.typed_conversions", "success");
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.data.typed_conversions", exception); throw; }
+    }
+
+    private static void ExecuteDataPlan(string commandId, Func<DataCleaningCommand, FormulaBlockPlan> planFactory,
+        IFormulaBlockPort port)
+    {
+        var descriptor = DataCleaningCommandCatalog.GetRequired(commandId);
+        var plan = planFactory(new DataCleaningCommand(descriptor));
+        var result = new FormulaBlockCommand(descriptor).Execute(plan, port, plan.CommandPlan.PlanHash, UndoRuntime.Store);
+        if (!result.Succeeded) throw new InvalidOperationException(commandId + ": " + result.Message);
+    }
 }
 #endif

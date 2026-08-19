@@ -6,6 +6,7 @@ using System.Text;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formulas;
 using ExcelAccel.Core.Commands;
+using ExcelAccel.Core.Formulas;
 
 namespace ExcelAccel.Application.DataCleaning;
 
@@ -19,6 +20,33 @@ public enum DisplayValueConversion
     NaTextToBlank,
     NmTextToBlank,
     DashTextToBlank,
+}
+
+public sealed class TextNumberConversionOptions
+{
+    public TextNumberConversionOptions(char decimalSeparator, char thousandsSeparator,
+        bool allowLeadingSign, bool allowParentheses, IEnumerable<string> currencySymbols, bool allowPercent)
+    {
+        if (decimalSeparator == thousandsSeparator) throw new ArgumentException("Decimal and thousands separators must differ.");
+        if (char.IsDigit(decimalSeparator) || char.IsDigit(thousandsSeparator)) throw new ArgumentException("Numeric separators cannot be digits.");
+        DecimalSeparator = decimalSeparator;
+        ThousandsSeparator = thousandsSeparator;
+        AllowLeadingSign = allowLeadingSign;
+        AllowParentheses = allowParentheses;
+        CurrencySymbols = Array.AsReadOnly((currencySymbols ?? throw new ArgumentNullException(nameof(currencySymbols)))
+            .Where(value => !string.IsNullOrEmpty(value)).Distinct(StringComparer.Ordinal).OrderByDescending(value => value.Length).ToArray());
+        AllowPercent = allowPercent;
+    }
+
+    public char DecimalSeparator { get; }
+    public char ThousandsSeparator { get; }
+    public bool AllowLeadingSign { get; }
+    public bool AllowParentheses { get; }
+    public IReadOnlyList<string> CurrencySymbols { get; }
+    public bool AllowPercent { get; }
+
+    public static TextNumberConversionOptions InvariantFinancial { get; } =
+        new TextNumberConversionOptions('.', ',', true, true, new[] { "$" }, true);
 }
 
 public sealed class DataCleaningCommand
@@ -55,6 +83,60 @@ public sealed class DataCleaningCommand
         return Build(snapshot, after, changed, skipped, samples, requiresPreview: true,
             $"{DisplayName(conversion)}: {changed:N0} matching constants changed; {skipped:N0} formulas/nonmatches skipped.",
             new[] { Pair("conversion", conversion.ToString().ToLowerInvariant()) });
+    }
+
+    public FormulaBlockPlan PlanTextToNumber(FormulaBlockSnapshot snapshot, TextNumberConversionOptions options)
+    {
+        if (options is null) throw new ArgumentNullException(nameof(options));
+        return PlanTyped(snapshot, "Invariant text to number", current =>
+        {
+            if (current.Kind != FormulaCellKind.Text || !TryParseCompleteNumber(current.InvariantValue, options, out var number)) return null;
+            return FormulaCellValue.Number(number);
+        }, new[]
+        {
+            Pair("decimal_separator", options.DecimalSeparator.ToString()),
+            Pair("thousands_separator", options.ThousandsSeparator.ToString()),
+            Pair("leading_sign", options.AllowLeadingSign ? "allow" : "refuse"),
+            Pair("parentheses", options.AllowParentheses ? "allow_negative" : "refuse"),
+            Pair("currency_symbols", string.Join("|", options.CurrencySymbols)),
+            Pair("percent", options.AllowPercent ? "allow_divide_100" : "refuse"),
+        });
+    }
+
+    public FormulaBlockPlan PlanNumberToText(FormulaBlockSnapshot snapshot, string invariantFormat)
+    {
+        if (string.IsNullOrWhiteSpace(invariantFormat)) throw new ArgumentException("An explicit invariant numeric format is required.", nameof(invariantFormat));
+        return PlanTyped(snapshot, "Number to invariant text", current =>
+        {
+            if (current.Kind != FormulaCellKind.Number) return null;
+            string output;
+            try { output = current.AsNumber().ToString(invariantFormat, CultureInfo.InvariantCulture); }
+            catch (FormatException exception) { throw Refuse(FormulaTransformRefusalCodes.InvalidTransformArgument, "The explicit number-to-text format is invalid: " + exception.Message); }
+            return FormulaCellValue.Text(output);
+        }, new[] { Pair("invariant_format", invariantFormat) });
+    }
+
+    public FormulaBlockPlan PlanNormalizeDateText(FormulaBlockSnapshot snapshot, IEnumerable<string> inputPatterns, string outputPattern)
+    {
+        var patterns = (inputPatterns ?? throw new ArgumentNullException(nameof(inputPatterns))).ToArray();
+        if (patterns.Length == 0 || patterns.Any(string.IsNullOrWhiteSpace)) throw new ArgumentException("At least one explicit date input pattern is required.", nameof(inputPatterns));
+        if (string.IsNullOrWhiteSpace(outputPattern)) throw new ArgumentException("An explicit date output pattern is required.", nameof(outputPattern));
+        return PlanTyped(snapshot, "Normalize explicit date text", current =>
+        {
+            if (current.Kind != FormulaCellKind.Text) return null;
+            if (!DateTime.TryParseExact(current.InvariantValue, patterns, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var date)) return null;
+            string output;
+            try { output = date.ToString(outputPattern, CultureInfo.InvariantCulture); }
+            catch (FormatException exception) { throw Refuse(FormulaTransformRefusalCodes.InvalidTransformArgument, "The explicit date output pattern is invalid: " + exception.Message); }
+            return FormulaCellValue.Text(output);
+        }, new[]
+        {
+            Pair("input_patterns", string.Join("|", patterns)),
+            Pair("output_pattern", outputPattern),
+            Pair("calendar", "gregorian"),
+            Pair("timezone", "none_date_only"),
+        });
     }
 
     public static string TrimOuter(string value)
@@ -106,6 +188,60 @@ public sealed class DataCleaningCommand
         value == '\u00a0' || value == '\u1680' || (value >= '\u2000' && value <= '\u200a') ||
         value == '\u2028' || value == '\u2029' || value == '\u202f' || value == '\u205f' || value == '\u3000';
 
+    public static bool TryParseCompleteNumber(string source, TextNumberConversionOptions options, out double value)
+    {
+        value = 0;
+        if (source is null) throw new ArgumentNullException(nameof(source));
+        if (options is null) throw new ArgumentNullException(nameof(options));
+        if (source.Length == 0 || source.Any(IsApprovedWhitespace)) return false;
+        var text = source;
+        var negative = false;
+        if (text.Length >= 2 && text[0] == '(' && text[text.Length - 1] == ')')
+        {
+            if (!options.AllowParentheses) return false;
+            negative = true;
+            text = text.Substring(1, text.Length - 2);
+        }
+        else if (text.Length > 0 && (text[0] == '+' || text[0] == '-'))
+        {
+            if (!options.AllowLeadingSign) return false;
+            negative = text[0] == '-';
+            text = text.Substring(1);
+        }
+        foreach (var symbol in options.CurrencySymbols)
+        {
+            if (!text.StartsWith(symbol, StringComparison.Ordinal)) continue;
+            text = text.Substring(symbol.Length);
+            break;
+        }
+        var percent = text.EndsWith("%", StringComparison.Ordinal);
+        if (percent)
+        {
+            if (!options.AllowPercent) return false;
+            text = text.Substring(0, text.Length - 1);
+        }
+        if (text.Length == 0 || text.IndexOf('+') >= 0 || text.IndexOf('-') >= 0 || text.IndexOf('(') >= 0 || text.IndexOf(')') >= 0 || text.IndexOf('%') >= 0)
+            return false;
+        var decimalIndex = text.IndexOf(options.DecimalSeparator);
+        if (decimalIndex != text.LastIndexOf(options.DecimalSeparator)) return false;
+        var integerPart = decimalIndex < 0 ? text : text.Substring(0, decimalIndex);
+        var fractionalPart = decimalIndex < 0 ? string.Empty : text.Substring(decimalIndex + 1);
+        if (integerPart.Length == 0 || (decimalIndex >= 0 && fractionalPart.Length == 0) ||
+            fractionalPart.Any(character => character < '0' || character > '9')) return false;
+        var groups = integerPart.Split(options.ThousandsSeparator);
+        if (groups.Any(group => group.Length == 0 || group.Any(character => character < '0' || character > '9'))) return false;
+        if (groups.Length > 1)
+        {
+            if (groups[0].Length < 1 || groups[0].Length > 3 || groups.Skip(1).Any(group => group.Length != 3)) return false;
+        }
+        var canonical = string.Concat(groups) + (decimalIndex < 0 ? string.Empty : "." + fractionalPart);
+        if (!double.TryParse(canonical, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var parsed) ||
+            double.IsNaN(parsed) || double.IsInfinity(parsed)) return false;
+        value = negative ? -parsed : parsed;
+        if (percent) value /= 100d;
+        return !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
     private FormulaBlockPlan PlanText(FormulaBlockSnapshot snapshot, string label, Func<string, string> transform)
     {
         RequireSafe(snapshot);
@@ -128,6 +264,27 @@ public sealed class DataCleaningCommand
         return Build(snapshot, after, changed, skipped, samples, mixed || changed > FormulaBlockCommand.DefaultImmediatePreviewLimit,
             $"{label}: {changed:N0} text constants changed; {skipped:N0} formulas/nontext/already-normalized cells skipped.",
             new[] { Pair("source_policy", "text_constants_only") });
+    }
+
+    private FormulaBlockPlan PlanTyped(FormulaBlockSnapshot snapshot, string label,
+        Func<FormulaCellValue, FormulaCellValue?> transform, IEnumerable<KeyValuePair<string, string>> arguments)
+    {
+        RequireSafe(snapshot);
+        var changed = 0;
+        var skipped = 0;
+        var samples = new List<string>();
+        var after = snapshot.Contents.Map((row, column, current) =>
+        {
+            if (current.IsFormula) { skipped++; return current; }
+            var proposed = transform(current);
+            if (proposed is null || proposed.Equals(current)) { skipped++; return current; }
+            changed++;
+            AddSample(samples, row, column, current, proposed);
+            return proposed;
+        });
+        return Build(snapshot, after, changed, skipped, samples, requiresPreview: true,
+            $"{label}: {changed:N0} exact matches changed; {skipped:N0} formulas/nonmatches/already-normalized cells skipped.",
+            arguments);
     }
 
     private FormulaBlockPlan Build(FormulaBlockSnapshot snapshot, FormulaCellBlock after, int changed, int skipped,

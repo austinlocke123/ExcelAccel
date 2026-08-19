@@ -564,7 +564,10 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         {
             case FormulaCellKind.Blank: return null;
             case FormulaCellKind.Formula: return value.InvariantValue;
-            case FormulaCellKind.Text: return value.InvariantValue.StartsWith("=", StringComparison.Ordinal) ? "'" + value.InvariantValue : value.InvariantValue;
+            case FormulaCellKind.Text:
+                // Formula-array assignment otherwise lets Excel reinterpret numeric/date-like text.
+                // A leading apostrophe is an input marker only; Value2 and later capture retain the exact text.
+                return "'" + value.InvariantValue;
             case FormulaCellKind.Number: return value.AsNumber();
             case FormulaCellKind.Boolean: return value.InvariantValue == "true";
             default: throw new InvalidOperationException("Unsupported formula cell kind.");

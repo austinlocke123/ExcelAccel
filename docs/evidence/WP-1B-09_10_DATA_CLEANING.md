@@ -67,9 +67,33 @@ matrix. Formatting is not changed.
 - Intermediate worksheet-collection RCWs in off-selection lookup are now owned
   and released explicitly; the borrowed root Application RCW remains untouched.
 
-## Remaining WP-1B-09 work
+## Typed-conversion completion checkpoint
 
-- explicit full-string text-to-number grammar;
-- number-to-text formatting policy;
-- explicit-pattern date normalization and number-format policy;
-- locale fixture matrix and typed parameter UI.
+The remaining WP-1B-09 slice now registers three fixed, mandatory-preview
+commands:
+
+- `clean.convert.text_to_number` uses a complete-string invariant financial
+  grammar: decimal `.`, exact `,` grouping, optional sign or negative
+  parentheses, optional leading `$`, optional trailing percent, and no
+  whitespace/partial parsing;
+- `clean.convert.number_to_text` uses the declared invariant
+  `0.################` format and forces output to an Excel text constant; and
+- `clean.convert.date_normalize` accepts only `yyyy-MM-dd`, `yyyy/MM/dd`, or
+  `yyyyMMdd` Gregorian date-only text and outputs canonical `yyyy-MM-dd` text.
+
+The pure parameter contracts also have dot/comma European separator and
+`dd.MM.yyyy` fixtures, proving that parsing follows typed policy rather than
+process locale. Formulas, unsupported types, invalid grouping, ambiguous or
+undeclared dates, partial parses, and already-normalized cells are skipped and
+counted. All three commands use the same stale-check/write/verify/compensate and
+optimistic-undo transaction.
+
+The mixed-matrix writer now prefixes every planned text constant with Excel's
+input apostrophe marker. The marker is not part of `Value2`; it prevents Excel
+from silently coercing planned numeric/date-like text during `Formula` array
+assignment. Hidden-Excel smoke verifies output CLR types are `System.String`,
+formulas/nonmatches remain exact, three reverse-order receipts restore the full
+source matrix, and Excel exits naturally.
+
+Current Release suite after this slice: **278 passed**, zero failed. Debug and
+Release builds have zero warnings/errors.

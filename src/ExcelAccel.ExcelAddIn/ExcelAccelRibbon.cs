@@ -98,6 +98,9 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.TrimOuter' label='Trim Outer Whitespace' keytip='TO' tag='clean.text.trim_outer' onAction='OnDataCleaningCommand'/>
                       <button id='ExcelAccel.CollapseWhitespace' label='Collapse Whitespace' keytip='CW' tag='clean.text.collapse_whitespace' onAction='OnDataCleaningCommand'/>
                       <button id='ExcelAccel.RemoveNonprinting' label='Remove Nonprinting' keytip='RN' tag='clean.text.remove_nonprinting' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.TextToNumber' label='Invariant Text to Number...' keytip='TN' tag='clean.convert.text_to_number' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.NumberToText' label='Number to Invariant Text...' keytip='NT' tag='clean.convert.number_to_text' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.NormalizeDateText' label='Normalize Date Text...' keytip='DN' tag='clean.convert.date_normalize' onAction='OnDataCleaningCommand'/>
                       <button id='ExcelAccel.BlankToZero' label='Blanks to Zero...' keytip='BZ' tag='clean.display.blank_to_zero' onAction='OnDataCleaningCommand'/>
                       <button id='ExcelAccel.ZeroToBlank' label='Zeros to Blank...' keytip='ZB' tag='clean.display.zero_to_blank' onAction='OnDataCleaningCommand'/>
                       <button id='ExcelAccel.BlankToNA' label='Blanks to N/A...' keytip='BN' tag='clean.display.blank_to_na_text' onAction='OnDataCleaningCommand'/>
