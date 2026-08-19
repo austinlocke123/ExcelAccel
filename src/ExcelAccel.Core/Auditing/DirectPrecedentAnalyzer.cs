@@ -10,6 +10,38 @@ public sealed class DirectPrecedentAnalyzer
 {
     private readonly FormulaParser _parser = new FormulaParser();
 
+    public DirectPrecedentCapturePlan CreateCapturePlan(
+        AuditCellIdentity target,
+        string formula,
+        FormulaDialect? dialect = null)
+    {
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        if (formula is null) throw new ArgumentNullException(nameof(formula));
+        dialect ??= FormulaDialect.InvariantA1;
+        var localTargets = new List<AuditCellIdentity>();
+        var names = new List<string>();
+        if (dialect.Notation == FormulaNotation.A1 && formula.Length > 0 && formula[0] == '=')
+        {
+            var parse = _parser.Parse(formula, new FormulaParseOptions(dialect));
+            if (parse.IsSuccess)
+            {
+                var document = parse.Document!;
+                foreach (var reference in document.References)
+                {
+                    var qualifier = UnquoteQualifier(reference.Qualifier);
+                    if (qualifier is not null && qualifier.IndexOf('[') >= 0) continue;
+                    localTargets.Add(new AuditCellIdentity(target.WorkbookId, qualifier ?? target.WorksheetName, CanonicalAddress(reference)));
+                }
+                for (var index = 0; index < document.Tokens.Count; index++)
+                {
+                    var token = document.Tokens[index];
+                    if (IsNameCandidate(document.Tokens, index)) names.Add(token.Text);
+                }
+            }
+        }
+        return new DirectPrecedentCapturePlan(target, formula, dialect, localTargets, names);
+    }
+
     public DirectPrecedentResult Analyze(FormulaReferenceSnapshot snapshot)
     {
         if (snapshot is null) throw new ArgumentNullException(nameof(snapshot));
@@ -43,12 +75,8 @@ public sealed class DirectPrecedentAnalyzer
             AddReference(snapshot, reference, accumulators);
         }
 
-        if (document.Disposition == FormulaCoverageDisposition.InspectOnly &&
-            string.Equals(document.LimitationCode, FormulaRefusalCodes.NameInspectOnly, StringComparison.Ordinal))
-        {
-            AddNames(snapshot, document, accumulators);
-        }
-        else if (document.Disposition == FormulaCoverageDisposition.InspectOnly && accumulators.Count == 0)
+        AddNames(snapshot, document, accumulators);
+        if (document.Disposition == FormulaCoverageDisposition.InspectOnly && accumulators.Count == 0)
         {
             AddUnresolved(
                 accumulators,
@@ -114,8 +142,7 @@ public sealed class DirectPrecedentAnalyzer
         for (var index = 0; index < document.Tokens.Count; index++)
         {
             var token = document.Tokens[index];
-            if (token.Kind != FormulaTokenKind.Identifier || IsBoolean(token.Text) ||
-                NextSignificant(document.Tokens, index + 1)?.Kind == FormulaTokenKind.OpenParenthesis)
+            if (!IsNameCandidate(document.Tokens, index))
             {
                 continue;
             }
@@ -147,6 +174,15 @@ public sealed class DirectPrecedentAnalyzer
             if (tokens[index].Kind != FormulaTokenKind.Whitespace) return tokens[index];
         }
         return null;
+    }
+
+    private static bool IsNameCandidate(IReadOnlyList<FormulaToken> tokens, int index)
+    {
+        var token = tokens[index];
+        if (token.Kind != FormulaTokenKind.Identifier || IsBoolean(token.Text)) return false;
+        var next = NextSignificant(tokens, index + 1);
+        if (next?.Kind == FormulaTokenKind.OpenParenthesis) return false;
+        return index + 1 >= tokens.Count || tokens[index + 1].Kind != FormulaTokenKind.BracketedIdentifier;
     }
 
     private static bool IsBoolean(string value) =>

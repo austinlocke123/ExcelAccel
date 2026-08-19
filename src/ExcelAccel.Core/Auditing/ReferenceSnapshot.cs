@@ -148,6 +148,29 @@ public sealed class FormulaReferenceSnapshot
     public FormulaDialect Dialect { get; }
 }
 
+public sealed class DirectPrecedentCapturePlan
+{
+    internal DirectPrecedentCapturePlan(
+        AuditCellIdentity target,
+        string formula,
+        FormulaDialect dialect,
+        IEnumerable<AuditCellIdentity> localTargets,
+        IEnumerable<string> nameCandidates)
+    {
+        Target = target;
+        Formula = formula;
+        Dialect = dialect;
+        LocalTargets = Array.AsReadOnly(localTargets.Distinct().OrderBy(value => value.ToString(), StringComparer.OrdinalIgnoreCase).ToArray());
+        NameCandidates = Array.AsReadOnly(nameCandidates.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray());
+    }
+
+    public AuditCellIdentity Target { get; }
+    public string Formula { get; }
+    public FormulaDialect Dialect { get; }
+    public IReadOnlyList<AuditCellIdentity> LocalTargets { get; }
+    public IReadOnlyList<string> NameCandidates { get; }
+}
+
 public sealed class AuditReferenceEvidence
 {
     public AuditReferenceEvidence(string sourceText, FormulaSourceSpan sourceSpan, AuditReferenceKind kind)
@@ -230,6 +253,16 @@ public sealed class DirectPrecedentResult
     public bool CanClaimCompleteness => Status == AuditTraceStatus.Complete;
     public int UnresolvedEdgeCount => Precedents.Count(item => item.IsUnresolved);
     public int ExternalEdgeCount => Precedents.Count(item => item.IsExternal);
+
+    public static DirectPrecedentResult Refused(AuditCellIdentity source, string code, string message) =>
+        new DirectPrecedentResult(
+            AuditTraceStatus.Refused,
+            source ?? throw new ArgumentNullException(nameof(source)),
+            Array.Empty<DirectPrecedent>(),
+            FormulaCoverageDisposition.Refuse,
+            null,
+            !string.IsNullOrWhiteSpace(code) ? code : throw new ArgumentException("A refusal code is required.", nameof(code)),
+            message ?? string.Empty);
 }
 
 public static class AuditRefusalCodes
@@ -237,4 +270,5 @@ public static class AuditRefusalCodes
     public const string TargetNotFormula = "AUDIT_TARGET_NOT_FORMULA";
     public const string NotationUnsupported = "AUDIT_NOTATION_UNSUPPORTED";
     public const string NameUnresolved = "AUDIT_NAME_UNRESOLVED";
+    public const string StaleTarget = "AUDIT_STALE_TARGET";
 }

@@ -8,12 +8,29 @@ using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.ExcelInterop;
 using ExcelAccel.Application.Formulas;
 using ExcelAccel.Application.DataCleaning;
+using ExcelAccel.Application.Auditing;
 using System.Windows.Forms;
 
 namespace ExcelAccel.ExcelAddIn;
 
 public static class DebugSmokeCommands
 {
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DirectPrecedents", Description = "Debug-only direct-precedent capture hook.")]
+    public static string DirectPrecedents()
+    {
+        try
+        {
+            var port = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var result = new DirectPrecedentCoordinator().Execute(port);
+            var summary = result.Status + "|" + result.Precedents.Count + "|" +
+                result.UnresolvedEdgeCount + "|" + result.ExternalEdgeCount + "|" +
+                (result.Precedents.Count == 0 ? "none" : result.Precedents[0].Classification.ToString());
+            DiagnosticLog.Info("smoke.audit.precedents.direct", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.precedents.direct", exception); throw; }
+    }
+
     [ExcelCommand(Name = "ExcelAccel.Smoke.OpenAndCloseCommandSearch", Description = "Debug-only command-search UI lifecycle hook.")]
     public static void OpenAndCloseCommandSearch()
     {

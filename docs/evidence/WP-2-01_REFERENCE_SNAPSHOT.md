@@ -2,8 +2,8 @@
 
 Date: 2026-08-19
 
-Status: **Pure-core foundation implemented; Excel capture and presentation slice
-remain in progress**
+Status: **Pure-core foundation and bounded Excel capture implemented; read-only
+result presentation/registration remains in progress**
 
 ## Contract
 
@@ -40,18 +40,34 @@ formula-side resource boundary.
 
 ## Verification
 
-- Release tests: **302 passed**, zero failed.
+- Release tests: **305 passed**, zero failed.
 - New golden coverage includes local and quoted-sheet cells/ranges,
   formula/value/error/mixed classification, equivalent-reference deduplication,
   source spans and edge kinds, worksheet-name precedence, unresolved names,
   closed external references, structured-reference partial results, non-formula
   and invalid-formula refusal, R1C1 refusal, defensive copying, missing capture
   classification, and repeat determinism.
+- The packed Debug XLL passed the hidden-Excel smoke with exact local-cell and
+  workbook-name precedent classification. The adapter preserved the selection
+  and workbook contents, closed the workbook, released the XLL, and Excel exited
+  naturally with no surviving process.
+
+## Excel capture boundary
+
+- `DirectPrecedentCoordinator` captures one source formula, creates the bounded
+  pure-Core capture plan, requests only declared local targets/names, revalidates
+  the exact source formula, and publishes no analysis if it changed.
+- `ExcelReferenceSnapshotAdapter` runs through the existing Excel-thread and COM
+  retry boundaries. It reads exact target ranges without selecting them and has
+  a 10,000-cell aggregate capture ceiling.
+- Simple worksheet/workbook names are resolved from their local `RefersTo`
+  definition without opening external workbooks. Unsupported, missing,
+  multi-target, external, or oversized definitions remain explicit unresolved
+  edges and therefore cannot produce a completeness claim.
 
 ## Next slice
 
-Add a bounded Excel main-thread capture adapter and Application coordinator that
-capture exactly one formula cell plus the reference classifications/name
-bindings requested by this model, revalidate the source formula, and hand the
-immutable snapshot to the analyzer. Keep the production Ribbon/search command
-unregistered until its read-only result view and cleanup path are available.
+Add the read-only result view and its explicit close/workbook-close cleanup path,
+then register `audit.precedents.direct` through the central dispatcher, Command
+Search, Ribbon, and a non-conflicting KeyTip. No workbook annotation or Excel
+trace-arrow API is permitted.

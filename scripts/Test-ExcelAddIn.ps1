@@ -36,6 +36,9 @@ public static class ExcelAccelNativeMethods
     $cell = $null
     $secondCell = $null
     $navigationCell = $null
+    $auditSource = $null
+    $auditFormula = $null
+    $auditName = $null
     $font = $null
     $interior = $null
     $multiArea = $null
@@ -601,6 +604,31 @@ public static class ExcelAccelNativeMethods
             throw 'Read-only A1 navigation did not select the exact target.'
         }
 
+        $auditSource = $worksheet.Range('A90')
+        $auditFormula = $worksheet.Range('B90')
+        $auditSource.Value2 = 42
+        $auditFormula.Formula = '=A90'
+        [void]$auditFormula.Select()
+        $auditResult = [string]$excel.Run('ExcelAccel.Smoke.DirectPrecedents')
+        $auditSelectionPreserved = ([string]$excel.Selection.Address($false, $false) -eq 'B90')
+        $auditContentPreserved = ([double]$auditSource.Value2 -eq 42) -and ([string]$auditFormula.Formula -eq '=A90')
+        [Console]::WriteLine("direct_precedents=$auditResult")
+        [Console]::WriteLine("direct_precedents_selection_preserved=$auditSelectionPreserved")
+        [Console]::WriteLine("direct_precedents_content_preserved=$auditContentPreserved")
+        [Console]::Out.Flush()
+        if ($auditResult -ne 'Complete|1|0|0|Value' -or -not $auditSelectionPreserved -or -not $auditContentPreserved) {
+            throw 'Direct-precedent capture did not return the exact read-only result.'
+        }
+        $auditName = $workbook.Names.Add('AuditRate', "=$([string]$worksheet.Name)!`$A`$90")
+        $auditFormula.Formula = '=AuditRate'
+        [void]$auditFormula.Select()
+        $auditNameResult = [string]$excel.Run('ExcelAccel.Smoke.DirectPrecedents')
+        [Console]::WriteLine("direct_precedents_name=$auditNameResult")
+        [Console]::Out.Flush()
+        if ($auditNameResult -ne 'Partial|1|0|0|Value') {
+            throw 'Direct-precedent capture did not resolve the supported workbook name exactly.'
+        }
+
         $excel.ScreenUpdating = $true
         $excel.EnableEvents = $true
         [void]$excel.Run('ExcelAccel.Smoke.ThrowInsideStateGuard')
@@ -701,6 +729,9 @@ public static class ExcelAccelNativeMethods
         catch {
         }
         Release-ComObject $mergedRange
+        Release-ComObject $auditFormula
+        Release-ComObject $auditSource
+        Release-ComObject $auditName
         Release-ComObject $formulaDestination2
         Release-ComObject $formulaDestination1
         Release-ComObject $formulaSource
@@ -860,6 +891,10 @@ try {
         'font_color_content_preserved=True',
         'font_color_after_undo=5649426',
         'navigation_address=A1',
+        'direct_precedents=Complete|1|0|0|Value',
+        'direct_precedents_selection_preserved=True',
+        'direct_precedents_content_preserved=True',
+        'direct_precedents_name=Partial|1|0|0|Value',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
         'typed_conversions_exact=True',
