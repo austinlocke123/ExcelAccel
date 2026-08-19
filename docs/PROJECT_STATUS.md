@@ -19,7 +19,7 @@ for end-user distribution.
 | `agent/phase-0-performance-baseline` | `29c91e8` | WP-P0-07 performance baseline | Draft PR #5, stacked on PR #4 |
 | `agent/phase-0-packaging-trust` | `b30a4ad` | WP-P0-08 packaging and trust | Draft PR #6, stacked on PR #5 |
 | `agent/phase-0-closure` | `b95be00` | Gate ledger, ADR acceptance, boundary enforcement, and reliability soak | Draft PR #7, stacked on PR #6 |
-| `agent/phase-1a-foundation` | local work in progress | WP-1A-01 production solution boundaries | Started from `b95be00` |
+| `agent/phase-1a-foundation` | `e13d28e` | WP-1A-01 production solution boundaries | Draft PR #8, stacked on PR #7 |
 
 ## Completed engineering work
 
@@ -76,7 +76,7 @@ production boundary implementation.
 
 ## Current work and restart point
 
-WP-1A-01 is in progress on `agent/phase-1a-foundation`. Core, Application,
+WP-1A-01 is published on `agent/phase-1a-foundation`. Core, Application,
 ExcelInterop, and ExcelAddIn are now separate acyclic projects; command
 orchestration moved into Application, Excel adapters moved into ExcelInterop,
 the host supplies its root-application/thread delegates, and the packed XLL
