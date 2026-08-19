@@ -4,6 +4,9 @@ Status: **Draft for review**
 Capabilities: CAP-SEARCH-001, CAP-FAV-001, CAP-STYLE-001, CAP-PROF-002  
 Earliest phase: 1B
 
+Implementation note (2026-08-19): WP-1B-01 search/favorites is implemented and
+locally qualified. Style and profile-exchange contracts below remain pending.
+
 ## Common constraints
 
 - Search and favorites operate on registry metadata and local settings only.

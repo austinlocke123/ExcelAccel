@@ -5,6 +5,7 @@ using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Profiles;
 using ExcelAccel.Application.QuickKeys;
 using ExcelAccel.Persistence.Profiles;
+using System.Collections.Generic;
 using Xunit;
 
 namespace ExcelAccel.Core.Tests;
@@ -60,6 +61,26 @@ public sealed class ProfileAndQuickKeyTests
             StringComparison.Ordinal);
 
         Assert.Throws<InvalidDataException>(() => store.Parse(json));
+    }
+
+    [Fact]
+    public void FavoritesRoundTripThroughAtomicProfileStorageWithoutChangingOtherSettings()
+    {
+        using var sandbox = new TemporaryDirectory();
+        var path = Path.Combine(sandbox.Path, "profile.json");
+        var store = new ProfileStore();
+        var original = store.LoadDefault();
+        var favorite = new FavoriteDefinition("favorite.currency", "format.number.currency", 1,
+            new[] { new KeyValuePair<string, string>("style", "accounting") });
+
+        store.SaveAtomic(path, original.WithFavorites(FavoriteCatalog.Add(original.Favorites, favorite)));
+        var loaded = store.Load(path);
+
+        Assert.Single(loaded.Favorites);
+        Assert.Equal("accounting", loaded.Favorites[0].Arguments["style"]);
+        Assert.Equal(original.NumberFormats, loaded.NumberFormats);
+        Assert.Equal(original.QuickKeys.Select(value => value.Sequence).OrderBy(value => value, StringComparer.Ordinal),
+            loaded.QuickKeys.Select(value => value.Sequence).OrderBy(value => value, StringComparer.Ordinal));
     }
 
     [Fact]

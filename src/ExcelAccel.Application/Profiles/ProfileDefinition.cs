@@ -6,8 +6,9 @@ namespace ExcelAccel.Application.Profiles;
 
 public sealed class ProfileDefinition
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     public const int MaximumBindings = 512;
+    public const int MaximumFavorites = 128;
 
     public ProfileDefinition(
         int schemaVersion,
@@ -23,6 +24,7 @@ public sealed class ProfileDefinition
         IEnumerable<KeyValuePair<string, string>> autoColorColors,
         IEnumerable<KeyValuePair<string, string>> numberFormats,
         IEnumerable<QuickKeyBinding> quickKeys,
+        IEnumerable<FavoriteDefinition> favorites,
         long immediatePreviewCellLimit,
         bool wrapSheetNavigation)
     {
@@ -67,6 +69,14 @@ public sealed class ProfileDefinition
         }
 
         QuickKeys = bindings;
+        var normalizedFavorites = (favorites ?? throw new ArgumentNullException(nameof(favorites)))
+            .OrderBy(value => value.FavoriteId, StringComparer.Ordinal)
+            .ToArray();
+        if (normalizedFavorites.Length > MaximumFavorites)
+            throw new ArgumentException($"Profiles may contain at most {MaximumFavorites} favorites.", nameof(favorites));
+        if (normalizedFavorites.Select(value => value.FavoriteId).Distinct(StringComparer.Ordinal).Count() != normalizedFavorites.Length)
+            throw new ArgumentException("Favorite IDs must be unique.", nameof(favorites));
+        Favorites = normalizedFavorites;
         if (immediatePreviewCellLimit < 1 || immediatePreviewCellLimit > 1_000_000)
         {
             throw new ArgumentOutOfRangeException(nameof(immediatePreviewCellLimit));
@@ -89,8 +99,15 @@ public sealed class ProfileDefinition
     public IReadOnlyDictionary<string, string> AutoColorColors { get; }
     public IReadOnlyDictionary<string, string> NumberFormats { get; }
     public IReadOnlyList<QuickKeyBinding> QuickKeys { get; }
+    public IReadOnlyList<FavoriteDefinition> Favorites { get; }
     public long ImmediatePreviewCellLimit { get; }
     public bool WrapSheetNavigation { get; }
+
+    public ProfileDefinition WithFavorites(IEnumerable<FavoriteDefinition> favorites) => new ProfileDefinition(
+        CurrentSchemaVersion, ProfileId, FontColorCycle, FillColorCycle, FontSizeCycle,
+        HorizontalAlignmentCycle, VerticalAlignmentCycle, UnderlineCycle, RowHeightCycle,
+        ColumnWidthCycle, AutoColorColors, NumberFormats, QuickKeys, favorites,
+        ImmediatePreviewCellLimit, WrapSheetNavigation);
 
     private static IReadOnlyList<string> NormalizeColors(IEnumerable<string> values, string parameterName)
     {

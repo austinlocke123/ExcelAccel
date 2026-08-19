@@ -19,6 +19,7 @@ public sealed class AddInLifecycle : IExcelAddIn
     {
         CallbackBoundary.RunLifecycle("addin.close", () =>
         {
+            CommandSearchRuntime.Reset();
             ProfileRuntime.Reset();
             NavigationRuntime.Reset();
             UndoRuntime.Reset();

@@ -81,6 +81,10 @@ public sealed class CommandFrameworkTests
             Assert.NotEqual(CommandContextRequirement.None, descriptor.ContextRequirement);
             Assert.NotEmpty(descriptor.AcceptanceIds);
             Assert.False(string.IsNullOrWhiteSpace(descriptor.KeyboardRoute));
+            Assert.False(string.IsNullOrWhiteSpace(descriptor.Category));
+            Assert.False(string.IsNullOrWhiteSpace(descriptor.Description));
+            Assert.False(string.IsNullOrWhiteSpace(descriptor.ShortcutLabel));
+            if (descriptor.InheritsReferencedPolicy) Assert.Equal("favorite.invoke", descriptor.Id);
             Assert.Equal(
                 descriptor.ChangedProperties.OrderBy(value => value, StringComparer.Ordinal),
                 descriptor.ChangedProperties);
