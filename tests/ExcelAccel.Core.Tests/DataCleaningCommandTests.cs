@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.DataCleaning;
 using ExcelAccel.Application.Formulas;
@@ -110,6 +111,112 @@ public sealed class DataCleaningCommandTests
         Assert.Equal("=A1", port.Current[0, 1].InvariantValue);
         Assert.True(store.TryUndo("book", port, DateTimeOffset.UtcNow).Succeeded);
         Assert.Equal(" x ", port.Current[0, 0].InvariantValue);
+    }
+
+    [Theory]
+    [InlineData("123", 123d)]
+    [InlineData("+1,234.50", 1234.5d)]
+    [InlineData("-1,234.50", -1234.5d)]
+    [InlineData("($1,234.50)", -1234.5d)]
+    [InlineData("$12.5%", 0.125d)]
+    public void TextToNumberAcceptsOnlyCompleteFixedGrammar(string input, double expected)
+    {
+        Assert.True(DataCleaningCommand.TryParseCompleteNumber(input, TextNumberConversionOptions.InvariantFinancial, out var actual));
+        Assert.Equal(expected, actual, 12);
+    }
+
+    [Theory]
+    [InlineData(" 123")]
+    [InlineData("123 ")]
+    [InlineData("12,34")]
+    [InlineData("1,234,")]
+    [InlineData("1.2.3")]
+    [InlineData("123abc")]
+    [InlineData("\u20ac123")]
+    [InlineData("--1")]
+    [InlineData("1%2")]
+    [InlineData("")]
+    public void TextToNumberRefusesPartialAmbiguousOrUndeclaredForms(string input)
+    {
+        Assert.False(DataCleaningCommand.TryParseCompleteNumber(input, TextNumberConversionOptions.InvariantFinancial, out _));
+    }
+
+    [Fact]
+    public void TextToNumberUsesTypedSeparatorsInsteadOfProcessLocale()
+    {
+        var european = new TextNumberConversionOptions(',', '.', true, true, new[] { "\u20ac" }, true);
+
+        Assert.True(DataCleaningCommand.TryParseCompleteNumber("\u20ac1.234,50", european, out var value));
+        Assert.Equal(1234.5, value, 12);
+        Assert.False(DataCleaningCommand.TryParseCompleteNumber("1,234.50", european, out _));
+    }
+
+    [Fact]
+    public void TypedConversionsSkipFormulasAndNonmatchesAndRequirePreview()
+    {
+        var snapshot = Snapshot(Block(1, 5,
+            FormulaCellValue.Text("1,234.50"), FormulaCellValue.Text("12,34"),
+            FormulaCellValue.Formula("=1"), FormulaCellValue.Number(2.5), FormulaCellValue.Blank()));
+
+        var plan = Command("clean.convert.text_to_number").PlanTextToNumber(snapshot, TextNumberConversionOptions.InvariantFinancial);
+
+        Assert.Equal(1234.5, plan.After[0, 0].AsNumber(), 12);
+        Assert.Equal("12,34", plan.After[0, 1].InvariantValue);
+        Assert.Equal("=1", plan.After[0, 2].InvariantValue);
+        Assert.Equal(1, plan.ChangedCount);
+        Assert.Equal(4, plan.SkippedCount);
+        Assert.True(plan.CommandPlan.RequiresPreview);
+    }
+
+    [Fact]
+    public void NumberToTextUsesOnlyTheDeclaredInvariantFormat()
+    {
+        var snapshot = Snapshot(Block(1, 3,
+            FormulaCellValue.Number(1234.5), FormulaCellValue.Number(0.00000001), FormulaCellValue.Formula("=1")));
+
+        var plan = Command("clean.convert.number_to_text").PlanNumberToText(snapshot, "0.################");
+
+        Assert.Equal("1234.5", plan.After[0, 0].InvariantValue);
+        Assert.Equal("0.00000001", plan.After[0, 1].InvariantValue);
+        Assert.Equal("=1", plan.After[0, 2].InvariantValue);
+        Assert.All(plan.After.Cells.Take(2), value => Assert.Equal(FormulaCellKind.Text, value.Kind));
+    }
+
+    [Fact]
+    public void DateNormalizationUsesExplicitPatternsAndIsIdempotent()
+    {
+        var command = Command("clean.convert.date_normalize");
+        var patterns = new[] { "yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd" };
+        var snapshot = Snapshot(Block(1, 5,
+            FormulaCellValue.Text("2026/08/19"), FormulaCellValue.Text("20260820"),
+            FormulaCellValue.Text("2026-08-21"), FormulaCellValue.Text("08/19/2026"), FormulaCellValue.Formula("=TODAY()")));
+
+        var plan = command.PlanNormalizeDateText(snapshot, patterns, "yyyy-MM-dd");
+
+        Assert.Equal("2026-08-19", plan.After[0, 0].InvariantValue);
+        Assert.Equal("2026-08-20", plan.After[0, 1].InvariantValue);
+        Assert.Equal("2026-08-21", plan.After[0, 2].InvariantValue);
+        Assert.Equal("08/19/2026", plan.After[0, 3].InvariantValue);
+        Assert.Equal("=TODAY()", plan.After[0, 4].InvariantValue);
+        Assert.Equal(2, plan.ChangedCount);
+        Assert.Equal(3, plan.SkippedCount);
+
+        var reapplied = command.PlanNormalizeDateText(
+            Snapshot(new FormulaCellBlock(1, 5, plan.After.Cells)), patterns, "yyyy-MM-dd");
+        Assert.Equal(0, reapplied.ChangedCount);
+    }
+
+    [Fact]
+    public void DateNormalizationCanUseAnExplicitNonUsPatternWithoutGuessing()
+    {
+        var plan = Command("clean.convert.date_normalize").PlanNormalizeDateText(
+            Snapshot(Block(1, 2, FormulaCellValue.Text("19.08.2026"), FormulaCellValue.Text("08.19.2026"))),
+            new[] { "dd.MM.yyyy" }, "yyyy-MM-dd");
+
+        Assert.Equal("2026-08-19", plan.After[0, 0].InvariantValue);
+        Assert.Equal("08.19.2026", plan.After[0, 1].InvariantValue);
+        Assert.Equal(1, plan.ChangedCount);
+        Assert.Equal(1, plan.SkippedCount);
     }
 
     private static DataCleaningCommand Command(string id) =>

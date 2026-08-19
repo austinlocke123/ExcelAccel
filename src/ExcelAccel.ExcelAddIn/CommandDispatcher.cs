@@ -425,6 +425,10 @@ internal static class CommandDispatcher
             case "clean.text.trim_outer": plan = command.PlanTrimOuter(snapshot); break;
             case "clean.text.collapse_whitespace": plan = command.PlanCollapseWhitespace(snapshot); break;
             case "clean.text.remove_nonprinting": plan = command.PlanRemoveNonprinting(snapshot, preserveTabsAndNewlines: true); break;
+            case "clean.convert.text_to_number": plan = command.PlanTextToNumber(snapshot, TextNumberConversionOptions.InvariantFinancial); break;
+            case "clean.convert.number_to_text": plan = command.PlanNumberToText(snapshot, "0.################"); break;
+            case "clean.convert.date_normalize": plan = command.PlanNormalizeDateText(snapshot,
+                new[] { "yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd" }, "yyyy-MM-dd"); break;
             case "clean.display.blank_to_zero": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.BlankToZero); break;
             case "clean.display.zero_to_blank": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.ZeroToBlank); break;
             case "clean.display.blank_to_na_text": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.BlankToNaText); break;

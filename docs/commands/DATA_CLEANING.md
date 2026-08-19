@@ -4,10 +4,11 @@ Status: **Approved contract; implementation qualification in progress**
 Capability: CAP-DATA-001
 Earliest phase: 1B
 
-Implementation note (2026-08-19): text trim/collapse/control removal and all
-eight explicit display-value conversions are registered and qualified through
-the transactional typed-matrix adapter. Typed text/number/date conversion
-grammars remain the next WP-1B-09 slice. See
+Implementation note (2026-08-19): text trim/collapse/control removal, fixed
+typed text/number/date conversions, and all eight explicit display-value
+conversions are registered and qualified through the transactional typed-matrix
+adapter. The Ribbon presets expose their separators, grammar, and formats in
+preview rather than inferring them from process locale or workbook neighbors. See
 `docs/evidence/WP-1B-09_10_DATA_CLEANING.md`.
 
 ## Common boundary
@@ -59,6 +60,12 @@ grammars remain the next WP-1B-09 slice. See
   grammar; no partial parse
 - Acceptance: AC-DATA-006 through AC-DATA-010, AC-LOC-001
 
+Released Ribbon preset: decimal `.`, thousands `,`, optional leading sign or
+negative parentheses, optional leading `$`, optional trailing percent (divides
+by 100), and no whitespace. Grouping must be exact and the complete string must
+match. The pure planner accepts other explicitly constructed separator/symbol
+policies for future typed UI without consulting current culture.
+
 ### `clean.convert.number_to_text`
 
 - Parameters: explicit invariant/display format and whether to preserve shown
@@ -67,6 +74,9 @@ grammars remain the next WP-1B-09 slice. See
   notation or locale guess
 - Acceptance: AC-DATA-006 through AC-DATA-010, AC-LOC-001
 
+Released Ribbon preset: invariant `0.################`; output is forced to an
+Excel text constant so Excel cannot reinterpret numeric/date-like text.
+
 ### `clean.convert.date_normalize`
 
 - Parameters: explicit input pattern(s), calendar/time-zone policy if relevant,
@@ -74,6 +84,10 @@ grammars remain the next WP-1B-09 slice. See
 - Ambiguous free-text dates refuse. Two-digit-year pivot is prohibited unless
   explicitly configured and shown.
 - Acceptance: AC-DATA-011 through AC-DATA-014, AC-LOC-001
+
+Released Ribbon preset: accept only `yyyy-MM-dd`, `yyyy/MM/dd`, and `yyyyMMdd`
+Gregorian date-only text and output `yyyy-MM-dd` text. It has no time zone and
+no two-digit-year pivot. Already canonical text is reported as skipped.
 
 ## Explicit display-value conversions
 
