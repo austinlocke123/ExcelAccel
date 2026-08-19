@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using ExcelAccel.Application.Profiles;
+using ExcelAccel.Application.Styles;
 using Newtonsoft.Json;
 
 namespace ExcelAccel.Persistence.Profiles;
@@ -138,6 +139,14 @@ public sealed class ProfileStore
         {
             throw new InvalidDataException("The profile JSON is invalid or contains unsupported fields.", exception);
         }
+        catch (InvalidDataException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is ArgumentException || exception is InvalidOperationException)
+        {
+            throw new InvalidDataException("The profile contains invalid or incompatible settings.", exception);
+        }
     }
 
     private static string RequirePath(string path) =>
@@ -189,18 +198,21 @@ public sealed class ProfileStore
         [JsonProperty("favorites", Order = 14, Required = Required.Default)]
         public FavoriteDto[]? Favorites { get; set; }
 
-        [JsonProperty("immediate_preview_cell_limit", Order = 15, Required = Required.Always)]
+        [JsonProperty("local_styles", Order = 15, Required = Required.Default)]
+        public StyleDto[]? LocalStyles { get; set; }
+
+        [JsonProperty("immediate_preview_cell_limit", Order = 16, Required = Required.Always)]
         public long ImmediatePreviewCellLimit { get; set; }
 
-        [JsonProperty("wrap_sheet_navigation", Order = 16, Required = Required.Always)]
+        [JsonProperty("wrap_sheet_navigation", Order = 17, Required = Required.Always)]
         public bool WrapSheetNavigation { get; set; }
 
         public ProfileDefinition ToDefinition()
         {
-            if (SchemaVersion != 2 && SchemaVersion != ProfileDefinition.CurrentSchemaVersion)
+            if (SchemaVersion < 2 || SchemaVersion > ProfileDefinition.CurrentSchemaVersion)
                 throw new InvalidDataException($"Profile schema {SchemaVersion} is not supported.");
-            if (SchemaVersion == ProfileDefinition.CurrentSchemaVersion && Favorites is null)
-                throw new InvalidDataException("Schema v3 profiles require a favorites array.");
+            if (SchemaVersion >= 3 && Favorites is null) throw new InvalidDataException("Schema v3+ profiles require a favorites array.");
+            if (SchemaVersion >= 4 && LocalStyles is null) throw new InvalidDataException("Schema v4 profiles require a local_styles array.");
             return new ProfileDefinition(
             ProfileDefinition.CurrentSchemaVersion,
             ProfileId,
@@ -216,6 +228,7 @@ public sealed class ProfileStore
             NumberFormats,
             QuickKeys.Select(value => new QuickKeyBinding(value.CommandId, value.Sequence)),
             (Favorites ?? Array.Empty<FavoriteDto>()).Select(value => value.ToDefinition()),
+            (LocalStyles ?? Array.Empty<StyleDto>()).Select(value => value.ToDefinition()),
             ImmediatePreviewCellLimit,
             WrapSheetNavigation);
         }
@@ -241,6 +254,10 @@ public sealed class ProfileStore
             Favorites = profile.Favorites
                 .OrderBy(value => value.FavoriteId, StringComparer.Ordinal)
                 .Select(FavoriteDto.From)
+                .ToArray(),
+            LocalStyles = profile.LocalStyles
+                .OrderBy(value => value.StyleId, StringComparer.Ordinal)
+                .Select(StyleDto.From)
                 .ToArray(),
             ImmediatePreviewCellLimit = profile.ImmediatePreviewCellLimit,
             WrapSheetNavigation = profile.WrapSheetNavigation,
@@ -289,6 +306,43 @@ public sealed class ProfileStore
             CommandId = favorite.CommandId,
             ContractVersion = favorite.ContractVersion,
             Arguments = CopyArguments(favorite.Arguments),
+        };
+
+        private static SortedDictionary<string, string> CopyArguments(IReadOnlyDictionary<string, string> source)
+        {
+            var result = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var item in source) result.Add(item.Key, item.Value);
+            return result;
+        }
+    }
+
+    private sealed class StyleDto
+    {
+        [JsonProperty("style_id", Order = 1, Required = Required.Always)]
+        public string StyleId { get; set; } = string.Empty;
+        [JsonProperty("version", Order = 2, Required = Required.Always)]
+        public int Version { get; set; }
+        [JsonProperty("display_name", Order = 3, Required = Required.Always)]
+        public string DisplayName { get; set; } = string.Empty;
+        [JsonProperty("unsupported_property_policy", Order = 4, Required = Required.Always)]
+        public string UnsupportedPropertyPolicy { get; set; } = string.Empty;
+        [JsonProperty("properties", Order = 5, Required = Required.Always)]
+        public SortedDictionary<string, string> Properties { get; set; } = new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+        public StyleRecipe ToDefinition()
+        {
+            if (!Enum.TryParse(UnsupportedPropertyPolicy, true, out UnsupportedStylePropertyPolicy policy))
+                throw new InvalidDataException($"Unsupported style property policy '{UnsupportedPropertyPolicy}'.");
+            return new StyleRecipe(StyleId, Version, DisplayName, StyleOrigin.Local, policy, Properties);
+        }
+
+        public static StyleDto From(StyleRecipe recipe) => new StyleDto
+        {
+            StyleId = recipe.StyleId,
+            Version = recipe.Version,
+            DisplayName = recipe.DisplayName,
+            UnsupportedPropertyPolicy = recipe.UnsupportedPropertyPolicy.ToString().ToLowerInvariant(),
+            Properties = CopyArguments(recipe.Properties),
         };
 
         private static SortedDictionary<string, string> CopyArguments(IReadOnlyDictionary<string, string> source)

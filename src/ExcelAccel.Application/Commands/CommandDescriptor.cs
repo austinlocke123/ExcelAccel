@@ -24,7 +24,8 @@ public sealed class CommandDescriptor
         string? description = null,
         IEnumerable<string>? aliases = null,
         string? shortcutLabel = null,
-        bool inheritsReferencedPolicy = false)
+        bool inheritsReferencedPolicy = false,
+        ChangedPropertyPolicy changedPropertyPolicy = ChangedPropertyPolicy.Exact)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -73,6 +74,7 @@ public sealed class CommandDescriptor
             .ToArray();
         ShortcutLabel = string.IsNullOrWhiteSpace(shortcutLabel) ? KeyboardRoute : shortcutLabel!.Trim();
         InheritsReferencedPolicy = inheritsReferencedPolicy;
+        ChangedPropertyPolicy = changedPropertyPolicy;
 
         if (Impact == CommandImpact.ReadOnly && ChangedProperties.Count != 0)
         {
@@ -113,4 +115,6 @@ public sealed class CommandDescriptor
     public string ShortcutLabel { get; }
 
     public bool InheritsReferencedPolicy { get; }
+
+    public ChangedPropertyPolicy ChangedPropertyPolicy { get; }
 }

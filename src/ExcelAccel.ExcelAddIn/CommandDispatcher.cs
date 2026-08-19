@@ -13,6 +13,7 @@ using ExcelAccel.ExcelInterop;
 using ExcelAccel.Application.Profiles;
 using System.Collections.Generic;
 using System.Linq;
+using ExcelAccel.Application.Styles;
 
 namespace ExcelAccel.ExcelAddIn;
 
@@ -31,6 +32,7 @@ internal static class CommandDispatcher
         if (commandId == UndoLastCommand.Id) return UndoLastProperty();
         if (commandId == "support.diagnostics.export") return ExportDiagnostics();
         if (commandId == "command.search.open") return CommandSearchRuntime.Open();
+        if (commandId.StartsWith("style.", StringComparison.Ordinal)) return StyleLibraryRuntime.Open();
         if (commandId.StartsWith("favorite.", StringComparison.Ordinal))
             return CommandResult.Refused(commandId, "Select a concrete command or favorite in Command Search.", RefusalCodes.CommandUnavailable);
         if (Phase1AFormattingCatalog.All.Any(value => value.Id == commandId)) return ApplyProfileFormatting(commandId);
@@ -145,6 +147,62 @@ internal static class CommandDispatcher
 
         var plan = command.Plan(snapshot);
         return command.Execute(plan, port, UndoRuntime.Store);
+    }
+
+    public static CommandResult ApplyStyle(string styleId, bool requireBuiltIn = false)
+    {
+        const string localCommandId = "style.apply";
+        const string builtInCommandId = "style.apply_builtin";
+        var style = StyleLibrary.Effective(ProfileRuntime.Current.LocalStyles)
+            .FirstOrDefault(value => string.Equals(value.StyleId, styleId, StringComparison.Ordinal));
+        var commandId = style?.Origin == StyleOrigin.BuiltIn ? builtInCommandId : localCommandId;
+        if (style is null || (requireBuiltIn && style.Origin != StyleOrigin.BuiltIn))
+            return CommandResult.Refused(commandId, $"Style '{styleId}' is unavailable.", RefusalCodes.CommandUnavailable);
+        if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(commandId))
+            return CommandResult.Refused(commandId, "Style mutation is disabled in safe mode or quarantine.", RefusalCodes.CommandQuarantined);
+        var port = CreateSelectionAdapter();
+        var command = new StyleApplyCommand(StyleCommandCatalog.GetRequired(commandId));
+        var plan = command.Plan(style, port, ProfileRuntime.Current.ImmediatePreviewCellLimit);
+        string? confirmation = null;
+        if (plan.CommandPlan.RequiresPreview)
+        {
+            var text = plan.CommandPlan.Summary + "\n\nProperties: " + string.Join(", ", plan.CommandPlan.ChangedProperties) +
+                $"\nSkipped: {plan.Skipped.Count}\n\nApply this exact plan?";
+            var owner = ExcelWindowOwner.TryCreate();
+            var response = owner is null
+                ? MessageBox.Show(text, "ExcelAccel style preview", MessageBoxButtons.YesNo, MessageBoxIcon.Information)
+                : MessageBox.Show(owner, text, "ExcelAccel style preview", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (response != DialogResult.Yes) return CommandResult.Refused(plan.CommandPlan, "Style preview was cancelled.", "USER_CANCELLED");
+            confirmation = plan.CommandPlan.PlanHash;
+        }
+        return command.Execute(plan, port, confirmation, UndoRuntime.Store);
+    }
+
+    public static CommandResult CaptureLocalStyle(string displayName, IReadOnlyList<string> propertyIds)
+    {
+        if (RuntimeState.IsSafeMode)
+            return CommandResult.Refused("style.capture", "Local style capture is disabled in safe mode.", RefusalCodes.CommandQuarantined);
+        var existing = ProfileRuntime.Current.LocalStyles.FirstOrDefault(value =>
+            string.Equals(value.DisplayName, displayName, StringComparison.OrdinalIgnoreCase));
+        var overwrite = existing is not null;
+        if (overwrite)
+        {
+            var owner = ExcelWindowOwner.TryCreate();
+            var response = owner is null
+                ? MessageBox.Show($"Replace local style '{existing!.DisplayName}'?", "ExcelAccel", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+                : MessageBox.Show(owner, $"Replace local style '{existing!.DisplayName}'?", "ExcelAccel", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (response != DialogResult.Yes) return CommandResult.Refused("style.capture", "Existing style replacement was cancelled.", "USER_CANCELLED");
+        }
+        var styleId = existing?.StyleId ?? "local." + Guid.NewGuid().ToString("N");
+        var recipe = new StyleCaptureCommand().Capture(styleId, displayName, propertyIds, CreateSelectionAdapter());
+        ProfileRuntime.SaveLocalStyle(recipe, overwrite);
+        return CommandResult.Success("style.capture", $"Saved local style '{recipe.DisplayName}' with {recipe.Properties.Count} formatting properties.");
+    }
+
+    public static CommandResult DeleteLocalStyle(string styleId)
+    {
+        var removed = ProfileRuntime.DeleteLocalStyle(styleId);
+        return CommandResult.Success("style.delete_local", removed ? "The local style was deleted." : "The local style was already absent.");
     }
 
     public static CommandResult ApplyProfileFormatting(string commandId)

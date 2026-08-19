@@ -76,4 +76,15 @@ public sealed class CommandResult
             string.Empty,
             diagnosticId ?? string.Empty,
             string.Empty);
+
+    public static CommandResult Partial(string commandId, string reason, long changedCount, long skippedCount, string diagnosticId) =>
+        new CommandResult(
+            CommandResultStatus.Partial,
+            commandId ?? throw new ArgumentNullException(nameof(commandId)),
+            reason ?? string.Empty,
+            changedCount,
+            skippedCount,
+            string.Empty,
+            diagnosticId ?? string.Empty,
+            string.Empty);
 }

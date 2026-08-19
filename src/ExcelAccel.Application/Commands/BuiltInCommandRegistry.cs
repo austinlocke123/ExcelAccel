@@ -4,6 +4,7 @@ using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
 using ExcelAccel.Application.Undo;
 using ExcelAccel.Application.Discovery;
+using ExcelAccel.Application.Styles;
 using ExcelAccel.Core.Commands;
 
 namespace ExcelAccel.Application.Commands;
@@ -68,6 +69,7 @@ public static class BuiltInCommandRegistry
         .Concat(Phase1AFormattingCatalog.All)
         .Concat(NavigationCommandCatalog.All)
         .Concat(DiscoveryCommandCatalog.All)
+        .Concat(StyleCommandCatalog.All)
         .OrderBy(command => command.Id, System.StringComparer.Ordinal)
         .ToArray();
 

@@ -64,6 +64,18 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.Freeze' label='Freeze Panes (Preview Required)' keytip='VF' tag='view.panes.freeze' onAction='OnFormattingCommand'/>
                       <button id='ExcelAccel.Unfreeze' label='Unfreeze Panes' keytip='VU' tag='view.panes.unfreeze' onAction='OnFormattingCommand'/>
                     </menu>
+                    <menu id='ExcelAccel.Styles' label='Styles' keytip='Y' imageMso='CellStylesGallery'>
+                      <button id='ExcelAccel.StyleLibrary' label='Style Library...' keytip='L' onAction='OnOpenStyleLibrary'/>
+                      <button id='ExcelAccel.StyleMajorHeader' label='Major Header' keytip='MH' tag='major_header' onAction='OnApplyBuiltInStyle'/>
+                      <button id='ExcelAccel.StyleMinorHeader' label='Minor Header' keytip='MI' tag='minor_header' onAction='OnApplyBuiltInStyle'/>
+                      <button id='ExcelAccel.StyleDateHeader' label='Date Header' keytip='DH' tag='date_header' onAction='OnApplyBuiltInStyle'/>
+                      <button id='ExcelAccel.StyleAssumption' label='Assumption' keytip='A' tag='assumption' onAction='OnApplyBuiltInStyle'/>
+                      <button id='ExcelAccel.StyleFormula' label='Formula' keytip='F' tag='formula' onAction='OnApplyBuiltInStyle'/>
+                      <button id='ExcelAccel.StyleLinkedFormula' label='Linked Formula' keytip='K' tag='linked_formula' onAction='OnApplyBuiltInStyle'/>
+                      <button id='ExcelAccel.StyleOutput' label='Output' keytip='O' tag='output' onAction='OnApplyBuiltInStyle'/>
+                      <button id='ExcelAccel.StyleWarning' label='Warning' keytip='W' tag='warning' onAction='OnApplyBuiltInStyle'/>
+                      <button id='ExcelAccel.StyleTotal' label='Total' keytip='T' tag='total' onAction='OnApplyBuiltInStyle'/>
+                    </menu>
                     <menu id='ExcelAccel.Navigation' label='Navigate' keytip='V' imageMso='GoTo'>
                       <button id='ExcelAccel.PreviousSheet' label='Previous Sheet' keytip='P' tag='navigate.sheet.previous' onAction='OnNavigate'/>
                       <button id='ExcelAccel.NextSheet' label='Next Sheet' keytip='N' tag='navigate.sheet.next' onAction='OnNavigate'/>
@@ -116,6 +128,16 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         var commandId = control.Tag;
         CallbackBoundary.Run(commandId, () => CommandDispatcher.Navigate(commandId));
+    }
+
+    public void OnOpenStyleLibrary(IRibbonControl control)
+    {
+        CallbackBoundary.Run("style.apply", StyleLibraryRuntime.Open, showResult: false);
+    }
+
+    public void OnApplyBuiltInStyle(IRibbonControl control)
+    {
+        CallbackBoundary.Run("style.apply_builtin", () => CommandDispatcher.ApplyStyle(control.Tag, requireBuiltIn: true));
     }
 
     public void OnUndoLast(IRibbonControl control)

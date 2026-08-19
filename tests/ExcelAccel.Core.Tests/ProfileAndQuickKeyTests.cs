@@ -6,6 +6,7 @@ using ExcelAccel.Application.Profiles;
 using ExcelAccel.Application.QuickKeys;
 using ExcelAccel.Persistence.Profiles;
 using System.Collections.Generic;
+using ExcelAccel.Application.Styles;
 using Xunit;
 
 namespace ExcelAccel.Core.Tests;
@@ -81,6 +82,24 @@ public sealed class ProfileAndQuickKeyTests
         Assert.Equal(original.NumberFormats, loaded.NumberFormats);
         Assert.Equal(original.QuickKeys.Select(value => value.Sequence).OrderBy(value => value, StringComparer.Ordinal),
             loaded.QuickKeys.Select(value => value.Sequence).OrderBy(value => value, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void LocalStyleRoundTripsDeterministicallyThroughProfileStorage()
+    {
+        using var sandbox = new TemporaryDirectory();
+        var path = Path.Combine(sandbox.Path, "profile.json");
+        var store = new ProfileStore();
+        var original = store.LoadDefault();
+        var style = new StyleRecipe("local.review", 1, "Review", StyleOrigin.Local, UnsupportedStylePropertyPolicy.Refuse,
+            new[] { new KeyValuePair<string, string>("font_bold", "true"), new KeyValuePair<string, string>("fill_color", "#FFF2CC") });
+
+        store.SaveAtomic(path, original.WithLocalStyles(StyleLibrary.AddOrReplace(original.LocalStyles, style, overwrite: false)));
+        var loaded = store.Load(path);
+
+        Assert.Single(loaded.LocalStyles);
+        Assert.Equal("#FFF2CC", loaded.LocalStyles[0].Properties["fill_color"]);
+        Assert.Equal(store.Serialize(loaded), store.Serialize(store.Parse(store.Serialize(loaded))));
     }
 
     [Fact]

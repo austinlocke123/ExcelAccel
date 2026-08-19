@@ -29,6 +29,32 @@ public static class DebugSmokeCommands
         }
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Smoke.OpenAndCloseStyleLibrary", Description = "Debug-only style-library UI lifecycle hook.")]
+    public static void OpenAndCloseStyleLibrary()
+    {
+        try
+        {
+            var result = StyleLibraryRuntime.Open();
+            if (!result.Succeeded) throw new InvalidOperationException(result.Message);
+            System.Windows.Forms.Application.DoEvents();
+            StyleLibraryRuntime.Reset();
+            DiagnosticLog.Info("smoke.style.library", "opened_and_closed");
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.style.library", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.ApplyMajorHeaderStyle", Description = "Debug-only built-in style hook.")]
+    public static void ApplyMajorHeaderStyle()
+    {
+        try
+        {
+            var result = CommandDispatcher.ApplyStyle("major_header", requireBuiltIn: true);
+            if (!result.Succeeded) throw new InvalidOperationException(result.Message);
+            DiagnosticLog.Info("smoke.style.major_header", "success");
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.style.major_header", exception); throw; }
+    }
+
     [ExcelCommand(
         Name = "ExcelAccel.Smoke.ApplyCurrencyFormat",
         Description = "Debug-only integration hook; not compiled into Release builds.")]

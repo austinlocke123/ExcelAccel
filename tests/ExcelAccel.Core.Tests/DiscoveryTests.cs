@@ -109,18 +109,36 @@ public sealed class DiscoveryTests
     }
 
     [Fact]
-    public void ProfileV2MigratesToV3WithEmptyFavorites()
+    public void ProfileV2MigratesToCurrentSchemaWithEmptyPhase1BCollections()
     {
         var store = new ProfileStore();
-        var v3 = store.Serialize(store.LoadDefault());
-        var v2 = v3.Replace("\"schema_version\": 3", "\"schema_version\": 2", StringComparison.Ordinal)
-            .Replace("  \"favorites\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal);
+        var current = store.Serialize(store.LoadDefault());
+        var v2 = current.Replace("\"schema_version\": 4", "\"schema_version\": 2", StringComparison.Ordinal)
+            .Replace("  \"favorites\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal)
+            .Replace("  \"local_styles\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal);
 
         var migrated = store.Parse(v2);
 
         Assert.Equal(ProfileDefinition.CurrentSchemaVersion, migrated.SchemaVersion);
         Assert.Empty(migrated.Favorites);
+        Assert.Empty(migrated.LocalStyles);
         Assert.Contains("\"favorites\": []", store.Serialize(migrated), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProfileV3MigratesFavoritesAndAddsEmptyLocalStyles()
+    {
+        var store = new ProfileStore();
+        var profile = store.LoadDefault().WithFavorites(new[] { new FavoriteDefinition("favorite.currency", "format.number.currency", 1) });
+        var v3 = store.Serialize(profile)
+            .Replace("\"schema_version\": 4", "\"schema_version\": 3", StringComparison.Ordinal)
+            .Replace("  \"local_styles\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal);
+
+        var migrated = store.Parse(v3);
+
+        Assert.Single(migrated.Favorites);
+        Assert.Empty(migrated.LocalStyles);
+        Assert.Equal(ProfileDefinition.CurrentSchemaVersion, migrated.SchemaVersion);
     }
 
     private static CommandDescriptor Descriptor(string id, string name, string category, string description,
