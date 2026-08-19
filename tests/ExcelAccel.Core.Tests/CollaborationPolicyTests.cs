@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Collaboration;
 using ExcelAccel.Core.Commands;
 using Xunit;

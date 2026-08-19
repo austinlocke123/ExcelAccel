@@ -1,10 +1,10 @@
 #if DEBUG
 using System;
 using ExcelDna.Integration;
-using ExcelAccel.Core.Commands;
+using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Reliability;
-using ExcelAccel.ExcelAddIn.Interop;
 using ExcelAccel.ExcelAddIn.Reliability;
+using ExcelAccel.ExcelInterop;
 
 namespace ExcelAccel.ExcelAddIn;
 
@@ -59,7 +59,7 @@ public static class DebugSmokeCommands
     {
         try
         {
-            var port = new ExcelSelectionAdapter();
+            var port = new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
             var command = new ApplyCurrencyFormatCommand();
             var plan = command.Plan(port.CaptureSelection());
             port.SetNumberFormat("0.00");

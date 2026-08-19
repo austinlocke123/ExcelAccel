@@ -4,6 +4,10 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelAccel.Core", "src\ExcelAccel.Core\ExcelAccel.Core.csproj", "{31AEBD87-E09B-4325-A246-D4D61E561B96}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelAccel.Application", "src\ExcelAccel.Application\ExcelAccel.Application.csproj", "{89709F54-0D3F-4D99-A17D-9F24BEE791AE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelAccel.ExcelInterop", "src\ExcelAccel.ExcelInterop\ExcelAccel.ExcelInterop.csproj", "{E72F62C0-0887-4ED5-85F9-DA28FA5A5702}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelAccel.ExcelAddIn", "src\ExcelAccel.ExcelAddIn\ExcelAccel.ExcelAddIn.csproj", "{07F881B8-AE10-44C7-A806-C53CF18C515B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelAccel.Core.Tests", "tests\ExcelAccel.Core.Tests\ExcelAccel.Core.Tests.csproj", "{19583F34-F169-493C-BD7F-7C4AC03DA133}"
@@ -18,6 +22,14 @@ Global
 		{31AEBD87-E09B-4325-A246-D4D61E561B96}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{31AEBD87-E09B-4325-A246-D4D61E561B96}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{31AEBD87-E09B-4325-A246-D4D61E561B96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{89709F54-0D3F-4D99-A17D-9F24BEE791AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89709F54-0D3F-4D99-A17D-9F24BEE791AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89709F54-0D3F-4D99-A17D-9F24BEE791AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89709F54-0D3F-4D99-A17D-9F24BEE791AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E72F62C0-0887-4ED5-85F9-DA28FA5A5702}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E72F62C0-0887-4ED5-85F9-DA28FA5A5702}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E72F62C0-0887-4ED5-85F9-DA28FA5A5702}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E72F62C0-0887-4ED5-85F9-DA28FA5A5702}.Release|Any CPU.Build.0 = Release|Any CPU
 		{07F881B8-AE10-44C7-A806-C53CF18C515B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{07F881B8-AE10-44C7-A806-C53CF18C515B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07F881B8-AE10-44C7-A806-C53CF18C515B}.Release|Any CPU.ActiveCfg = Release|Any CPU

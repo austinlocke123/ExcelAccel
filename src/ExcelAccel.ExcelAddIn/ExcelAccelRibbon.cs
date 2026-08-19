@@ -1,5 +1,5 @@
 using ExcelDna.Integration.CustomUI;
-using ExcelAccel.Core.Commands;
+using ExcelAccel.Application.Commands;
 using ExcelAccel.ExcelAddIn.Reliability;
 
 namespace ExcelAccel.ExcelAddIn;

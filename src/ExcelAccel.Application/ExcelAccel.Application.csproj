@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>ExcelAccel.Application</AssemblyName>
+    <RootNamespace>ExcelAccel.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ExcelAccel.Core\ExcelAccel.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,9 +1,9 @@
 using System;
 using ExcelAccel.Core.Reliability;
 
-namespace ExcelAccel.ExcelAddIn.Interop;
+namespace ExcelAccel.ExcelInterop;
 
-internal sealed class ExcelApplicationStateAdapter : IApplicationStatePort
+public sealed class ExcelApplicationStateAdapter : IApplicationStatePort
 {
     private readonly object _applicationObject;
 

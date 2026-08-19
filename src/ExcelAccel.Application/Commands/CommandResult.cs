@@ -1,6 +1,6 @@
 using System;
 
-namespace ExcelAccel.Core.Commands;
+namespace ExcelAccel.Application.Commands;
 
 public sealed class CommandResult
 {

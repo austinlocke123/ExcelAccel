@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using ExcelAccel.Core.Collaboration;
 
-namespace ExcelAccel.ExcelAddIn.Interop;
+namespace ExcelAccel.ExcelInterop;
 
 internal static class ExcelWorkbookCollaborationAdapter
 {

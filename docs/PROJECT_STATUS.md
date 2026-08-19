@@ -18,7 +18,8 @@ for end-user distribution.
 | `agent/phase-0-autosave-coauthoring` | `a85143b` | WP-P0-06 collaboration safety | Draft PR #4, stacked on PR #3 |
 | `agent/phase-0-performance-baseline` | `29c91e8` | WP-P0-07 performance baseline | Draft PR #5, stacked on PR #4 |
 | `agent/phase-0-packaging-trust` | `b30a4ad` | WP-P0-08 packaging and trust | Draft PR #6, stacked on PR #5 |
-| `agent/phase-0-closure` | local work in progress | Gate ledger, ADR acceptance, boundary enforcement, and reliability soak | Started from `b30a4ad` |
+| `agent/phase-0-closure` | `b95be00` | Gate ledger, ADR acceptance, boundary enforcement, and reliability soak | Draft PR #7, stacked on PR #6 |
+| `agent/phase-1a-foundation` | `e13d28e` | WP-1A-01 production solution boundaries | Draft PR #8, stacked on PR #7 |
 
 ## Completed engineering work
 
@@ -43,10 +44,12 @@ for end-user distribution.
   ten-session real-Excel reliability soak with natural process exit and XLL
   unlock checks.
 
-Current local verification is 99 unit tests with zero failures and Debug and
+Current local verification is 100 unit tests with zero failures and Debug and
 Release builds with zero warnings/errors. See
 [`evidence/PHASE0_CLOSURE.md`](evidence/PHASE0_CLOSURE.md) for the gate-by-gate
-decision and exact measured evidence.
+decision and exact measured evidence, and
+[`evidence/WP-1A-01_FOUNDATION.md`](evidence/WP-1A-01_FOUNDATION.md) for the
+production boundary implementation.
 
 ## Accepted and open decisions
 
@@ -73,9 +76,14 @@ decision and exact measured evidence.
 
 ## Current work and restart point
 
-Finish and publish `agent/phase-0-closure`, then create Phase 1A from that exact
-commit. Begin with WP-1A-01 production structure and architecture enforcement,
-followed by WP-1A-02 command contracts and WP-1A-03 adapter/state boundaries.
+WP-1A-01 is published on `agent/phase-1a-foundation`. Core, Application,
+ExcelInterop, and ExcelAddIn are now separate acyclic projects; command
+orchestration moved into Application, Excel adapters moved into ExcelInterop,
+the host supplies its root-application/thread delegates, and the packed XLL
+embeds every required assembly.
+
+After WP-1A-01 review, continue with WP-1A-02 command context/registry/plan/result
+hardening and then WP-1A-03 adapter/state boundaries.
 
 Do not start with formula transforms, AutoColor, installer mutation, or broad
 workbook commands: those are still behind their retained gates. The first

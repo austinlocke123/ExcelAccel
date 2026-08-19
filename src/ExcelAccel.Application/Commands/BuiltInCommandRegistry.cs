@@ -1,6 +1,7 @@
 using System.Collections.Generic;
+using ExcelAccel.Core.Commands;
 
-namespace ExcelAccel.Core.Commands;
+namespace ExcelAccel.Application.Commands;
 
 public static class BuiltInCommandRegistry
 {

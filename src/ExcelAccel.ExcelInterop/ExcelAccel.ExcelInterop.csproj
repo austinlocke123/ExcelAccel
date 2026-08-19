@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>ExcelAccel.ExcelInterop</AssemblyName>
+    <RootNamespace>ExcelAccel.ExcelInterop</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ExcelAccel.Application\ExcelAccel.Application.csproj" />
+    <ProjectReference Include="..\ExcelAccel.Core\ExcelAccel.Core.csproj" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="all" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+</Project>

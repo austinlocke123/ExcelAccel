@@ -1,4 +1,4 @@
-namespace ExcelAccel.Core.Commands;
+namespace ExcelAccel.Application.Commands;
 
 public static class RefusalCodes
 {

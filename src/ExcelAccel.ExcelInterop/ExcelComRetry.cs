@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using ExcelAccel.Core.Reliability;
 
-namespace ExcelAccel.ExcelAddIn.Interop;
+namespace ExcelAccel.ExcelInterop;
 
 internal static class ExcelComRetry
 {

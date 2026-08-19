@@ -4,7 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using ExcelAccel.Core.Commands;
+using ExcelAccel.Application.Commands;
 
 namespace ExcelAccel.ExcelAddIn.Reliability;
 

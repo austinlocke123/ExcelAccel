@@ -1,6 +1,6 @@
 # ExcelAccel architecture
 
-Status: **Draft for review**
+Status: **Active baseline; foundational decisions accepted 2026-08-19**
 
 ## 1. Architectural objective
 
@@ -28,27 +28,29 @@ flowchart LR
 The arrows are dependency/interaction direction, not permission to pass Excel
 objects between components.
 
-## 3. Proposed solution boundaries
+## 3. Solution boundaries
 
-Names are provisional until coding is authorized, but dependency direction is
-normative.
+The production project names and dependency direction are normative.
 
 | Project | Responsibility | Allowed dependencies |
 |---|---|---|
-| `ExcelAccel.AddIn` | Excel-DNA lifecycle, Ribbon, panes, callback boundaries, dispatcher composition | Application, ExcelInterop contracts |
+| `ExcelAccel.ExcelAddIn` | Excel-DNA lifecycle, Ribbon, panes, callback boundaries, dispatcher composition | Application, Core, ExcelInterop |
 | `ExcelAccel.Application` | Command registry, orchestration, impact policy, preview routing, cancellation, results | Domain and abstractions only |
-| `ExcelAccel.Domain` | Formula model, transforms, checking, comparison primitives, command plans, pure policies | BCL and approved pure libraries only |
+| `ExcelAccel.Core` | Immutable workbook models, formulas, pure policies, reliability primitives, performance math, and bounded package-integrity primitives | BCL and approved pure libraries only |
 | `ExcelAccel.ExcelInterop` | Excel COM/C API snapshots, capability detection, mutation writers, state guard | Application abstractions; Office interop |
-| `ExcelAccel.Persistence` | Profiles, settings, schema migration, atomic local files | Domain/application DTOs only |
+| `ExcelAccel.Persistence` (planned WP-1A-04) | Profiles, settings, schema migration, atomic local files | Core/application DTOs only |
 | `ExcelAccel.PresentationInterop` | Deferred PowerPoint automation | Separate optional adapter only |
 
 ### Dependency rules
 
-- `Domain` MUST NOT reference Excel-DNA, Office interop, UI frameworks, file
-  system APIs, registry APIs, network APIs, or process-global state.
+- `Core` MUST NOT reference Excel-DNA, Office interop, UI frameworks, registry
+  APIs, network APIs, or Excel process-global state. Its bounded package
+  integrity code may use explicit caller-supplied file paths.
 - `Application` MUST NOT expose COM types in any public API.
-- `AddIn` and interop adapters MUST remain thin; workbook business rules belong
-  in `Domain` or `Application`.
+- `ExcelAddIn` and interop adapters MUST remain thin; workbook business rules
+  belong in `Core` or `Application`.
+- `ExcelInterop` receives the root Excel application and thread verifier from
+  host composition; it MUST NOT reference `ExcelAddIn` or own process lifecycle.
 - The PowerPoint adapter MUST remain absent until its phase is approved.
 - Cyclic project references are prohibited.
 
