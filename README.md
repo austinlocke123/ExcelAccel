@@ -5,7 +5,8 @@ keyboard-first financial-modeling workflows.
 
 The repository has **closed Phase 0 for the Phase 1A production foundation**.
 It contains a real 64-bit Excel-DNA `.xll`, a pure command core, reliability
-boundaries, one read-only command, and one property-scoped formatting command.
+boundaries, profile-driven property-scoped formatting, read-only navigation,
+optimistic session undo, recovery/diagnostics, and per-user installer source.
 It is not yet qualified for distribution; retained formula, performance,
 collaboration, and clean-machine gates remain fail-closed.
 WP-1A-01 now separates Core, Application, ExcelInterop, and the thin Excel-DNA
