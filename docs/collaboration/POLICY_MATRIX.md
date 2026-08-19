@@ -1,7 +1,7 @@
 # Proposed AutoSave and coauthoring policy matrix
 
 - Work package: WP-P0-06
-- Status: **Prototype evidence; ADR-0005 remains proposed**
+- Status: **Accepted conservative policy; broader collaboration authority remains gated**
 - Governing decision: [ADR-0005](../decisions/ADR-0005-autosave-coauthoring.md)
 
 ## Detected states

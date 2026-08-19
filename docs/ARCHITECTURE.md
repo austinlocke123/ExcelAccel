@@ -168,7 +168,7 @@ Rules:
 
 ## 9. AutoSave and coauthoring boundary
 
-The initial policy is conservative and remains proposed pending `ADR-0005`:
+The accepted ADR-0005 policy is deliberately conservative:
 
 - low-impact property-scoped commands may execute after immediate precondition
   revalidation;

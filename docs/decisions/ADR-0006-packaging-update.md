@@ -1,8 +1,9 @@
 # ADR-0006: Packaging, signing, installation, and rollback
 
-- Status: **Proposed**
+- Status: **Accepted**
 - Date: 2026-08-19
-- Deciders: open
+- Accepted: 2026-08-19
+- Decider: project owner
 
 ## Context
 
@@ -21,7 +22,7 @@ The Phase 0 source guidance is:
 - persistent XLL startup registration can use Excel's `OPEN`, `OPEN1`, ...
   values, but an installer must own and restore only its exact entry.
 
-## Proposed decision
+## Decision
 
 1. Pack first, then Authenticode-sign the final XLL with SHA-256 and an RFC 3161
    SHA-256 timestamp.
@@ -66,3 +67,11 @@ The Phase 0 source guidance is:
 - x64 supported-build matrix and coexistence testing;
 - no orphaned file, registry entry, process, or trusted-location exception;
 - accepted installer/container technology and privilege model.
+
+## Acceptance note
+
+The versioned, pack-then-sign, exact-entry ownership, no-forced-Excel-termination
+design is accepted for implementation. This is not approval to distribute the
+prototype: CA-issued signing, timestamping, installer selection, registry
+ownership, allowlisting, rollover, and clean-VM lifecycle evidence remain hard
+WP-1A-12 gates.

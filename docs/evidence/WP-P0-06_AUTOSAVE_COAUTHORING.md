@@ -2,7 +2,8 @@
 
 - Date: 2026-08-18
 - Scope: first WP-P0-06 implementation slice
-- Status: prototype passing; ADR-0005 and AC-P0-007 remain open
+- Status: prototype passing; ADR-0005 accepted on 2026-08-19 with unknown-state
+  refusal; broader AC-P0-007 cloud/build qualification remains open
 - Policy: [`POLICY_MATRIX.md`](../collaboration/POLICY_MATRIX.md)
 
 ## Implemented behavior
@@ -90,7 +91,7 @@ complete version log:
 - distinguish only those AutoSave states that can be identified without a write;
 - exercise preview/execute/undo races, recalculation, external-link refresh,
   protection/read-only transitions, cancellation, close, and shutdown;
-- review and accept exact production lease lifetimes and ADR-0005.
+- review and accept exact production lease lifetimes for broader authority.
 
 No command changes AutoSave or gains new collaborative mutation authority in
 this slice.

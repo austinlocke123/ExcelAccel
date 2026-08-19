@@ -73,6 +73,12 @@ without an approved phase remains gated even though its contract is reviewable.
 Phase 0 produces evidence and accepted ADRs; it does not produce a broadly
 featured release.
 
+Phase 0 closure on 2026-08-19 separates permission to build the production
+foundation from permission to enable a gated capability or distribute the
+add-in. Formula mutation, workbook-scale performance, unqualified collaborative
+mutation, and signed clean-machine distribution retain their individual gates
+under Acceptance §2.1.
+
 ### 4.2 Phase 1A: reliable daily-speed core
 
 - CAP-CMD-001: unified command registry and contract.

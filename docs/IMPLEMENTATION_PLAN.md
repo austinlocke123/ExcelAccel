@@ -1,10 +1,12 @@
 # Agent-ready implementation plan
 
-Status: **Active; Phase 0 implementation authorized 2026-08-18**
+Status: **Active; Phase 0 closed for the Phase 1A foundation on 2026-08-19**
 
 This plan decomposes implementation work. The documentation baseline and Phase
-0 start were approved on 2026-08-18. Later phases and gated feature packages
-still require their stated prerequisites and evidence.
+0 start were approved on 2026-08-18. Phase 1A foundation work was authorized on
+2026-08-19 under the capability-specific gate disposition in
+[`ACCEPTANCE.md`](ACCEPTANCE.md). Gated feature packages still require their
+stated prerequisites and evidence.
 
 ## 1. Authorization gate
 
@@ -97,7 +99,10 @@ contract, weaken a refusal, or resolve an open ADR implicitly.
 
 ## 4. Phase 1A work packages
 
-These begin only after all applicable Phase 0 gates pass.
+These begin only after all applicable Phase 0 gates pass. “Applicable” follows
+the explicit closure disposition in Acceptance §2.1: formula mutation,
+workbook-scale performance, unqualified collaboration, and distribution remain
+disabled until their retained gates pass.
 
 | Work package | Scope | Depends on | Primary acceptance |
 |---|---|---|---|

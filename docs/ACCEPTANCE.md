@@ -31,8 +31,28 @@ without weakening these outcomes.
 | AC-P0-007 | AutoSave/coauthoring experiments produce an accepted impact-tier policy and demonstrate stale-plan refusal under representative intervening changes. |
 | AC-P0-008 | A signed packaging prototype installs, loads, disables, upgrades, rolls back, and uninstalls on an approved clean VM with no development tools. |
 
-No Phase 1 feature work begins until these gates pass or the governing
-requirement is explicitly revised.
+### 2.1 Phase 0 closure disposition
+
+The governing requirement was explicitly revised on 2026-08-19 so that an
+external qualification dependency cannot force unrelated production-foundation
+work to remain in spike branches indefinitely:
+
+- AC-P0-001 through AC-P0-004 are the hard start gates for WP-1A-01 through
+  WP-1A-06, WP-1A-08, and WP-1A-10. Their local start-gate scope and remaining
+  release scope are recorded in `evidence/PHASE0_CLOSURE.md`.
+- AC-P0-005 remains a hard capability gate for every formula-mutating command.
+  Those commands remain unregistered while ADR-0004 is open.
+- AC-P0-006 remains a hard capability gate for workbook-scale and
+  performance-sensitive enablement, including WP-1A-07. Early Phase 1A budgets
+  remain provisional until the qualification profile is accepted.
+- AC-P0-007 authorizes only the conservative impact policy in accepted
+  ADR-0005. Unknown or unqualified collaborative states do not gain mutation
+  authority.
+- AC-P0-008 is a hard distribution and WP-1A-12 gate. It does not block source
+  implementation that cannot install itself or alter Office trust.
+
+No capability may bypass its retained gate. Phase 1A foundation work may begin
+only from the recorded Phase 0 closure commit.
 
 ## 3. Architecture and boundary criteria
 
