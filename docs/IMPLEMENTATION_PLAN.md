@@ -1,6 +1,6 @@
 # Agent-ready implementation plan
 
-Status: **Active; Phase 0 closed for the Phase 1A foundation on 2026-08-19**
+Status: **Phase 1B engineering checkpoint completed and qualified on 2026-08-19; distribution gates retained**
 
 This plan decomposes implementation work. The documentation baseline and Phase
 0 start were approved on 2026-08-18. Phase 1A foundation work was authorized on
