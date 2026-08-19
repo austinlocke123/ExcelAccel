@@ -89,10 +89,16 @@ public sealed class ArchitectureBoundaryTests
             "src/ExcelAccel.Core/ExcelAccel.Core.csproj");
         AssertProjectReferences(
             root,
+            "src/ExcelAccel.Persistence/ExcelAccel.Persistence.csproj",
+            "src/ExcelAccel.Application/ExcelAccel.Application.csproj",
+            "src/ExcelAccel.Core/ExcelAccel.Core.csproj");
+        AssertProjectReferences(
+            root,
             "src/ExcelAccel.ExcelAddIn/ExcelAccel.ExcelAddIn.csproj",
             "src/ExcelAccel.Application/ExcelAccel.Application.csproj",
             "src/ExcelAccel.Core/ExcelAccel.Core.csproj",
-            "src/ExcelAccel.ExcelInterop/ExcelAccel.ExcelInterop.csproj");
+            "src/ExcelAccel.ExcelInterop/ExcelAccel.ExcelInterop.csproj",
+            "src/ExcelAccel.Persistence/ExcelAccel.Persistence.csproj");
 
         Assert.False(Directory.Exists(Path.Combine(root, "src", "ExcelAccel.PresentationInterop")));
     }

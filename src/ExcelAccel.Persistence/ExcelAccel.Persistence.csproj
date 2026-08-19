@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>ExcelAccel.Persistence</AssemblyName>
+    <RootNamespace>ExcelAccel.Persistence</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ExcelAccel.Application\ExcelAccel.Application.csproj" />
+    <ProjectReference Include="..\ExcelAccel.Core\ExcelAccel.Core.csproj" />
+    <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\config\default-profile.json" Link="Defaults\default-profile.json" />
+  </ItemGroup>
+</Project>

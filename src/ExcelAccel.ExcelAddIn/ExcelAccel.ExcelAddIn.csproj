@@ -9,12 +9,13 @@
     <ExcelDnaCreate64BitAddIn>true</ExcelDnaCreate64BitAddIn>
     <ExcelDna64BitAddInSuffix>64</ExcelDna64BitAddInSuffix>
     <ExcelDnaPublishPath>publish</ExcelDnaPublishPath>
-    <ExcelAddInInclude>ExcelAccel.Core.dll;ExcelAccel.Application.dll;ExcelAccel.ExcelInterop.dll</ExcelAddInInclude>
+    <ExcelAddInInclude>ExcelAccel.Core.dll;ExcelAccel.Application.dll;ExcelAccel.ExcelInterop.dll;ExcelAccel.Persistence.dll;Newtonsoft.Json.dll</ExcelAddInInclude>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\ExcelAccel.Application\ExcelAccel.Application.csproj" />
     <ProjectReference Include="..\ExcelAccel.Core\ExcelAccel.Core.csproj" />
     <ProjectReference Include="..\ExcelAccel.ExcelInterop\ExcelAccel.ExcelInterop.csproj" />
+    <ProjectReference Include="..\ExcelAccel.Persistence\ExcelAccel.Persistence.csproj" />
     <PackageReference Include="ExcelDna.AddIn" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="all" />
     <Reference Include="Microsoft.CSharp" />

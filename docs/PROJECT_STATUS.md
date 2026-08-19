@@ -89,6 +89,11 @@ WP-1A-02/03 implementation is now underway: registry metadata, deterministic
 canonical plan hashing, exact-preview authorization, explicit result status,
 and Excel readiness refusal have been added without registering new commands.
 
+WP-1A-04/05 now has a strict versioned default profile, deterministic JSON,
+atomic replace/backup storage, and a pure Quick Key conflict/timeout/edit-mode
+engine. Live key interception remains disabled until WP-1A-11 can qualify host
+registration and cleanup without risking normal Excel typing.
+
 Do not start with formula transforms, AutoColor, installer mutation, or broad
 workbook commands: those are still behind their retained gates. The first
 Phase 1A slice should consolidate production interfaces, dependency direction,
