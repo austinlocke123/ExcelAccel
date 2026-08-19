@@ -1,10 +1,10 @@
 # Agent-ready implementation plan
 
-Status: **Draft for review; implementation not authorized**
+Status: **Active; Phase 0 implementation authorized 2026-08-18**
 
-This plan decomposes future work. It does not create permission to code. After
-documentation approval, each work package should be assigned separately with a
-bounded scope and required evidence.
+This plan decomposes implementation work. The documentation baseline and Phase
+0 start were approved on 2026-08-18. Later phases and gated feature packages
+still require their stated prerequisites and evidence.
 
 ## 1. Authorization gate
 

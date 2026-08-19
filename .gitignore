@@ -1,0 +1,13 @@
+# Workspace-local developer tooling and build outputs
+.tools/
+**/bin/
+**/obj/
+TestResults/
+
+# IDE and user-specific state
+.vs/
+*.user
+*.suo
+
+# Excel-DNA local debug artifacts
+*.xll.config.user
