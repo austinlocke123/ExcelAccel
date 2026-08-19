@@ -39,6 +39,10 @@ public static class ExcelAccelNativeMethods
     $auditSource = $null
     $auditFormula = $null
     $auditName = $null
+    $auditViewWorkbook = $null
+    $auditViewSheet = $null
+    $auditViewSource = $null
+    $auditViewFormula = $null
     $font = $null
     $interior = $null
     $multiArea = $null
@@ -629,6 +633,65 @@ public static class ExcelAccelNativeMethods
             throw 'Direct-precedent capture did not resolve the supported workbook name exactly.'
         }
 
+        $auditFormula.Formula = '=A90'
+        [void]$auditFormula.Select()
+        $auditViewResult = [string]$excel.Run('ExcelAccel.Smoke.DirectPrecedentsView')
+        $auditViewSelectionPreserved = ([string]$excel.Selection.Address($false, $false) -eq 'B90')
+        $auditViewContentPreserved = ([double]$auditSource.Value2 -eq 42) -and ([string]$auditFormula.Formula -eq '=A90')
+        [Console]::WriteLine("direct_precedents_view=$auditViewResult")
+        [Console]::WriteLine("direct_precedents_view_selection_preserved=$auditViewSelectionPreserved")
+        [Console]::WriteLine("direct_precedents_view_content_preserved=$auditViewContentPreserved")
+        [Console]::Out.Flush()
+        if ($auditViewResult -ne 'open|success' -or -not $auditViewSelectionPreserved -or -not $auditViewContentPreserved) {
+            throw 'The read-only direct-precedent view did not open without touching the workbook.'
+        }
+
+        $auditViewRetained = [string]$excel.Run('ExcelAccel.Smoke.DirectPrecedentsViewRevalidate')
+        [Console]::WriteLine("direct_precedents_view_open_workbook=$auditViewRetained")
+        [Console]::Out.Flush()
+        if ($auditViewRetained -ne 'retained|open') {
+            throw 'The direct-precedent view discarded a result whose source workbook is still open.'
+        }
+
+        $auditViewWorkbook = $excel.Workbooks.Add()
+        $auditViewSheet = $auditViewWorkbook.Worksheets.Item(1)
+        $auditViewSource = $auditViewSheet.Range('A1')
+        $auditViewFormula = $auditViewSheet.Range('B1')
+        $auditViewSource.Value2 = 7
+        $auditViewFormula.Formula = '=A1'
+        [void]$auditViewFormula.Select()
+        $auditViewSecondResult = [string]$excel.Run('ExcelAccel.Smoke.DirectPrecedentsView')
+        [Console]::WriteLine("direct_precedents_view_second_workbook=$auditViewSecondResult")
+        [Console]::Out.Flush()
+        if ($auditViewSecondResult -ne 'open|success') {
+            throw 'The direct-precedent view did not present the second workbook result.'
+        }
+        Release-ComObject $auditViewFormula
+        $auditViewFormula = $null
+        Release-ComObject $auditViewSource
+        $auditViewSource = $null
+        Release-ComObject $auditViewSheet
+        $auditViewSheet = $null
+        $auditViewWorkbook.Close($false)
+        Release-ComObject $auditViewWorkbook
+        $auditViewWorkbook = $null
+        $auditViewDiscarded = [string]$excel.Run('ExcelAccel.Smoke.DirectPrecedentsViewRevalidate')
+        [Console]::WriteLine("direct_precedents_view_closed_workbook=$auditViewDiscarded")
+        [Console]::Out.Flush()
+        if ($auditViewDiscarded -ne 'discarded|closed') {
+            throw 'The direct-precedent view survived the close of its source workbook.'
+        }
+
+        [void]$workbook.Activate()
+        [void]$auditFormula.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.DirectPrecedentsView')
+        $auditViewExplicitClose = [string]$excel.Run('ExcelAccel.Smoke.CloseDirectPrecedentsView')
+        [Console]::WriteLine("direct_precedents_view_explicit_close=$auditViewExplicitClose")
+        [Console]::Out.Flush()
+        if ($auditViewExplicitClose -ne 'closed') {
+            throw 'The direct-precedent view did not release on the explicit close path.'
+        }
+
         $excel.ScreenUpdating = $true
         $excel.EnableEvents = $true
         [void]$excel.Run('ExcelAccel.Smoke.ThrowInsideStateGuard')
@@ -731,6 +794,10 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $mergedRange
         Release-ComObject $auditFormula
         Release-ComObject $auditSource
+        Release-ComObject $auditViewFormula
+        Release-ComObject $auditViewSource
+        Release-ComObject $auditViewSheet
+        Release-ComObject $auditViewWorkbook
         Release-ComObject $auditName
         Release-ComObject $formulaDestination2
         Release-ComObject $formulaDestination1
@@ -895,6 +962,13 @@ try {
         'direct_precedents_selection_preserved=True',
         'direct_precedents_content_preserved=True',
         'direct_precedents_name=Partial|1|0|0|Value',
+        'direct_precedents_view=open|success',
+        'direct_precedents_view_selection_preserved=True',
+        'direct_precedents_view_content_preserved=True',
+        'direct_precedents_view_open_workbook=retained|open',
+        'direct_precedents_view_second_workbook=open|success',
+        'direct_precedents_view_closed_workbook=discarded|closed',
+        'direct_precedents_view_explicit_close=closed',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
         'typed_conversions_exact=True',

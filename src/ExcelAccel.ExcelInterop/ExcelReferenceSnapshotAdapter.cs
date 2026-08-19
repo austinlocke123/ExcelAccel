@@ -10,7 +10,7 @@ using ExcelAccel.Core.Commands;
 
 namespace ExcelAccel.ExcelInterop;
 
-public sealed class ExcelReferenceSnapshotAdapter : IDirectPrecedentSnapshotPort
+public sealed class ExcelReferenceSnapshotAdapter : IDirectPrecedentSnapshotPort, IWorkbookPresencePort
 {
     public const int MaximumCapturedCells = 10_000;
     private readonly ExcelSelectionAdapter _selection;
@@ -99,6 +99,67 @@ public sealed class ExcelReferenceSnapshotAdapter : IDirectPrecedentSnapshotPort
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Reports whether the workbook that produced a captured analysis is still
+    /// open. It enumerates only already-open workbooks and never opens one.
+    /// A transient COM failure is reported as <see cref="WorkbookPresence.Unknown"/>
+    /// so a caller can neither claim the source is live nor discard it silently.
+    /// </summary>
+    public WorkbookPresence Probe(string workbookId)
+    {
+        if (string.IsNullOrWhiteSpace(workbookId)) return WorkbookPresence.Closed;
+        _verifyExcelThread();
+        try
+        {
+            return ExcelComRetry.Execute(() => ProbeOnce(workbookId));
+        }
+        catch (COMException)
+        {
+            return WorkbookPresence.Unknown;
+        }
+        catch (CommandRefusedException)
+        {
+            return WorkbookPresence.Unknown;
+        }
+    }
+
+    private WorkbookPresence ProbeOnce(string workbookId)
+    {
+        object? workbooksObject = null;
+        try
+        {
+            workbooksObject = ((dynamic)_getApplication()).Workbooks;
+            var count = Convert.ToInt32(((dynamic)workbooksObject).Count, CultureInfo.InvariantCulture);
+            for (var index = 1; index <= count; index++)
+            {
+                object? workbookObject = null;
+                try
+                {
+                    workbookObject = ((dynamic)workbooksObject)[index];
+                    if (Matches(workbookObject, workbookId)) return WorkbookPresence.Open;
+                }
+                finally
+                {
+                    ComRelease.Owned(workbookObject);
+                }
+            }
+
+            return WorkbookPresence.Closed;
+        }
+        finally
+        {
+            ComRelease.Owned(workbooksObject);
+        }
+    }
+
+    private static bool Matches(object workbookObject, string workbookId)
+    {
+        var fullName = Convert.ToString(((dynamic)workbookObject).FullName, CultureInfo.InvariantCulture) ?? string.Empty;
+        if (string.Equals(fullName, workbookId, StringComparison.OrdinalIgnoreCase)) return true;
+        var name = Convert.ToString(((dynamic)workbookObject).Name, CultureInfo.InvariantCulture) ?? string.Empty;
+        return string.Equals(name, workbookId, StringComparison.OrdinalIgnoreCase);
     }
 
     private static AuditCellClassification Classify(FormulaBlockSnapshot block)

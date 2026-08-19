@@ -25,6 +25,22 @@ public interface IDirectPrecedentSnapshotPort
     bool SourceMatches(FormulaTargetCapture capture);
 }
 
+public enum WorkbookPresence
+{
+    Open,
+    Closed,
+    Unknown,
+}
+
+/// <summary>
+/// Read-only probe used by result presentation to discard a captured analysis
+/// once its source workbook is no longer open. It never opens a workbook.
+/// </summary>
+public interface IWorkbookPresencePort
+{
+    WorkbookPresence Probe(string workbookId);
+}
+
 public sealed class DirectPrecedentCoordinator
 {
     private readonly DirectPrecedentAnalyzer _analyzer = new DirectPrecedentAnalyzer();
