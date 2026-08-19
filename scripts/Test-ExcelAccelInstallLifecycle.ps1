@@ -43,7 +43,11 @@ function Test-Package {
         RequireValidSignature = $requireValid
         LoadInExcel = $Load
     }
-    & $verifyScript @parameters
+    $result = & $verifyScript @parameters
+    if ($Load) {
+        Wait-ForExcelExit
+    }
+    return $result
 }
 
 function Get-PackageVersion {
@@ -75,13 +79,16 @@ function Set-CurrentVersion {
 function Remove-OwnedPath {
     param([string]$Path, [switch]$Recurse)
 
-    for ($attempt = 1; $attempt -le 10; $attempt++) {
+    # Excel and endpoint protection can retain a just-unloaded XLL briefly even
+    # after the owning process exits. Keep deletion bounded, but allow enough
+    # time for those native handles to drain before declaring uninstall unsafe.
+    for ($attempt = 1; $attempt -le 50; $attempt++) {
         try {
             Remove-Item -LiteralPath $Path -Recurse:$Recurse -Force
             return
         }
         catch [UnauthorizedAccessException], [IO.IOException] {
-            if ($attempt -eq 10) {
+            if ($attempt -eq 50) {
                 throw
             }
             Start-Sleep -Milliseconds 200

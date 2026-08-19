@@ -40,12 +40,63 @@ function Invoke-Worker {
 
     Add-Type -TypeDefinition @'
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 public static class ExcelAccelPerformanceNativeMethods
 {
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+}
+
+public sealed class ExcelAccelHeartbeatMonitor : IDisposable
+{
+    private readonly IntPtr _window;
+    private readonly Thread _thread;
+    private volatile bool _stop;
+    private long _maximumMilliseconds;
+    private int _samples;
+    private int _timeouts;
+
+    public ExcelAccelHeartbeatMonitor(IntPtr window)
+    {
+        _window = window;
+        _thread = new Thread(Run) { IsBackground = true, Name = "ExcelAccel performance heartbeat" };
+        _thread.Start();
+    }
+
+    public long MaximumMilliseconds { get { return Interlocked.Read(ref _maximumMilliseconds); } }
+    public int Samples { get { return Volatile.Read(ref _samples); } }
+    public int Timeouts { get { return Volatile.Read(ref _timeouts); } }
+
+    public void Dispose()
+    {
+        _stop = true;
+        if (!_thread.Join(1000)) throw new TimeoutException("Heartbeat monitor did not stop within one second.");
+    }
+
+    private void Run()
+    {
+        while (!_stop)
+        {
+            var watch = Stopwatch.StartNew();
+            IntPtr result;
+            var succeeded = SendMessageTimeout(_window, 0, IntPtr.Zero, IntPtr.Zero, 2, 250, out result) != IntPtr.Zero;
+            watch.Stop();
+            Interlocked.Increment(ref _samples);
+            if (!succeeded) Interlocked.Increment(ref _timeouts);
+            var elapsed = watch.ElapsedMilliseconds;
+            long prior;
+            while (elapsed > (prior = Interlocked.Read(ref _maximumMilliseconds)) &&
+                   Interlocked.CompareExchange(ref _maximumMilliseconds, elapsed, prior) != prior) { }
+            Thread.Sleep(25);
+        }
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam,
+        uint flags, uint timeout, out IntPtr result);
 }
 '@
 
@@ -55,6 +106,10 @@ public static class ExcelAccelPerformanceNativeMethods
     $worksheets = [System.Collections.Generic.List[object]]::new()
     $quitReturned = $false
     $result = $null
+    $heartbeat = $null
+    $heartbeatSamples = 0
+    $heartbeatTimeouts = 0
+    $maximumHeartbeatMs = 0
 
     try {
         $launchWatch = [Diagnostics.Stopwatch]::StartNew()
@@ -133,6 +188,7 @@ public static class ExcelAccelPerformanceNativeMethods
             $samples = [System.Collections.Generic.List[double]]::new()
             $maximumCallMs = 0.0
             $totalIterations = $RequestedWarmups + $RequestedMeasurements
+            $heartbeat = [ExcelAccelHeartbeatMonitor]::new([IntPtr]$excel.Hwnd)
 
             for ($iteration = 0; $iteration -lt $totalIterations; $iteration++) {
                 $iterationWatch = [Diagnostics.Stopwatch]::StartNew()
@@ -170,6 +226,12 @@ public static class ExcelAccelPerformanceNativeMethods
                 }
             }
 
+            $heartbeat.Dispose()
+            $heartbeatSamples = $heartbeat.Samples
+            $heartbeatTimeouts = $heartbeat.Timeouts
+            $maximumHeartbeatMs = $heartbeat.MaximumMilliseconds
+            $heartbeat = $null
+
             $excelProcess.Refresh()
             $workingSetAfter = [int64]$excelProcess.WorkingSet64
         }
@@ -194,6 +256,9 @@ public static class ExcelAccelPerformanceNativeMethods
             working_set_before_bytes = $workingSetBefore
             working_set_after_bytes = $workingSetAfter
             working_set_delta_bytes = $workingSetAfter - $workingSetBefore
+            heartbeat_samples = $heartbeatSamples
+            heartbeat_timeouts = $heartbeatTimeouts
+            maximum_heartbeat_ms = $maximumHeartbeatMs
         }
 
         $snapshot = $null
@@ -219,6 +284,9 @@ public static class ExcelAccelPerformanceNativeMethods
         $excel = $null
     }
     finally {
+        if ($null -ne $heartbeat) {
+            try { $heartbeat.Dispose() } catch { }
+        }
         try {
             if ($null -ne $workbook) {
                 $workbook.Close($false)
@@ -420,6 +488,8 @@ if ($null -eq $selectedProfile) {
 
 $startupResults = [System.Collections.Generic.List[object]]::new()
 for ($sampleIndex = 0; $sampleIndex -lt [int]$selectedProfile.startup_samples; $sampleIndex++) {
+    [Console]::WriteLine("progress=startup $($sampleIndex + 1)/$([int]$selectedProfile.startup_samples)")
+    [Console]::Out.Flush()
     $startupResults.Add((Invoke-IsolatedWorker `
         -ResolvedAddInPath $resolvedAddInPath `
         -RequestedOperation 'startup' `
@@ -432,6 +502,8 @@ for ($sampleIndex = 0; $sampleIndex -lt [int]$selectedProfile.startup_samples; $
 
 $workloadResults = [System.Collections.Generic.List[object]]::new()
 foreach ($workload in $corpus.workloads) {
+    [Console]::WriteLine("progress=workload $([string]$workload.id)")
+    [Console]::Out.Flush()
     $workerResult = Invoke-IsolatedWorker `
         -ResolvedAddInPath $resolvedAddInPath `
         -RequestedOperation ([string]$workload.operation) `
@@ -452,7 +524,19 @@ foreach ($workload in $corpus.workloads) {
         distribution = Get-DistributionSummary -Samples @($workerResult.samples_ms)
         maximum_excel_call_ms = [double]$workerResult.maximum_excel_call_ms
         working_set_delta_bytes = [int64]$workerResult.working_set_delta_bytes
+        heartbeat_samples = [int]$workerResult.heartbeat_samples
+        heartbeat_timeouts = [int]$workerResult.heartbeat_timeouts
+        maximum_heartbeat_ms = [int64]$workerResult.maximum_heartbeat_ms
     })
+}
+
+foreach ($workloadResult in $workloadResults) {
+    if ($workloadResult.heartbeat_samples -lt 1 -or $workloadResult.heartbeat_timeouts -ne 0 -or $workloadResult.maximum_heartbeat_ms -gt 500) {
+        throw "UI heartbeat gate failed for '$($workloadResult.id)': samples=$($workloadResult.heartbeat_samples), timeouts=$($workloadResult.heartbeat_timeouts), max_ms=$($workloadResult.maximum_heartbeat_ms)."
+    }
+    if ($workloadResult.distribution.p95_ms -gt $workloadResult.provisional_p95_ms) {
+        throw "Performance gate failed for '$($workloadResult.id)': p95_ms=$($workloadResult.distribution.p95_ms), budget_ms=$($workloadResult.provisional_p95_ms)."
+    }
 }
 
 $startupSamples = @($startupResults | ForEach-Object { [double]$_.startup_total_ms })
@@ -509,7 +593,7 @@ $report = [ordered]@{
     workloads = @($workloadResults)
     limitations = @(
         'Quick profile validates the harness only and cannot freeze budgets.',
-        'Maximum Excel call duration is a blocking proxy, not an independent UI heartbeat.',
+        'Win32 WM_NULL heartbeat is an independent process-window responsiveness probe; it is not an end-user input-latency trace.',
         'Working-set delta from one process is not a retained-memory or leak qualification.'
     )
 }

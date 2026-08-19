@@ -28,15 +28,26 @@ internal static class CallbackBoundary
                 stopwatch.Stop();
                 DiagnosticLog.Info(
                     commandId,
-                    result.Succeeded ? "success" : $"refused:{result.RefusalCode}",
+                    result.Succeeded
+                        ? "success"
+                        : result.Status == CommandResultStatus.Failed
+                            ? $"failed:{result.DiagnosticId}"
+                            : $"refused:{result.RefusalCode}",
                     stopwatch.ElapsedMilliseconds);
-                Show(result.Message, result.Succeeded ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+                var detail = result.Succeeded
+                    ? $"Command: {result.CommandId}\n\n{result.Message}"
+                    : $"Command: {result.CommandId}\n\nReason: {result.Message}\n\nRemediation: Review the current workbook context and retry. If the refusal persists, export diagnostics.\nCode: {result.RefusalCode}\nDiagnostic ID: {result.DiagnosticId}";
+                Show(detail, result.Succeeded
+                    ? MessageBoxIcon.Information
+                    : result.Status == CommandResultStatus.Failed
+                        ? MessageBoxIcon.Error
+                        : MessageBoxIcon.Warning);
             }
             catch (CommandRefusedException exception)
             {
                 stopwatch.Stop();
                 DiagnosticLog.Info(commandId, $"refused:{exception.RefusalCode}", stopwatch.ElapsedMilliseconds);
-                Show(exception.Message, MessageBoxIcon.Warning);
+                Show($"Command: {commandId}\n\nReason: {exception.Message}\n\nRemediation: {exception.Remediation}\nCode: {exception.RefusalCode}", MessageBoxIcon.Warning);
             }
             catch (StateRestoreException exception)
             {

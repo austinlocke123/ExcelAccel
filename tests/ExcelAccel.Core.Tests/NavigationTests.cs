@@ -61,6 +61,21 @@ public sealed class NavigationTests
         Assert.Equal("D9", port.Current.Address);
     }
 
+    [Fact]
+    public void WorkbookCloseCleanupRemovesOnlyThatWorkbooksSessionState()
+    {
+        var session = new NavigationSession();
+        session.Record(new NavigationLocation("One.xlsx", "Sheet1", "A1"));
+        session.Record(new NavigationLocation("Two.xlsx", "Sheet1", "B2"));
+        session.AddBookmark(new NavigationLocation("One.xlsx", "Sheet1", "C3"));
+        session.AddBookmark(new NavigationLocation("Two.xlsx", "Sheet1", "D4"));
+
+        session.ClearWorkbook("One.xlsx");
+
+        Assert.Equal(1, session.HistoryCount);
+        Assert.Equal(1, session.BookmarkCount);
+    }
+
     private sealed class FakeNavigationPort : INavigationPort
     {
         public FakeNavigationPort(string sheet) => Current = new NavigationLocation("Book.xlsx", sheet, "A1");

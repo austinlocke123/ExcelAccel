@@ -10,10 +10,11 @@ unsupported cells. Plans are address ordered, contain category/count/color
 changes without values, have a complete precondition fingerprint, enforce a
 250,000-cell planning bound, and always require preview for worksheet scope.
 
-Execution is deliberately fail-closed with
-`PERFORMANCE_QUALIFICATION_REQUIRED`. The command is not registered or exposed
-because AC-P0-006 has not passed full Qualification/UI-heartbeat review. This
-implements the reviewable planner without granting unqualified Excel mutation.
+Execution remains deliberately fail-closed with
+`PERFORMANCE_QUALIFICATION_REQUIRED`. The three-run block-I/O and heartbeat
+qualification now passes, but AutoColor still lacks its own transactional
+adapter, rollback/fault-injection evidence, and worksheet-scale preview UI.
+This implements the reviewable planner without granting partial-success risk.
 
 ## WP-1A-09 session undo
 
@@ -21,8 +22,9 @@ implements the reviewable planner without granting unqualified Excel mutation.
   target/property/before/after/plan identity, and are capped at 20 per workbook.
 - A later property/target change consumes the receipt and refuses without a
   write. Successful undo verifies the exact restored postcondition.
-- Profile formatting creates a receipt only after successful postcondition
-  verification. The Ribbon exposes one owned `Undo ExcelAccel` action.
+- Profile formatting and the legacy currency command create a receipt only
+  after exact successful postcondition verification. The Ribbon exposes one
+  owned `Undo ExcelAccel` action.
 - All receipts clear on add-in close/disable. `ClearWorkbook` is implemented;
   direct workbook-close event ownership remains support-matrix qualification.
 - Real Excel smoke applied a font color, created a receipt, restored the exact
@@ -48,8 +50,10 @@ implements the reviewable planner without granting unqualified Excel mutation.
 - Dialogs are owned by Excel's window to preserve focus and z-order.
 - The progress tracker is bounded and monotonic, supports cancellation before
   commit, and refuses cancellation once an atomic commit begins.
-- No enabled operation is expected to exceed 500 ms. AutoColor and other broad
-  work remain gated until non-modal progress and UI-heartbeat evidence pass.
+- No enabled operation is expected to exceed 500 ms. The independent heartbeat
+  harness passed three Qualification runs with zero timeouts and a 68 ms worst
+  response. AutoColor and other broad work still require command-specific
+  preview, progress/cancellation, and rollback evidence.
 - Live Quick Key interception remains disabled because edit-mode pass-through
   and cleanup have not been qualified in the host; its pure engine is ready.
 
@@ -64,7 +68,10 @@ exact prior content still matches. An owner marker and resolved path boundary
 guard recursive uninstall. It never changes Trusted Locations, certificate
 stores, Office policy, HKLM, or unrelated values and supports `-WhatIf`.
 
-The script was not run against the user's real Office registration.
+The production installer script was not run against the user's real Office
+registration. A workspace-confined prototype lifecycle did pass install/load,
+upgrade/load, rollback/load, disable, uninstall, and sandbox removal after the
+harness was hardened to wait for each isolated Excel process to exit.
 Distribution remains blocked by CA-issued timestamped signing, allowlisting,
 clean-VM lifecycle, and support-matrix gates; source completion is not
 distribution approval.
@@ -72,8 +79,13 @@ distribution approval.
 ## Automated verification
 
 - Debug build: zero warnings/errors.
-- Unit tests: **142 passed**, zero failed in both Debug and Release.
+- Unit tests: **145 passed**, zero failed in both Debug and Release.
 - Real hidden Excel smoke passed, including exact property undo and natural
   Excel process exit.
+- Three full performance Qualification runs passed every P95 and independent
+  heartbeat gate with natural Excel process exit.
+- A ten-session real-Excel reliability soak passed 10/10.
+- The unsigned, workspace-confined package lifecycle passed install, upgrade,
+  rollback, disable, uninstall, and sandbox removal.
 - Installer PowerShell AST is valid; static scan finds no HKLM, trust-store,
   Trusted Location, or process-termination behavior.

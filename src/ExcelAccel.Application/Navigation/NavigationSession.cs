@@ -51,6 +51,15 @@ public sealed class NavigationSession
         _bookmarkIndex = -1;
     }
 
+    public void ClearWorkbook(string workbookId)
+    {
+        if (string.IsNullOrWhiteSpace(workbookId)) return;
+        _history.RemoveAll(value => string.Equals(value.WorkbookId, workbookId, StringComparison.Ordinal));
+        _bookmarks.RemoveAll(value => string.Equals(value.WorkbookId, workbookId, StringComparison.Ordinal));
+        _historyIndex = _history.Count - 1;
+        _bookmarkIndex = _bookmarks.Count - 1;
+    }
+
     public void Clear()
     {
         _history.Clear();

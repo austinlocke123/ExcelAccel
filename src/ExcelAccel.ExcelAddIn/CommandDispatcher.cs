@@ -82,7 +82,7 @@ internal static class CommandDispatcher
         }
 
         var plan = command.Plan(snapshot);
-        return command.Execute(plan, port);
+        return command.Execute(plan, port, UndoRuntime.Store);
     }
 
     public static CommandResult ApplyProfileFormatting(string commandId)

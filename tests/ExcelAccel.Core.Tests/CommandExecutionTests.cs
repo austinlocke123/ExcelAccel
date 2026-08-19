@@ -1,6 +1,7 @@
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Commands;
 using Xunit;
+using ExcelAccel.Application.Undo;
 
 namespace ExcelAccel.Core.Tests;
 
@@ -34,6 +35,34 @@ public sealed class CommandExecutionTests
         Assert.Equal(new[] { ApplyCurrencyFormatCommand.ChangedProperty }, plan.ChangedProperties);
         Assert.Equal(1, port.NumberFormatWriteCount);
         Assert.Equal(ApplyCurrencyFormatCommand.DefaultFormatCode, port.LastNumberFormat);
+    }
+
+    [Fact]
+    public void CurrencyFormatVerifiesPostconditionAndCreatesReceipt()
+    {
+        var port = new FakeSelectionPort(Snapshot("A1", 1));
+        var store = new SessionUndoStore();
+        var command = new ApplyCurrencyFormatCommand();
+        var plan = command.Plan(port.CaptureSelection());
+
+        var result = command.Execute(plan, port, store);
+
+        Assert.True(result.Succeeded);
+        Assert.False(string.IsNullOrWhiteSpace(result.ReceiptId));
+        Assert.Equal(1, store.Count("Book.xlsx"));
+    }
+
+    [Fact]
+    public void CurrencyFormatPostconditionMismatchCannotReportSuccess()
+    {
+        var port = new FakeSelectionPort(Snapshot("A1", 1)) { IgnoreWrite = true };
+        var command = new ApplyCurrencyFormatCommand();
+        var plan = command.Plan(port.CaptureSelection());
+
+        var result = command.Execute(plan, port);
+
+        Assert.Equal(CommandResultStatus.Failed, result.Status);
+        Assert.Equal("POSTCONDITION_MISMATCH", result.DiagnosticId);
     }
 
     [Fact]
@@ -126,12 +155,18 @@ public sealed class CommandExecutionTests
 
         public string? LastNumberFormat { get; private set; }
 
+        public bool IgnoreWrite { get; set; }
+
         public SelectionSnapshot CaptureSelection() => Current;
 
         public void SetNumberFormat(string formatCode)
         {
             NumberFormatWriteCount++;
             LastNumberFormat = formatCode;
+            if (!IgnoreWrite)
+            {
+                Current = new SelectionSnapshot(Current.Context, Current.CellCount, Current.HasFormula, formatCode, Current.Safety, Current.Collaboration);
+            }
         }
     }
 }

@@ -60,9 +60,11 @@ The test-only side-by-side lifecycle rehearsal also passed:
 - left no Excel process or install sandbox behind.
 
 The first rehearsals exposed transient post-load XLL file-lock and post-Quit
-process-observation races. Cleanup now uses bounded 200 ms retries, and final
-shutdown uses a bounded ten-second observation window. It does not terminate
-Excel; failure to exit remains an explicit test failure.
+process-observation races. Cleanup now uses bounded 200 ms retries for up to ten
+seconds, and the lifecycle waits for Excel exit after every package load rather
+than only at the end. It does not terminate Excel; failure to exit remains an
+explicit test failure. The 2026-08-19 Phase 1A rehearsal passed again with two
+distinct unsigned prototype versions built from the current Release XLL.
 
 ## What this proves
 

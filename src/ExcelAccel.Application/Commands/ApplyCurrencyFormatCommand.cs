@@ -1,5 +1,6 @@
 using System;
 using ExcelAccel.Core.Commands;
+using ExcelAccel.Application.Undo;
 
 namespace ExcelAccel.Application.Commands;
 
@@ -99,7 +100,7 @@ public sealed class ApplyCurrencyFormatCommand
             PreconditionFingerprint.Create(snapshot.NumberFormat));
     }
 
-    public CommandResult Execute(CommandPlan plan, ISelectionPort port)
+    public CommandResult Execute(CommandPlan plan, ISelectionPort port, IPropertyReceiptSink? receiptSink = null)
     {
         if (plan is null)
         {
@@ -146,6 +147,20 @@ public sealed class ApplyCurrencyFormatCommand
         }
 
         port.SetNumberFormat(DefaultFormatCode);
-        return CommandResult.Success(plan, $"Applied the currency number format to {plan.AffectedCellCount:N0} cell(s).");
+        var observed = port.CaptureSelection();
+        if (!plan.Context.Equals(observed.Context) || !string.Equals(observed.NumberFormat, DefaultFormatCode, StringComparison.Ordinal))
+        {
+            return CommandResult.Failed(plan.CommandId, "Excel did not report the exact planned currency-format postcondition.", "POSTCONDITION_MISMATCH");
+        }
+
+        var receiptId = string.Empty;
+        if (receiptSink is not null)
+        {
+            receiptId = Guid.NewGuid().ToString("N");
+            var now = DateTimeOffset.UtcNow;
+            receiptSink.Add(new PropertyReceipt(receiptId, plan.CommandId, plan.ContractVersion, plan.Context,
+                ChangedProperty, current.NumberFormat, DefaultFormatCode, plan.PlanHash, now, now.AddHours(8)));
+        }
+        return CommandResult.Success(plan, $"Applied the currency number format to {plan.AffectedCellCount:N0} cell(s).", receiptId);
     }
 }
