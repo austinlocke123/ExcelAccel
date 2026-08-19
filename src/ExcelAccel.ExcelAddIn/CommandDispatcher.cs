@@ -14,6 +14,7 @@ using ExcelAccel.Application.Profiles;
 using System.Collections.Generic;
 using System.Linq;
 using ExcelAccel.Application.Styles;
+using ExcelAccel.Persistence.Profiles;
 
 namespace ExcelAccel.ExcelAddIn;
 
@@ -32,6 +33,10 @@ internal static class CommandDispatcher
         if (commandId == UndoLastCommand.Id) return UndoLastProperty();
         if (commandId == "support.diagnostics.export") return ExportDiagnostics();
         if (commandId == "command.search.open") return CommandSearchRuntime.Open();
+        if (commandId == "profile.export") return ExportProfile();
+        if (commandId == "profile.import.preview") return ImportProfile(apply: false);
+        if (commandId == "profile.import.apply") return ImportProfile(apply: true);
+        if (commandId == "bindings.cheat_sheet.export") return ExportBindingCheatSheet();
         if (commandId.StartsWith("style.", StringComparison.Ordinal)) return StyleLibraryRuntime.Open();
         if (commandId.StartsWith("favorite.", StringComparison.Ordinal))
             return CommandResult.Refused(commandId, "Select a concrete command or favorite in Command Search.", RefusalCodes.CommandUnavailable);
@@ -120,6 +125,83 @@ internal static class CommandDispatcher
                 return CommandResult.Refused(commandId, "Diagnostic export was not confirmed; no file was written.", "PREVIEW_NOT_CONFIRMED");
             exporter.Export(plan, plan.PlanHash, bytes);
             return CommandResult.Success(commandId, "The sanitized local diagnostic file was created. Nothing was transmitted.");
+        }
+    }
+
+    public static CommandResult ExportProfile()
+    {
+        const string commandId = "profile.export";
+        using (var dialog = new SaveFileDialog
+        {
+            Title = "Export ExcelAccel profile",
+            Filter = "ExcelAccel profile (*.excelaccel-profile.json)|*.excelaccel-profile.json|JSON file (*.json)|*.json",
+            DefaultExt = "excelaccel-profile.json", AddExtension = true, OverwritePrompt = true,
+            FileName = "ExcelAccel-profile.excelaccel-profile.json",
+        })
+        {
+            var owner = ExcelWindowOwner.TryCreate();
+            if ((owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner)) != DialogResult.OK)
+                return CommandResult.Refused(commandId, "Profile export was cancelled.", "USER_CANCELLED");
+            var service = new ProfilePackageService();
+            var overwrite = File.Exists(dialog.FileName);
+            var plan = service.PlanExport(ProfileRuntime.Current, dialog.FileName, overwrite);
+            var text = plan.Manifest + $"\nDestination: {plan.DestinationPath}\nPackage SHA-256: {plan.PackageSha256}\n\nCreate this exact local package?";
+            var confirmation = owner is null ? MessageBox.Show(text, "ExcelAccel profile export", MessageBoxButtons.YesNo, MessageBoxIcon.Information)
+                : MessageBox.Show(owner, text, "ExcelAccel profile export", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (confirmation != DialogResult.Yes) return CommandResult.Refused(commandId, "Profile export manifest was not confirmed.", "PREVIEW_NOT_CONFIRMED");
+            service.Export(plan, plan.PlanHash);
+            return CommandResult.Success(commandId, "The local profile package was created and verified. Nothing was launched or transmitted.");
+        }
+    }
+
+    public static CommandResult ImportProfile(bool apply)
+    {
+        var commandId = apply ? "profile.import.apply" : "profile.import.preview";
+        using (var dialog = new OpenFileDialog
+        {
+            Title = "Select ExcelAccel profile package",
+            Filter = "ExcelAccel profile (*.excelaccel-profile.json;*.json)|*.excelaccel-profile.json;*.json",
+            CheckFileExists = true, Multiselect = false,
+        })
+        {
+            var owner = ExcelWindowOwner.TryCreate();
+            if ((owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner)) != DialogResult.OK)
+                return CommandResult.Refused(commandId, "Profile import was cancelled.", "USER_CANCELLED");
+            var service = new ProfilePackageService();
+            var current = ProfileRuntime.Current;
+            var plan = service.PreviewImport(dialog.FileName, current, BuiltInCommandRegistry.All);
+            var preview = plan.Manifest + "\n\n" + plan.Diff + $"\nSource SHA-256: {plan.SourceSha256}";
+            if (!apply) return CommandResult.Success(commandId, "Import preview validated without changing settings:\n\n" + preview);
+            var confirmation = owner is null ? MessageBox.Show(preview + "\n\nBack up the current profile and apply this exact import?", "ExcelAccel profile import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+                : MessageBox.Show(owner, preview + "\n\nBack up the current profile and apply this exact import?", "ExcelAccel profile import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (confirmation != DialogResult.Yes) return CommandResult.Refused(commandId, "Profile import was not confirmed.", "PREVIEW_NOT_CONFIRMED");
+            var imported = service.ApplyImport(plan, plan.PlanHash, ProfileRuntime.ProfilePath, current, BuiltInCommandRegistry.All);
+            ProfileRuntime.Activate(imported);
+            return CommandResult.Success(commandId, "The validated profile was backed up and atomically activated.");
+        }
+    }
+
+    public static CommandResult ExportBindingCheatSheet()
+    {
+        const string commandId = "bindings.cheat_sheet.export";
+        using (var dialog = new SaveFileDialog
+        {
+            Title = "Export ExcelAccel shortcut cheat sheet",
+            Filter = "HTML file (*.html)|*.html|CSV file (*.csv)|*.csv",
+            DefaultExt = "html", AddExtension = true, OverwritePrompt = true, FileName = "ExcelAccel-shortcuts.html",
+        })
+        {
+            var owner = ExcelWindowOwner.TryCreate();
+            if ((owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner)) != DialogResult.OK)
+                return CommandResult.Refused(commandId, "Shortcut export was cancelled.", "USER_CANCELLED");
+            var format = dialog.FilterIndex == 2 ? BindingExportFormat.Csv : BindingExportFormat.Html;
+            var exporter = new BindingCheatSheetExporter();
+            var plan = exporter.Plan(ProfileRuntime.Current.QuickKeys, BuiltInCommandRegistry.All, dialog.FileName, format, File.Exists(dialog.FileName));
+            var confirmation = owner is null ? MessageBox.Show(plan.Manifest + "\n\nCreate this exact local file?", "ExcelAccel shortcuts", MessageBoxButtons.YesNo, MessageBoxIcon.Information)
+                : MessageBox.Show(owner, plan.Manifest + "\n\nCreate this exact local file?", "ExcelAccel shortcuts", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (confirmation != DialogResult.Yes) return CommandResult.Refused(commandId, "Shortcut export was not confirmed.", "PREVIEW_NOT_CONFIRMED");
+            exporter.Export(plan, plan.PlanHash);
+            return CommandResult.Success(commandId, "The local shortcut cheat sheet was created and verified.");
         }
     }
 

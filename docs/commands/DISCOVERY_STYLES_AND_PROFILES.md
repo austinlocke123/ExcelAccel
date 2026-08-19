@@ -4,8 +4,9 @@ Status: **Draft for review**
 Capabilities: CAP-SEARCH-001, CAP-FAV-001, CAP-STYLE-001, CAP-PROF-002  
 Earliest phase: 1B
 
-Implementation note (2026-08-19): WP-1B-01 search/favorites and WP-1B-02 style
-recipes are implemented and locally qualified. Profile exchange remains pending.
+Implementation note (2026-08-19): WP-1B-01 search/favorites, WP-1B-02 style
+recipes, and WP-1B-03 offline profile exchange are implemented and locally
+qualified within their retained limits.
 
 ## Common constraints
 
