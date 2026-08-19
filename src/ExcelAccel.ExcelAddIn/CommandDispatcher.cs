@@ -16,6 +16,7 @@ using System.Linq;
 using ExcelAccel.Application.Styles;
 using ExcelAccel.Persistence.Profiles;
 using ExcelAccel.Application.Formulas;
+using ExcelAccel.Application.DataCleaning;
 
 namespace ExcelAccel.ExcelAddIn;
 
@@ -44,6 +45,7 @@ internal static class CommandDispatcher
         if (Phase1AFormattingCatalog.All.Any(value => value.Id == commandId)) return ApplyProfileFormatting(commandId);
         if (NavigationCommandCatalog.All.Any(value => value.Id == commandId)) return Navigate(commandId);
         if (FormulaCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyFormulaCommand(commandId);
+        if (DataCleaningCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyDataCleaningCommand(commandId);
         return CommandResult.Refused(commandId, "The registered command has no available host dispatcher.", RefusalCodes.CommandUnavailable);
     }
 
@@ -405,6 +407,44 @@ internal static class CommandDispatcher
             confirmation = plan.CommandPlan.PlanHash;
         }
         return command.Execute(plan, port, confirmation, UndoRuntime.Store);
+    }
+
+    public static CommandResult ApplyDataCleaningCommand(string commandId)
+    {
+        if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(commandId))
+            return CommandResult.Refused(commandId, "Data mutation is disabled in safe mode or quarantine.", RefusalCodes.CommandQuarantined);
+        var descriptor = DataCleaningCommandCatalog.GetRequired(commandId);
+        var port = CreateSelectionAdapter();
+        var snapshot = port.CaptureFormulaBlock();
+        var command = new DataCleaningCommand(descriptor);
+        FormulaBlockPlan plan;
+        switch (commandId)
+        {
+            case "clean.text.trim_outer": plan = command.PlanTrimOuter(snapshot); break;
+            case "clean.text.collapse_whitespace": plan = command.PlanCollapseWhitespace(snapshot); break;
+            case "clean.text.remove_nonprinting": plan = command.PlanRemoveNonprinting(snapshot, preserveTabsAndNewlines: true); break;
+            case "clean.display.blank_to_zero": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.BlankToZero); break;
+            case "clean.display.zero_to_blank": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.ZeroToBlank); break;
+            case "clean.display.blank_to_na_text": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.BlankToNaText); break;
+            case "clean.display.blank_to_nm_text": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.BlankToNmText); break;
+            case "clean.display.blank_to_dash_text": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.BlankToDashText); break;
+            case "clean.display.na_text_to_blank": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.NaTextToBlank); break;
+            case "clean.display.nm_text_to_blank": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.NmTextToBlank); break;
+            case "clean.display.dash_text_to_blank": plan = command.PlanDisplayConversion(snapshot, DisplayValueConversion.DashTextToBlank); break;
+            default: return CommandResult.Refused(commandId, "The data-cleaning command has no qualified host route.", RefusalCodes.CommandUnavailable);
+        }
+        string? confirmation = null;
+        if (plan.CommandPlan.RequiresPreview || descriptor.PreviewPolicy == PreviewPolicy.Mandatory)
+        {
+            var preview = plan.CommandPlan.Summary + "\n\n" + string.Join("\n", plan.Samples) + "\n\nApply this exact value-only plan?";
+            var owner = ExcelWindowOwner.TryCreate();
+            var response = owner is null
+                ? MessageBox.Show(preview, "ExcelAccel data-cleaning preview", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+                : MessageBox.Show(owner, preview, "ExcelAccel data-cleaning preview", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (response != DialogResult.Yes) return CommandResult.Refused(plan.CommandPlan, "Data-cleaning preview was cancelled.", "USER_CANCELLED");
+            confirmation = plan.CommandPlan.PlanHash;
+        }
+        return new FormulaBlockCommand(descriptor).Execute(plan, port, confirmation, UndoRuntime.Store);
     }
 
     private static ExcelSelectionAdapter CreateSelectionAdapter() =>

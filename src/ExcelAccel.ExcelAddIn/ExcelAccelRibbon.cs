@@ -94,6 +94,19 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.FormulaToMillions' label='To Millions (÷1,000,000)' keytip='UM' tag='formula.units.to_millions' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaFromMillions' label='From Millions (×1,000,000)' keytip='UN' tag='formula.units.from_millions' onAction='OnFormulaCommand'/>
                     </menu>
+                    <menu id='ExcelAccel.DataCleaning' label='Data Cleaning' keytip='D' imageMso='DataValidation'>
+                      <button id='ExcelAccel.TrimOuter' label='Trim Outer Whitespace' keytip='TO' tag='clean.text.trim_outer' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.CollapseWhitespace' label='Collapse Whitespace' keytip='CW' tag='clean.text.collapse_whitespace' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.RemoveNonprinting' label='Remove Nonprinting' keytip='RN' tag='clean.text.remove_nonprinting' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.BlankToZero' label='Blanks to Zero...' keytip='BZ' tag='clean.display.blank_to_zero' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.ZeroToBlank' label='Zeros to Blank...' keytip='ZB' tag='clean.display.zero_to_blank' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.BlankToNA' label='Blanks to N/A...' keytip='BN' tag='clean.display.blank_to_na_text' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.BlankToNM' label='Blanks to NM...' keytip='BM' tag='clean.display.blank_to_nm_text' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.BlankToDash' label='Blanks to Dash...' keytip='BD' tag='clean.display.blank_to_dash_text' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.NAToBlank' label='N/A to Blanks...' keytip='NB' tag='clean.display.na_text_to_blank' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.NMToBlank' label='NM to Blanks...' keytip='MB' tag='clean.display.nm_text_to_blank' onAction='OnDataCleaningCommand'/>
+                      <button id='ExcelAccel.DashToBlank' label='Dashes to Blanks...' keytip='DB' tag='clean.display.dash_text_to_blank' onAction='OnDataCleaningCommand'/>
+                    </menu>
                     <menu id='ExcelAccel.Navigation' label='Navigate' keytip='V' imageMso='GoTo'>
                       <button id='ExcelAccel.PreviousSheet' label='Previous Sheet' keytip='P' tag='navigate.sheet.previous' onAction='OnNavigate'/>
                       <button id='ExcelAccel.NextSheet' label='Next Sheet' keytip='N' tag='navigate.sheet.next' onAction='OnNavigate'/>
@@ -152,6 +165,12 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         var commandId = control.Tag;
         CallbackBoundary.Run(commandId, () => CommandDispatcher.ApplyFormulaCommand(commandId));
+    }
+
+    public void OnDataCleaningCommand(IRibbonControl control)
+    {
+        var commandId = control.Tag;
+        CallbackBoundary.Run(commandId, () => CommandDispatcher.ApplyDataCleaningCommand(commandId));
     }
 
     public void OnOpenStyleLibrary(IRibbonControl control)

@@ -54,6 +54,12 @@ public static class ExcelAccelNativeMethods
     $transposeDestination2 = $null
     $transposeDestination3 = $null
     $transposeDestination4 = $null
+    $dataRange = $null
+    $dataText = $null
+    $dataFormula = $null
+    $dataZero = $null
+    $dataTextZero = $null
+    $dataBlank = $null
     $quitReturned = $false
 
     try {
@@ -226,6 +232,50 @@ public static class ExcelAccelNativeMethods
             throw 'Transpose undo did not restore the complete destination matrix.'
         }
 
+        $dataRange = $worksheet.Range('A30:E30')
+        $dataText = $worksheet.Range('A30')
+        $dataFormula = $worksheet.Range('B30')
+        $dataZero = $worksheet.Range('C30')
+        $dataTextZero = $worksheet.Range('D30')
+        $dataBlank = $worksheet.Range('E30')
+        $dataOriginalText = " `tclean me" + [char]0x00A0
+        $dataText.Value2 = $dataOriginalText
+        $dataFormula.Formula = '=" keep formula whitespace "'
+        $dataZero.Value2 = 0
+        $dataTextZero.NumberFormat = '@'
+        $dataTextZero.Value2 = '0'
+        $dataBlank.ClearContents()
+        [void]$dataRange.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.DataCleaning')
+        [Console]::WriteLine("data_text=$([string]$dataText.Value2)")
+        [Console]::WriteLine("data_formula=$([string]$dataFormula.Formula)")
+        [Console]::WriteLine("data_zero_is_null=$($null -eq $dataZero.Value2)")
+        [Console]::WriteLine("data_zero_value=$([string]$dataZero.Value2)")
+        if ($null -ne $dataZero.Value2) { [Console]::WriteLine("data_zero_type=$($dataZero.Value2.GetType().FullName)") }
+        [Console]::WriteLine("data_text_zero=$([string]$dataTextZero.Value2)")
+        [Console]::WriteLine("data_text_zero_type=$($dataTextZero.Value2.GetType().FullName)")
+        [Console]::WriteLine("data_blank_is_null=$($null -eq $dataBlank.Value2)")
+        $dataCleaningExact =
+            ([string]$dataText.Value2 -eq 'clean me') -and
+            ([string]$dataFormula.Formula -eq '=" keep formula whitespace "') -and
+            ($null -eq $dataZero.Value2) -and
+            ([string]$dataTextZero.Value2 -eq '0') -and
+            ($null -eq $dataBlank.Value2)
+        [Console]::WriteLine("data_cleaning_exact=$dataCleaningExact")
+        [Console]::Out.Flush()
+        if (-not $dataCleaningExact) {
+            throw 'Transactional data cleaning changed a formula/nonmatch or missed an exact target.'
+        }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $dataZeroUndoExact = ([double]$dataZero.Value2 -eq 0) -and ([string]$dataText.Value2 -eq 'clean me')
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $dataTrimUndoExact = ([string]$dataText.Value2 -eq $dataOriginalText)
+        [Console]::WriteLine("data_cleaning_two_receipt_undo_exact=$($dataZeroUndoExact -and $dataTrimUndoExact)")
+        [Console]::Out.Flush()
+        if (-not $dataZeroUndoExact -or -not $dataTrimUndoExact) {
+            throw 'Data-cleaning receipts did not restore exact values in reverse order.'
+        }
+
         $navigationCell = $worksheet.Range('D5')
         [void]$navigationCell.Select()
         [void]$excel.Run('ExcelAccel.Smoke.NavigateA1')
@@ -350,6 +400,12 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $transposeSource1
         Release-ComObject $transposeDestination
         Release-ComObject $transposeSource
+        Release-ComObject $dataBlank
+        Release-ComObject $dataTextZero
+        Release-ComObject $dataZero
+        Release-ComObject $dataFormula
+        Release-ComObject $dataText
+        Release-ComObject $dataRange
         Release-ComObject $multiArea
         Release-ComObject $secondCell
         Release-ComObject $navigationCell
