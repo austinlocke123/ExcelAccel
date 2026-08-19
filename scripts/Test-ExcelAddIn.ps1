@@ -60,6 +60,14 @@ public static class ExcelAccelNativeMethods
     $dataZero = $null
     $dataTextZero = $null
     $dataBlank = $null
+    $selectionRange = $null
+    $selectionNumber1 = $null
+    $selectionNumber2 = $null
+    $selectionNumber3 = $null
+    $selectionNumber4 = $null
+    $selectionFormula1 = $null
+    $selectionFormula2 = $null
+    $selectionText = $null
     $quitReturned = $false
 
     try {
@@ -276,6 +284,42 @@ public static class ExcelAccelNativeMethods
             throw 'Data-cleaning receipts did not restore exact values in reverse order.'
         }
 
+        $selectionRange = $worksheet.Range('A40:D42')
+        $selectionRange.ClearContents()
+        $selectionNumber1 = $worksheet.Range('A40')
+        $selectionNumber2 = $worksheet.Range('C40')
+        $selectionNumber3 = $worksheet.Range('B41')
+        $selectionNumber4 = $worksheet.Range('D42')
+        $selectionFormula1 = $worksheet.Range('B40')
+        $selectionFormula2 = $worksheet.Range('C41')
+        $selectionText = $worksheet.Range('D41')
+        $selectionNumber1.Value2 = 10
+        $selectionNumber2.Value2 = 20
+        $selectionNumber3.Value2 = 30
+        $selectionNumber4.Value2 = 40
+        $selectionFormula1.Formula = '=A40*2'
+        $selectionFormula2.Formula = "='[Book One.xlsx]Model'!A1"
+        $selectionText.NumberFormat = '@'
+        $selectionText.Value2 = '30'
+        [void]$selectionRange.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.SelectNumericHardcodes')
+        $selectionAddress = [string]$excel.Selection.Address($false, $false)
+        $selectionExact =
+            ($selectionAddress -eq 'A40,C40,B41,D42') -and
+            ([double]$selectionNumber1.Value2 -eq 10) -and
+            ([double]$selectionNumber2.Value2 -eq 20) -and
+            ([double]$selectionNumber3.Value2 -eq 30) -and
+            ([double]$selectionNumber4.Value2 -eq 40) -and
+            ([string]$selectionFormula1.Formula -eq '=A40*2') -and
+            ([string]$selectionFormula2.Formula -eq "='[Book One.xlsx]Model'!A1") -and
+            ([string]$selectionText.Value2 -eq '30')
+        [Console]::WriteLine("numeric_hardcode_selection=$selectionAddress")
+        [Console]::WriteLine("selection_content_preserved=$selectionExact")
+        [Console]::Out.Flush()
+        if (-not $selectionExact) {
+            throw 'Numeric-hardcode selection was not exact or changed workbook content.'
+        }
+
         $navigationCell = $worksheet.Range('D5')
         [void]$navigationCell.Select()
         [void]$excel.Run('ExcelAccel.Smoke.NavigateA1')
@@ -406,6 +450,14 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $dataFormula
         Release-ComObject $dataText
         Release-ComObject $dataRange
+        Release-ComObject $selectionText
+        Release-ComObject $selectionFormula2
+        Release-ComObject $selectionFormula1
+        Release-ComObject $selectionNumber4
+        Release-ComObject $selectionNumber3
+        Release-ComObject $selectionNumber2
+        Release-ComObject $selectionNumber1
+        Release-ComObject $selectionRange
         Release-ComObject $multiArea
         Release-ComObject $secondCell
         Release-ComObject $navigationCell
@@ -497,6 +549,8 @@ try {
         'font_color_content_preserved=True',
         'font_color_after_undo=5649426',
         'navigation_address=A1',
+        'numeric_hardcode_selection=A40,C40,B41,D42',
+        'selection_content_preserved=True',
         'state_restored_after_fault=True',
         'stale_property_refused=True',
         'protected_target_refused=True',

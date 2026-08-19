@@ -213,5 +213,17 @@ public static class DebugSmokeCommands
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.data.cleaning", exception); throw; }
     }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.SelectNumericHardcodes", Description = "Debug-only deterministic selection hook.")]
+    public static void SelectNumericHardcodes()
+    {
+        try
+        {
+            var result = CommandDispatcher.ApplySelectionCommand("selection.select.numeric_hardcodes");
+            DiagnosticLog.Info("smoke.selection.numeric_hardcodes", result.Status + ":" + result.Message);
+            if (!result.Succeeded) throw new InvalidOperationException(result.Message);
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.selection.numeric_hardcodes", exception); throw; }
+    }
 }
 #endif

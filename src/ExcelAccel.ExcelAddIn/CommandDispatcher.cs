@@ -17,6 +17,7 @@ using ExcelAccel.Application.Styles;
 using ExcelAccel.Persistence.Profiles;
 using ExcelAccel.Application.Formulas;
 using ExcelAccel.Application.DataCleaning;
+using ExcelAccel.Application.SelectionTools;
 
 namespace ExcelAccel.ExcelAddIn;
 
@@ -46,6 +47,7 @@ internal static class CommandDispatcher
         if (NavigationCommandCatalog.All.Any(value => value.Id == commandId)) return Navigate(commandId);
         if (FormulaCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyFormulaCommand(commandId);
         if (DataCleaningCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyDataCleaningCommand(commandId);
+        if (SelectionCommandCatalog.All.Any(value => value.Id == commandId)) return ApplySelectionCommand(commandId);
         return CommandResult.Refused(commandId, "The registered command has no available host dispatcher.", RefusalCodes.CommandUnavailable);
     }
 
@@ -445,6 +447,24 @@ internal static class CommandDispatcher
             confirmation = plan.CommandPlan.PlanHash;
         }
         return new FormulaBlockCommand(descriptor).Execute(plan, port, confirmation, UndoRuntime.Store);
+    }
+
+    public static CommandResult ApplySelectionCommand(string commandId)
+    {
+        var descriptor = SelectionCommandCatalog.GetRequired(commandId);
+        var port = CreateSelectionAdapter();
+        var predicate = commandId switch
+        {
+            "selection.select.formulas" => SelectionPredicate.Formulas,
+            "selection.select.constants" => SelectionPredicate.Constants,
+            "selection.select.blanks" => SelectionPredicate.Blanks,
+            "selection.select.numeric_hardcodes" => SelectionPredicate.NumericHardcodes,
+            "selection.select.external_formulas" => SelectionPredicate.ExternalFormulas,
+            _ => throw new InvalidOperationException("The selection command has no qualified predicate."),
+        };
+        var command = new SelectionMatchCommand(descriptor);
+        var plan = command.Plan(port.CaptureFormulaBlock(), predicate);
+        return command.Execute(plan, port);
     }
 
     private static ExcelSelectionAdapter CreateSelectionAdapter() =>

@@ -7,12 +7,13 @@ using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Undo;
 using ExcelAccel.Application.Styles;
 using ExcelAccel.Application.Formulas;
+using ExcelAccel.Application.SelectionTools;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Core.Reliability;
 
 namespace ExcelAccel.ExcelInterop;
 
-public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort, IStylePort, IFormulaBlockPort
+public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort, IStylePort, IFormulaBlockPort, ISelectionMatchPort
 {
     private readonly Func<object> _getApplication;
     private readonly Action _verifyExcelThread;
@@ -331,6 +332,92 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             ComRelease.Owned(worksheetObject);
             ComRelease.Owned(worksheetsObject);
             ComRelease.Owned(workbookObject);
+        }
+    }
+
+    public void SelectAreas(SelectionContext sourceContext, System.Collections.Generic.IReadOnlyList<SelectionArea> areas)
+    {
+        _verifyExcelThread();
+        if (sourceContext is null) throw new ArgumentNullException(nameof(sourceContext));
+        if (areas is null || areas.Count == 0) throw new ArgumentException("At least one selection area is required.", nameof(areas));
+        ExcelComRetry.Execute(() => SelectAreasOnce(sourceContext, areas));
+    }
+
+    public System.Collections.Generic.IReadOnlyList<string> CaptureSelectedAreaAddresses()
+    {
+        _verifyExcelThread();
+        return ExcelComRetry.Execute(CaptureSelectedAreaAddressesOnce);
+    }
+
+    private void SelectAreasOnce(SelectionContext sourceContext, System.Collections.Generic.IReadOnlyList<SelectionArea> areas)
+    {
+        object? applicationObject = null;
+        object? workbookObject = null;
+        object? worksheetsObject = null;
+        object? worksheetObject = null;
+        object? rangeObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            dynamic application = applicationObject;
+            workbookObject = application.ActiveWorkbook;
+            if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open the planned workbook and retry.");
+            RequireWorkbookIdentity(workbookObject, sourceContext.WorkbookId);
+            worksheetsObject = ((dynamic)workbookObject).Worksheets;
+            worksheetObject = ((dynamic)worksheetsObject)[sourceContext.WorksheetName];
+            var address = string.Join(",", System.Linq.Enumerable.Select(areas, area => area.Address));
+            rangeObject = ((dynamic)worksheetObject).Range[address];
+            ((dynamic)rangeObject).Select();
+        }
+        finally
+        {
+            ComRelease.Owned(rangeObject);
+            ComRelease.Owned(worksheetObject);
+            ComRelease.Owned(worksheetsObject);
+            ComRelease.Owned(workbookObject);
+        }
+    }
+
+    private System.Collections.Generic.IReadOnlyList<string> CaptureSelectedAreaAddressesOnce()
+    {
+        object? applicationObject = null;
+        object? selectionObject = null;
+        object? areasObject = null;
+        var captured = new System.Collections.Generic.List<System.Tuple<int, int, string>>();
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            selectionObject = ((dynamic)applicationObject).Selection;
+            if (selectionObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "A cell range selection is required.", "Select a cell range and retry.");
+            areasObject = ((dynamic)selectionObject).Areas;
+            var count = Convert.ToInt32(((dynamic)areasObject).Count, CultureInfo.InvariantCulture);
+            for (var index = 1; index <= count; index++)
+            {
+                object? areaObject = null;
+                try
+                {
+                    areaObject = ((dynamic)areasObject)[index];
+                    dynamic area = areaObject;
+                    captured.Add(System.Tuple.Create(
+                        Convert.ToInt32(area.Row, CultureInfo.InvariantCulture),
+                        Convert.ToInt32(area.Column, CultureInfo.InvariantCulture),
+                        Convert.ToString(area.Address[false, false, 1, false], CultureInfo.InvariantCulture) ?? string.Empty));
+                }
+                finally { ComRelease.Owned(areaObject); }
+            }
+            captured.Sort((left, right) =>
+            {
+                var row = left.Item1.CompareTo(right.Item1);
+                return row != 0 ? row : left.Item2.CompareTo(right.Item2);
+            });
+            return captured.ConvertAll(value => value.Item3).AsReadOnly();
+        }
+        finally
+        {
+            ComRelease.Owned(areasObject);
+            ComRelease.Owned(selectionObject);
         }
     }
 
