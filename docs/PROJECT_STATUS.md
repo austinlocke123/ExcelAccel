@@ -30,10 +30,10 @@ each PR's base is the branch immediately above it.
 | #21 | `agent/phase-1b-typed-conversions` / `0b52466` | typed text/number/date conversions |
 | #22 | `agent/phase-1b-paste-values-fill` / `efdc4ab` | values-only paste, formula/value above, spacing and sequences host routes |
 | #23 | `agent/phase-1b-formats-paste` / `81acd6d` | bounded formats-only transaction and receipt-failure rollback |
+| #24 | `agent/phase-1b-qualification` / `952da2d` | WP-1B-12 fault/locale/performance/soak evidence and restart guide |
 
-Current local branch: `agent/phase-1b-qualification`. It contains WP-1B-12
-soak/performance evidence and this restart guide; publication is the current
-checkpoint action.
+Current local branch: `agent/phase-1b-qualification`, published as draft PR #24
+stacked on PR #23.
 
 ## Phase 1B delivered behavior
 
@@ -88,7 +88,7 @@ Detailed evidence: `docs/evidence/WP-1B-12_QUALIFICATION.md`.
 
 ## Recommended restart point
 
-1. Review and merge the draft stack in order, especially PRs #13 through #23;
+1. Review and merge the draft stack in order, especially PRs #13 through #24;
    do not merge a child before its base.
 2. Review the WP-1B-12 qualification PR and the retained gates above.
 3. After the stack is integrated, rerun Release tests, the full hidden-Excel
