@@ -206,6 +206,9 @@ public sealed class FormulaBlockCommand
             return CommandResult.Refused(plan.CommandPlan, "The target contents or shape changed after planning.", RefusalCodes.StaleContext);
         if (plan.ChangedCount == 0) return CommandResult.Success(_descriptor.Id, $"Nothing changed; {plan.SkippedCount:N0} cell(s) skipped.", 0);
 
+        var beforeSerialized = plan.Before.Contents.Serialize();
+        var afterSerialized = plan.After.Serialize();
+
         try
         {
             port.WriteFormulaBlock(plan.Before.Selection.Context, plan.After);
@@ -224,13 +227,23 @@ public sealed class FormulaBlockCommand
                 plan.ChangedCount, plan.SkippedCount, "FORMULA_ROLLBACK_INCOMPLETE");
         }
 
-        var beforeSerialized = plan.Before.Contents.Serialize();
-        var afterSerialized = plan.After.Serialize();
         var now = DateTimeOffset.UtcNow;
         var receiptId = Guid.NewGuid().ToString("N");
-        receiptSink.Add(new PropertyReceipt(receiptId, _descriptor.Id, _descriptor.ContractVersion,
-            plan.Before.Selection.Context, ReceiptPropertyId, beforeSerialized, afterSerialized,
-            plan.CommandPlan.PlanHash, now, now.AddHours(8)));
+        try
+        {
+            receiptSink.Add(new PropertyReceipt(receiptId, _descriptor.Id, _descriptor.ContractVersion,
+                plan.Before.Selection.Context, ReceiptPropertyId, beforeSerialized, afterSerialized,
+                plan.CommandPlan.PlanHash, now, now.AddHours(8)));
+        }
+        catch (Exception exception)
+        {
+            if (TryRestore(plan.Before, port)) return CommandResult.Failed(_descriptor.Id,
+                $"The undo receipt could not be stored ({exception.GetType().Name}); the complete mutation was rolled back.",
+                "RECEIPT_STORE_ROLLED_BACK");
+            return CommandResult.Partial(_descriptor.Id,
+                $"The undo receipt could not be stored ({exception.GetType().Name}) and rollback could not be verified; inspect the target.",
+                plan.ChangedCount, plan.SkippedCount, "RECEIPT_STORE_ROLLBACK_INCOMPLETE");
+        }
         return CommandResult.Success(_descriptor.Id,
             $"Changed {plan.ChangedCount:N0} cell(s); skipped {plan.SkippedCount:N0}; verified the complete target.",
             plan.ChangedCount, receiptId);

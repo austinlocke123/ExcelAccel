@@ -308,5 +308,24 @@ public static class DebugSmokeCommands
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke." + commandId, exception); throw; }
     }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.PasteFormats", Description = "Debug-only formats-only paste hook.")]
+    public static void PasteFormats()
+    {
+        try
+        {
+            var port = new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var destination = port.CaptureFormatBlock();
+            var source = port.CaptureFormatBlock(new SelectionContext(destination.Selection.Context.WorkbookId,
+                destination.Selection.Context.WorksheetName, "A80"));
+            var descriptor = FormulaCommandCatalog.GetRequired("paste.formats_only");
+            var command = new ExcelAccel.Application.Formatting.FormatPasteCommand(descriptor);
+            var plan = command.Plan(source, destination);
+            var result = command.Execute(plan, port, plan.CommandPlan.PlanHash, UndoRuntime.Store);
+            DiagnosticLog.Info("smoke.paste.formats_only", result.Status + ":" + result.Message);
+            if (!result.Succeeded) throw new InvalidOperationException(result.Message);
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.paste.formats_only", exception); throw; }
+    }
 }
 #endif

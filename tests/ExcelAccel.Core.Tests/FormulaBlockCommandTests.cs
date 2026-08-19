@@ -184,6 +184,21 @@ public sealed class FormulaBlockCommandTests
     }
 
     [Fact]
+    public void ReceiptStoreFailureRollsBackTheCompleteFormulaMatrix()
+    {
+        var before = Block(2, 1, FormulaCellValue.Formula("=A1"), FormulaCellValue.Blank());
+        var port = new FakeFormulaPort(Snapshot(before));
+        var command = Command("formula.copy.down");
+        var plan = command.PlanCopy(port.CaptureFormulaBlock(), FormulaCopyDirection.Down);
+
+        var result = command.Execute(plan, port, null, new ThrowingReceiptSink());
+
+        Assert.Equal(CommandResultStatus.Failed, result.Status);
+        Assert.Equal("RECEIPT_STORE_ROLLED_BACK", result.DiagnosticId);
+        Assert.True(before.ContentEquals(port.Current));
+    }
+
+    [Fact]
     public void FormulaReceiptPostStateComparisonIsCaseSensitive()
     {
         var before = Block(1, 1, FormulaCellValue.Formula("=A1"));
@@ -250,5 +265,10 @@ public sealed class FormulaBlockCommandTests
             try { WriteFormulaBlock(FormulaCellBlock.Deserialize(value)); return true; }
             catch { return false; }
         }
+    }
+
+    private sealed class ThrowingReceiptSink : IPropertyReceiptSink
+    {
+        public void Add(PropertyReceipt receipt) => throw new InvalidOperationException("Injected receipt failure.");
     }
 }
