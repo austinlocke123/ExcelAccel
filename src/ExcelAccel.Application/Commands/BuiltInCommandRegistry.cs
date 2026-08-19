@@ -8,6 +8,7 @@ using ExcelAccel.Application.Styles;
 using ExcelAccel.Application.Profiles;
 using ExcelAccel.Application.Formulas;
 using ExcelAccel.Application.DataCleaning;
+using ExcelAccel.Application.SelectionTools;
 using ExcelAccel.Core.Commands;
 
 namespace ExcelAccel.Application.Commands;
@@ -76,6 +77,7 @@ public static class BuiltInCommandRegistry
         .Concat(ProfileExchangeCommandCatalog.All)
         .Concat(FormulaCommandCatalog.All)
         .Concat(DataCleaningCommandCatalog.All)
+        .Concat(SelectionCommandCatalog.All)
         .OrderBy(command => command.Id, System.StringComparer.Ordinal)
         .ToArray();
 

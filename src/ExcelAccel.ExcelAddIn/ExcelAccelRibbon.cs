@@ -107,6 +107,13 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.NMToBlank' label='NM to Blanks...' keytip='MB' tag='clean.display.nm_text_to_blank' onAction='OnDataCleaningCommand'/>
                       <button id='ExcelAccel.DashToBlank' label='Dashes to Blanks...' keytip='DB' tag='clean.display.dash_text_to_blank' onAction='OnDataCleaningCommand'/>
                     </menu>
+                    <menu id='ExcelAccel.Selection' label='Select' keytip='L' imageMso='SelectCurrentRegion'>
+                      <button id='ExcelAccel.SelectFormulas' label='Formulas' keytip='FO' tag='selection.select.formulas' onAction='OnSelectionCommand'/>
+                      <button id='ExcelAccel.SelectConstants' label='Constants' keytip='CO' tag='selection.select.constants' onAction='OnSelectionCommand'/>
+                      <button id='ExcelAccel.SelectBlanks' label='True Blanks' keytip='BL' tag='selection.select.blanks' onAction='OnSelectionCommand'/>
+                      <button id='ExcelAccel.SelectNumericHardcodes' label='Numeric Hardcodes' keytip='NH' tag='selection.select.numeric_hardcodes' onAction='OnSelectionCommand'/>
+                      <button id='ExcelAccel.SelectExternalFormulas' label='External Formulas' keytip='EX' tag='selection.select.external_formulas' onAction='OnSelectionCommand'/>
+                    </menu>
                     <menu id='ExcelAccel.Navigation' label='Navigate' keytip='V' imageMso='GoTo'>
                       <button id='ExcelAccel.PreviousSheet' label='Previous Sheet' keytip='P' tag='navigate.sheet.previous' onAction='OnNavigate'/>
                       <button id='ExcelAccel.NextSheet' label='Next Sheet' keytip='N' tag='navigate.sheet.next' onAction='OnNavigate'/>
@@ -171,6 +178,12 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         var commandId = control.Tag;
         CallbackBoundary.Run(commandId, () => CommandDispatcher.ApplyDataCleaningCommand(commandId));
+    }
+
+    public void OnSelectionCommand(IRibbonControl control)
+    {
+        var commandId = control.Tag;
+        CallbackBoundary.Run(commandId, () => CommandDispatcher.ApplySelectionCommand(commandId));
     }
 
     public void OnOpenStyleLibrary(IRibbonControl control)

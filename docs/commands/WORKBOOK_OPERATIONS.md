@@ -1,6 +1,6 @@
 # Selection, row/column, and broad-format command contracts
 
-Status: **Draft for review**  
+Status: **Selection subset implemented; structural and broad-format sections remain gated**
 Capabilities: CAP-SELECT-001, CAP-STRUCT-001, CAP-FMT-003  
 Earliest phase: selection tools in 1B/2 by parser dependency; structural and
 broad-format commands individually gated
@@ -34,6 +34,16 @@ Common behavior:
 | `selection.select.errors` | Cells containing qualified Excel error values | AC-SELECT-001..004 |
 | `selection.select.numeric_hardcodes` | Numeric constants in cells, excluding formula literals and numeric text unless separately enabled | AC-SELECT-001..004, AC-SELECT-006 |
 | `selection.select.external_formulas` | Formula cells containing a supported external-workbook reference | AC-SELECT-001..004, AC-SELECT-007 |
+
+Implementation checkpoint (2026-08-19): formulas, constants, true blanks,
+numeric hardcodes, and parsed external-formula selection are registered and
+qualified for one bounded, unmerged rectangular source. The implementation
+revalidates the complete typed source snapshot, compresses matches into at most
+64 deterministic areas/4,096 address characters, selects on the exact planned
+workbook and worksheet, and verifies Excel's reported area list. It performs no
+workbook write. Error selection remains unavailable until the capture model can
+distinguish calculated Excel error values without lossy coercion. Used-range,
+hidden/filtered policy, and navigation-history composition remain gated.
 
 ## 2. Row/column visibility and outline commands
 
