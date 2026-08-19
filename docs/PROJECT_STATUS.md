@@ -2,129 +2,102 @@
 
 Snapshot date: **2026-08-19**
 
-ExcelAccel has closed Phase 0 for the Phase 1A production foundation. The
-repository contains a working Excel-DNA add-in vertical slice, progressively
-stacked reliability spikes, and an explicit closure ledger. It is not qualified
-for end-user distribution.
+Status: **Phase 1B engineering checkpoint passed; stacked review and external
+release qualification remain.**
+
+ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
+contains the Phase 0 safety foundation, Phase 1A command/format/navigation
+runtime, and the Phase 1B daily-speed feature core. It is not qualified for
+end-user distribution and is not an Excel for the web add-in.
 
 ## Published branch stack
 
-| Branch | Commit | Scope | Review |
-|---|---|---|---|
-| `main` | `88b41f7` | Agent-ready engineering specification | GitHub default branch |
-| `agent/phase-0-excel-addin` | `6f9ad45` | Phase 0 Excel add-in vertical slice | Draft PR #1 |
-| `agent/phase-0-adapter-hardening` | `a4949d2` | Excel adapter and state safety | Draft PR #2, stacked on PR #1 |
-| `agent/phase-0-formula-strategy` | `ced68b1` | Formula strategy spike | Draft PR #3, stacked on PR #2 |
-| `agent/phase-0-autosave-coauthoring` | `a85143b` | WP-P0-06 collaboration safety | Draft PR #4, stacked on PR #3 |
-| `agent/phase-0-performance-baseline` | `29c91e8` | WP-P0-07 performance baseline | Draft PR #5, stacked on PR #4 |
-| `agent/phase-0-packaging-trust` | `b30a4ad` | WP-P0-08 packaging and trust | Draft PR #6, stacked on PR #5 |
-| `agent/phase-0-closure` | `b95be00` | Gate ledger, ADR acceptance, boundary enforcement, and reliability soak | Draft PR #7, stacked on PR #6 |
-| `agent/phase-1a-foundation` | `e13d28e` | WP-1A-01 production solution boundaries | Draft PR #8, stacked on PR #7 |
-| `agent/phase-1a-command-runtime` | `5b62b4d` | WP-1A-02/03 command runtime and adapter contracts | Draft PR #9, stacked on PR #8 |
-| `agent/phase-1a-profiles-quick-keys` | `cf01e1b` | WP-1A-04/05 profiles and safe key engine | Draft PR #10, stacked on PR #9 |
-| `agent/phase-1a-formatting-navigation` | `045dcf6` | WP-1A-06/08 formatting and navigation | Draft PR #11, stacked on PR #10 |
-| `agent/phase-1a-safety-runtime` | `ba2289f` | WP-1A-07/09/10/11/12 safety runtime and installer source | Draft PR #12, stacked on PR #11 |
+The repository uses deliberately stacked draft PRs. Review and merge in order;
+each PR's base is the branch immediately above it.
 
-## Completed engineering work
+| PR | Branch / commit | Scope |
+|---:|---|---|
+| #1..#7 | Phase 0 stack through `agent/phase-0-closure` | Excel-DNA host, adapter/state safety, formula/collaboration/performance/package spikes, closure ledger |
+| #8..#12 | Phase 1A stack through `agent/phase-1a-safety-runtime` / `1914e28` | architecture, command runtime, profiles/keys, formatting/navigation, safety/undo/recovery/installer source |
+| #13 | `agent/phase-1b-search-favorites` / `71fbef5` | command search and favorites |
+| #14 | `agent/phase-1b-style-recipes` / `316380e` | style recipes and batch undo |
+| #15 | `agent/phase-1b-profile-exchange` / `641c77e` | offline profile/binding exchange |
+| #16 | `agent/phase-1b-formula-foundation` / `03576c5` | narrow A1 formula foundation and ADR evidence |
+| #17 | `agent/phase-1b-formula-commands` / `6986125` | transactional Smart Copy, IFERROR, sign, and unit commands |
+| #18 | `agent/phase-1b-paste-fill` / `4163cbe` | transpose, source capture, formulas-only paste, advanced planners |
+| #19 | `agent/phase-1b-data-cleaning` / `3c73a57` | Unicode cleaning and display conversions |
+| #20 | `agent/phase-1b-selection-tools` / `40fe68c` | deterministic selection tools |
+| #21 | `agent/phase-1b-typed-conversions` / `0b52466` | typed text/number/date conversions |
+| #22 | `agent/phase-1b-paste-values-fill` / `efdc4ab` | values-only paste, formula/value above, spacing and sequences host routes |
+| #23 | `agent/phase-1b-formats-paste` / `81acd6d` | bounded formats-only transaction and receipt-failure rollback |
+| #24 | `agent/phase-1b-qualification` / `952da2d` | WP-1B-12 fault/locale/performance/soak evidence and restart guide |
 
-- WP-P0-01 through WP-P0-03 provide the Excel-DNA lifecycle boundary, isolated
-  Excel harness, canonical command lifecycle, one read-only command, and one
-  property-only mutation.
-- WP-P0-04 provides Excel-thread dispatch, application-state restoration,
-  reentrancy protection, bounded retries, stale-context refusal, and COM
-  ownership boundaries.
-- WP-P0-05 provides the formula corpus/oracle and lossless syntax prototype.
-  Formula mutation remains disabled while ADR-0004 is open.
-- WP-P0-06 provides conservative collaboration classification, revision and
-  lease invalidation, exact-property fingerprints, and fail-closed impact
-  policy. ADR-0005 is accepted only with unknown-state refusal.
-- WP-P0-07 provides a versioned performance corpus, distribution math, Quick
-  real-Excel evidence, and regression-gate mechanics. Full Qualification and
-  frozen budgets remain open.
-- WP-P0-08 provides package path/hash/length verification, signing mechanics,
-  production refusal of untrusted artifacts, isolated package loading, and a
-  sandboxed version/upgrade/rollback/disable/uninstall rehearsal.
-- Phase 0 closure adds public-API architecture boundary tests and a passing
-  ten-session real-Excel reliability soak with natural process exit and XLL
-  unlock checks.
+Current local branch: `agent/phase-1b-qualification`, published as draft PR #24
+stacked on PR #23.
 
-Current local verification is 142 unit tests with zero failures, Debug and
-Release builds with zero warnings/errors, and a passing final real-Excel smoke
-with exact property undo and natural process exit. See
-[`evidence/PHASE0_CLOSURE.md`](evidence/PHASE0_CLOSURE.md) for the gate-by-gate
-decision and exact measured evidence, and
-[`evidence/WP-1A-01_FOUNDATION.md`](evidence/WP-1A-01_FOUNDATION.md) for the
-production boundary implementation.
+## Phase 1B delivered behavior
 
-## Accepted and open decisions
+- Searchable registry, deterministic ranking, favorites, availability reasons,
+  and Ribbon KeyTips for every registered command.
+- Local/built-in style library with capture, apply, delete policy, exact preview,
+  rollback, and optimistic undo.
+- Bounded offline profile export/import preview/apply and binding export.
+- A1-only formula transformations with parser-specific refusal: Smart Copy,
+  row/column spacing, transpose, IFERROR, sign, and unit scaling.
+- One internal, expiring source model for formulas-only, values-only, and the
+  approved formats-only paste set; the Office/Windows clipboard is untouched.
+- Formula/value from above and invariant numeric/date sequence fills.
+- Unicode trim/collapse/control removal; explicit number/text/date grammars; and
+  all blank/zero/N/A/NM/dash conversions.
+- Read-only deterministic selection of formulas, constants, true blanks,
+  numeric hardcodes, and parsed external formulas.
 
-- Accepted: ADR-0001 Excel-DNA host.
-- Accepted: ADR-0002 net48 x64 host plus netstandard2.0 pure core.
-- Proposed: ADR-0003 session-only optimistic property undo.
-- Open: ADR-0004 formula parser/semantic transform strategy.
-- Accepted with fail-closed scope: ADR-0005 collaboration policy.
-- Accepted design, not distribution approval: ADR-0006 package lifecycle.
+All enabled mutation paths are bounded and fail closed. Plans carry exact
+fingerprints; execution revalidates, writes under a state guard, verifies the
+post-state, compensates on failure, and records optimistic session undo. A
+receipt-storage failure rolls the completed mutation back.
 
-## Retained gates
+## Current verification
 
-- Formula-mutating commands remain unregistered until AC-P0-005 and ADR-0004
-  pass.
-- WP-1A-07 and frozen performance budgets remain blocked by AC-P0-006,
-  including repeatable Qualification completion and UI-heartbeat evidence.
+- **288/288 Release tests passed.**
+- Debug and Release builds: **zero warnings, zero errors**.
+- Complete packed-XLL hidden-Excel smoke: passed; bounded Phase 1B feature suite
+  measured **1,286 ms**; workbook closed and Excel exited naturally.
+- Ten fresh-process soak: **10/10 passed**, all Excel processes exited naturally,
+  and the packed XLL unlocked after every run.
+- Soak P95: feature suite **1,532 ms**; working set **322,646,016 bytes**;
+  private memory **248,094,720 bytes**; handles **1,864** (range 20).
+- Frozen Quick performance corpus: all four workloads passed their budgets;
+  zero heartbeat timeouts; worst heartbeat **39 ms**.
+
+Detailed evidence: `docs/evidence/WP-1B-12_QUALIFICATION.md`.
+
+## Deliberate retained gates
+
+- Live formula-edit reference toggle remains unregistered because no exact,
+  crash-safe caret/edit-text API has been proven. No hooks or injected
+  keystrokes are used.
+- Calculated-error selection remains unavailable until the typed model can
+  represent it without display-text guessing.
+- Formats-only paste is capped at 100 cells and nine explicit properties.
 - Unknown collaboration state and medium/high-impact collaborative mutation
-  remain refused pending real cloud/build evidence.
-- Distribution remains blocked until a CA-issued timestamped signature, signed
-  installer, exact registry ownership, allowlisting behavior, and complete
-  clean-VM lifecycle pass.
-- Supported Excel/Windows build matrix, coexistence, accessibility, and
-  long-duration in-process soak remain release qualification.
+  remain refused.
+- AutoColor enablement, attributed startup cost, long-duration single-process
+  retention, supported Office/coexistence/accessibility matrix, CA-signed
+  installer, clean-VM lifecycle, and enterprise trust remain release gates.
 
-## Current work and restart point
+## Recommended restart point
 
-WP-1A-01 is published on `agent/phase-1a-foundation`. Core, Application,
-ExcelInterop, and ExcelAddIn are now separate acyclic projects; command
-orchestration moved into Application, Excel adapters moved into ExcelInterop,
-the host supplies its root-application/thread delegates, and the packed XLL
-embeds every required assembly.
-
-After WP-1A-01 review, continue with WP-1A-02 command context/registry/plan/result
-hardening and then WP-1A-03 adapter/state boundaries.
-
-WP-1A-02/03 implementation is now underway: registry metadata, deterministic
-canonical plan hashing, exact-preview authorization, explicit result status,
-and Excel readiness refusal have been added without registering new commands.
-
-WP-1A-04/05 now has a strict versioned default profile, deterministic JSON,
-atomic replace/backup storage, and a pure Quick Key conflict/timeout/edit-mode
-engine. Live key interception remains disabled until WP-1A-11 can qualify host
-registration and cleanup without risking normal Excel typing.
-
-WP-1A-06/08 is implemented on `agent/phase-1a-formatting-navigation`: the Phase
-1A formatting catalog has property-scoped plans, stale-state refusal,
-postcondition verification, a profile-v2 recipe, and real-Excel coverage;
-navigation is read-only with bounded session history/bookmarks. Freeze panes
-remains exact-preview gated and has no bypassing callback. See
-`evidence/WP-1A-06_08_FORMATTING_NAVIGATION.md`.
-
-Next: implement WP-1A-07's deterministic AutoColor planner while keeping its
-execution fail-closed behind the retained performance gate, then implement
-WP-1A-09/10 receipts and recovery.
-
-WP-1A-07 and WP-1A-09 through WP-1A-12 source work is published on
-`agent/phase-1a-safety-runtime` in draft PR #12. AutoColor execution and end-user distribution
-remain fail-closed behind retained external qualification gates. See
-`evidence/WP-1A-07_09_10_11_12_SAFETY_RUNTIME.md` for completed scope and
-remaining release evidence.
-
-Restart point: review the stacked PRs #7 through #12 in order. After merge,
-the next engineering action is qualification—not additional Phase 1A mutation
-scope: complete the reference-machine performance/UI-heartbeat run, CA-signed
-clean-VM installer lifecycle, supported Office build/coexistence/accessibility
-matrix, workbook-close event cleanup evidence, and long-duration soak. Only
-then enable AutoColor or approve end-user distribution.
+1. Review and merge the draft stack in order, especially PRs #13 through #24;
+   do not merge a child before its base.
+2. Review the WP-1B-12 qualification PR and the retained gates above.
+3. After the stack is integrated, rerun Release tests, the full hidden-Excel
+   smoke, and at least a three-session soak on the merged commit.
+4. Then choose explicitly between external release qualification and Phase 2
+   WP-2-01 (reference snapshot/index and direct precedents). Do not enable a
+   retained gate implicitly while starting Phase 2.
 
 ## Local-worktree caution
 
-`PRD/PRD_Review_Feedback.md` and `.claude/` are separate user work. They are not
-part of implementation commits and must not be staged unless the user
-explicitly requests it.
+`PRD/PRD_Review_Feedback.md` and `.claude/` are separate user work. They have
+not been staged or modified by implementation commits.

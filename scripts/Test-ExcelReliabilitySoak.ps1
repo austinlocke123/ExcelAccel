@@ -79,7 +79,7 @@ if ([string]::IsNullOrWhiteSpace($AddInPath)) {
 $resolvedAddInPath = (Resolve-Path -LiteralPath $AddInPath).Path
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
-    $OutputPath = Join-Path $repositoryRoot '.tools\reliability\phase0-soak-latest.json'
+    $OutputPath = Join-Path $repositoryRoot '.tools\reliability\phase1b-soak-latest.json'
 }
 
 $existingExcel = @(Get-Process EXCEL -ErrorAction SilentlyContinue)
@@ -110,6 +110,7 @@ for ($iteration = 1; $iteration -le $Iterations; $iteration++) {
         working_set_bytes = Get-RequiredMetric -Evidence $result.Evidence -Name 'working_set_bytes'
         private_memory_bytes = Get-RequiredMetric -Evidence $result.Evidence -Name 'private_memory_bytes'
         handle_count = Get-RequiredMetric -Evidence $result.Evidence -Name 'handle_count'
+        phase1b_feature_suite_ms = Get-RequiredMetric -Evidence $result.Evidence -Name 'phase1b_feature_suite_ms'
         clean_process_exit = $true
         add_in_unlocked = $true
     })
@@ -120,10 +121,11 @@ $durationSamples = [double[]]@($samples | ForEach-Object { $_.duration_ms })
 $workingSetSamples = [double[]]@($samples | ForEach-Object { $_.working_set_bytes })
 $privateMemorySamples = [double[]]@($samples | ForEach-Object { $_.private_memory_bytes })
 $handleSamples = [double[]]@($samples | ForEach-Object { $_.handle_count })
+$phase1bFeatureSamples = [double[]]@($samples | ForEach-Object { $_.phase1b_feature_suite_ms })
 
 $report = [ordered]@{
     schema_version = 1
-    work_package = 'PHASE-0-CLOSURE'
+    work_package = 'WP-1B-12'
     generated_utc = [DateTime]::UtcNow.ToString('o')
     add_in = $resolvedAddInPath
     iterations = $Iterations
@@ -134,11 +136,13 @@ $report = [ordered]@{
         private_memory_p95_bytes = Get-Percentile -Samples $privateMemorySamples -Percentile 95
         handle_count_p95 = Get-Percentile -Samples $handleSamples -Percentile 95
         handle_count_range = [double](($handleSamples | Measure-Object -Maximum).Maximum - ($handleSamples | Measure-Object -Minimum).Minimum)
+        phase1b_feature_suite_p95_ms = Get-Percentile -Samples $phase1bFeatureSamples -Percentile 95
     }
     samples = @($samples)
     limitations = @(
         'Each iteration uses a fresh Excel process, so this proves process cleanup and cross-session stability rather than in-process long-duration retention.',
-        'Resource values are observational distributions; Phase 1 budgets require explicit approval.'
+        'Resource values are observational distributions; Phase 1 budgets require explicit approval.',
+        'The feature-suite timing includes command execution, exact verification, undo, and harness-side assertions on small deterministic ranges; larger bounded adapter mechanics retain the frozen Phase 1 performance corpus.'
     )
 }
 
@@ -156,4 +160,5 @@ $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $OutputPath -Encodi
     WorkingSetP95Bytes = $report.summary.working_set_p95_bytes
     PrivateMemoryP95Bytes = $report.summary.private_memory_p95_bytes
     HandleCountP95 = $report.summary.handle_count_p95
+    Phase1BFeatureSuiteP95Ms = $report.summary.phase1b_feature_suite_p95_ms
 }

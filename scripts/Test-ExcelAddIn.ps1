@@ -207,6 +207,7 @@ public static class ExcelAccelNativeMethods
             throw 'One session undo did not restore every built-in style property.'
         }
 
+        $phase1bWatch = [Diagnostics.Stopwatch]::StartNew()
         $formulaRange = $worksheet.Range('A10:A12')
         $formulaSource = $worksheet.Range('A10')
         $formulaDestination1 = $worksheet.Range('A11')
@@ -584,6 +585,11 @@ public static class ExcelAccelNativeMethods
         [Console]::WriteLine("formats_only_undo_exact=$formatPasteUndoExact")
         [Console]::Out.Flush()
         if (-not $formatPasteUndoExact) { throw 'Formats-only paste undo did not restore the exact approved property matrix.' }
+        $phase1bWatch.Stop()
+        $phase1bFeatureSuiteMs = [int64][Math]::Ceiling($phase1bWatch.Elapsed.TotalMilliseconds)
+        [Console]::WriteLine("phase1b_feature_suite_ms=$phase1bFeatureSuiteMs")
+        [Console]::Out.Flush()
+        if ($phase1bFeatureSuiteMs -gt 5000) { throw "The bounded Phase 1B smoke suite exceeded its 5,000 ms qualification budget ($phase1bFeatureSuiteMs ms)." }
 
         $navigationCell = $worksheet.Range('D5')
         [void]$navigationCell.Select()
@@ -866,6 +872,7 @@ try {
         'date_sequence_exact=True',
         'formats_only_exact=True',
         'formats_only_undo_exact=True',
+        'phase1b_feature_suite_ms=',
         'state_restored_after_fault=True',
         'stale_property_refused=True',
         'protected_target_refused=True',

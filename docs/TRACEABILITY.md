@@ -1,6 +1,6 @@
 # Specification traceability
 
-Status: **Draft for review**
+Status: **Phase 1B implementation/evidence linked; later capabilities remain draft/gated**
 
 This matrix is the routing index. Detailed authority remains in the linked
 documents.
@@ -68,14 +68,14 @@ documents.
 - Default formatting profile values and proposed shortcuts are intentionally
   unspecified.
 - Runtime and minimum Excel build are unresolved.
-- The parser choice remains unresolved; the proposed formula coverage matrix
-  and hybrid recommendation are WP-P0-05 evidence, not an accepted ADR.
+- ADR-0004 accepts only the qualified A1 transformation subset. Unsupported
+  notation and live edit-mode mutation remain fail-closed.
 - AutoSave/coauthoring impact-tier behavior has an accepted conservative matrix.
   Cloud/remote-event build evidence remains a gate for broader mutation
   authority.
-- WP-P0-07 now has an initial synthetic corpus, distribution math, and isolated
-  real-Excel Quick harness. Reference-machine acceptance, qualification
-  distributions, UI-heartbeat evidence, and frozen budgets remain open.
+- WP-P0-07 has frozen Phase 1 mechanism budgets and heartbeat evidence; the
+  current Phase 1B Quick regression and ten-session feature soak pass. Attributed
+  add-in-only startup cost and long-duration in-process retention remain open.
 - WP-P0-08 now proves packed-XLL manifest integrity, signing mechanics,
   production refusal of unsigned/untrusted artifacts, and isolated package
   loading. CA-issued/timestamped signing, installer selection, clean-VM
