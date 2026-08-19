@@ -85,6 +85,10 @@ embeds every required assembly.
 After WP-1A-01 review, continue with WP-1A-02 command context/registry/plan/result
 hardening and then WP-1A-03 adapter/state boundaries.
 
+WP-1A-02/03 implementation is now underway: registry metadata, deterministic
+canonical plan hashing, exact-preview authorization, explicit result status,
+and Excel readiness refusal have been added without registering new commands.
+
 Do not start with formula transforms, AutoColor, installer mutation, or broad
 workbook commands: those are still behind their retained gates. The first
 Phase 1A slice should consolidate production interfaces, dependency direction,

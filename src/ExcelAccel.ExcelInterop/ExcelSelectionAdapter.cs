@@ -36,6 +36,7 @@ public sealed class ExcelSelectionAdapter : ISelectionPort
         try
         {
             applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
             dynamic application = applicationObject;
             workbookObject = application.ActiveWorkbook;
             worksheetObject = application.ActiveSheet;
@@ -125,6 +126,7 @@ public sealed class ExcelSelectionAdapter : ISelectionPort
         try
         {
             applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
             dynamic application = applicationObject;
             selectionObject = application.Selection;
             if (selectionObject is null)

@@ -12,6 +12,8 @@ decision and retained capability/release gates are recorded in
 [`evidence/PHASE0_CLOSURE.md`](evidence/PHASE0_CLOSURE.md).
 The first Phase 1A boundary implementation is recorded in
 [`evidence/WP-1A-01_FOUNDATION.md`](evidence/WP-1A-01_FOUNDATION.md).
+Command-runtime evidence is recorded in
+[`evidence/WP-1A-02_03_COMMAND_RUNTIME.md`](evidence/WP-1A-02_03_COMMAND_RUNTIME.md).
 
 ## Document authority
 
