@@ -75,7 +75,10 @@ documents.
 - WP-P0-07 now has an initial synthetic corpus, distribution math, and isolated
   real-Excel Quick harness. Reference-machine acceptance, qualification
   distributions, UI-heartbeat evidence, and frozen budgets remain open.
-- Installer/update technology and signing process are open.
+- WP-P0-08 now proves packed-XLL manifest integrity, signing mechanics,
+  production refusal of unsigned/untrusted artifacts, and isolated package
+  loading. CA-issued/timestamped signing, installer selection, clean-VM
+  lifecycle, registry ownership, and enterprise trust qualification remain open.
 
 These gaps are deliberate stop signs, not invitations for implementation agents
 to choose defaults.
