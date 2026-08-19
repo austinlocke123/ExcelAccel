@@ -177,7 +177,8 @@ public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchRecei
 
     private static bool ValuesMatch(string propertyId, string first, string second) =>
         string.Equals(first, second,
-            string.Equals(propertyId, "cell_contents_v1", StringComparison.Ordinal)
+            string.Equals(propertyId, "cell_contents_v1", StringComparison.Ordinal) ||
+            string.Equals(propertyId, "cell_format_block_v1", StringComparison.Ordinal)
                 ? StringComparison.Ordinal
                 : StringComparison.OrdinalIgnoreCase);
 }

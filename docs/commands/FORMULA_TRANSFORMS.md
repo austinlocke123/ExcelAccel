@@ -199,6 +199,15 @@ see `docs/evidence/WP-1B-06_08_ADVANCED_FORMULA_PLANNERS.md`.
   typed parameter explicitly includes row/column dimensions
 - Acceptance: AC-FORM-026 through AC-FORM-029, AC-REL-005
 
+Released v1 property set: number format; font name, size, bold, italic, and
+underline; horizontal and vertical alignment; and indent level. Source and
+destination are each capped at 100 cells and must follow the same exact-shape or
+whole-multiple, nonoverlap rule as other internal paste commands. Font color,
+fill, borders, validation, comments, hyperlinks, row/column dimensions, values,
+and formulas are explicitly excluded and preserved. Capture, plan, execution,
+verification, rollback, and optimistic undo use a serialized per-cell property
+matrix; no Office or Windows clipboard is used.
+
 ## `fill.numeric_sequence` and `fill.date_sequence`
 
 - Version: 1

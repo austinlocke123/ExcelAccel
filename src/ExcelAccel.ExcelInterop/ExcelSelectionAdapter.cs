@@ -13,7 +13,7 @@ using ExcelAccel.Core.Reliability;
 
 namespace ExcelAccel.ExcelInterop;
 
-public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort, IStylePort, IFormulaBlockPort, ISelectionMatchPort
+public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort, IStylePort, IFormulaBlockPort, ISelectionMatchPort, IFormatBlockPort
 {
     private readonly Func<object> _getApplication;
     private readonly Action _verifyExcelThread;
@@ -152,6 +152,8 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         {
             if (propertyId == FormulaBlockCommand.ReceiptPropertyId)
                 value = CaptureFormulaBlock(target).Contents.Serialize();
+            else if (propertyId == FormatPasteCommand.ReceiptPropertyId)
+                value = CaptureFormatBlock(target).Contents.Serialize();
             else
             {
                 if (!target.Equals(CaptureSelection().Context)) return false;
@@ -169,6 +171,8 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         {
             if (propertyId == FormulaBlockCommand.ReceiptPropertyId)
                 WriteFormulaBlock(target, FormulaCellBlock.Deserialize(value));
+            else if (propertyId == FormatPasteCommand.ReceiptPropertyId)
+                WriteFormatBlock(target, FormatBlock.Deserialize(value));
             else
             {
                 if (!target.Equals(CaptureSelection().Context)) return false;
@@ -205,6 +209,156 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             }
             finally { ComRelease.Owned(workbookObject); }
         });
+    }
+
+    public FormatBlockSnapshot CaptureFormatBlock()
+    {
+        _verifyExcelThread();
+        var selection = CaptureSelection();
+        return ExcelComRetry.Execute(() => CaptureFormatBlockOnce(selection.Context));
+    }
+
+    public FormatBlockSnapshot CaptureFormatBlock(SelectionContext target)
+    {
+        _verifyExcelThread();
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        return ExcelComRetry.Execute(() => CaptureFormatBlockOnce(target));
+    }
+
+    public void WriteFormatBlock(SelectionContext target, FormatBlock contents)
+    {
+        _verifyExcelThread();
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        if (contents is null) throw new ArgumentNullException(nameof(contents));
+        ExcelComRetry.Execute(() => WriteFormatBlockOnce(target, contents));
+    }
+
+    private FormatBlockSnapshot CaptureFormatBlockOnce(SelectionContext target)
+    {
+        object? applicationObject = null;
+        object? workbookObject = null;
+        object? worksheetsObject = null;
+        object? worksheetObject = null;
+        object? rangeObject = null;
+        object? rowsObject = null;
+        object? columnsObject = null;
+        object? areasObject = null;
+        object? cellsObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            workbookObject = ((dynamic)applicationObject).ActiveWorkbook;
+            if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open the planned workbook and retry.");
+            RequireWorkbookIdentity(workbookObject, target.WorkbookId);
+            worksheetsObject = ((dynamic)workbookObject).Worksheets;
+            worksheetObject = ((dynamic)worksheetsObject)[target.WorksheetName];
+            rangeObject = ((dynamic)worksheetObject).Range[target.Address];
+            dynamic range = rangeObject;
+            var resolvedAddress = Convert.ToString(range.Address[false, false, 1, false], CultureInfo.InvariantCulture) ?? string.Empty;
+            var context = new SelectionContext(target.WorkbookId, target.WorksheetName, resolvedAddress);
+            if (!target.Equals(context)) throw new CommandRefusedException(RefusalCodes.StaleContext, "The planned format range no longer resolves exactly.", "Refresh the plan and retry.");
+            rowsObject = range.Rows; columnsObject = range.Columns; areasObject = range.Areas;
+            var rows = Convert.ToInt32(((dynamic)rowsObject).Count, CultureInfo.InvariantCulture);
+            var columns = Convert.ToInt32(((dynamic)columnsObject).Count, CultureInfo.InvariantCulture);
+            var cellCount = checked(rows * columns);
+            if (cellCount > FormatBlock.MaximumCells)
+                throw new CommandRefusedException(RefusalCodes.ResourceLimit, $"Formats-only operations are limited to {FormatBlock.MaximumCells:N0} cells.", "Use a smaller source and destination.");
+            var spillCheckSupported = TryReadOptionalUnsafeBoolean(rangeObject, "HasSpill", out var hasSpill);
+            var safety = new SelectionSafetyState(Convert.ToInt32(((dynamic)areasObject).Count, CultureInfo.InvariantCulture),
+                ConvertUnsafeBoolean(range.MergeCells), Convert.ToBoolean(((dynamic)worksheetObject).ProtectContents, CultureInfo.InvariantCulture),
+                Convert.ToBoolean(((dynamic)workbookObject).ReadOnly, CultureInfo.InvariantCulture), ConvertUnsafeBoolean(range.HasArray),
+                spillCheckSupported && hasSpill, spillCheckSupported);
+            var selection = new SelectionSnapshot(context, cellCount, ConvertFormulaState(range.HasFormula),
+                InvariantText(range.NumberFormat), safety, ExcelWorkbookCollaborationAdapter.Capture(workbookObject));
+            cellsObject = ((dynamic)rangeObject).Cells;
+            var values = new CellFormatValue[cellCount];
+            for (var row = 0; row < rows; row++)
+                for (var column = 0; column < columns; column++)
+                {
+                    object? cellObject = null;
+                    object? fontObject = null;
+                    try
+                    {
+                        cellObject = ((dynamic)cellsObject)[row + 1, column + 1];
+                        dynamic cell = cellObject;
+                        fontObject = cell.Font;
+                        dynamic font = fontObject;
+                        values[(row * columns) + column] = new CellFormatValue(
+                            InvariantText(cell.NumberFormat), InvariantText(font.Name),
+                            Convert.ToDouble(font.Size, CultureInfo.InvariantCulture), Convert.ToBoolean(font.Bold, CultureInfo.InvariantCulture),
+                            Convert.ToBoolean(font.Italic, CultureInfo.InvariantCulture), UnderlineToken(font.Underline),
+                            HorizontalAlignmentToken(cell.HorizontalAlignment), VerticalAlignmentToken(cell.VerticalAlignment),
+                            Convert.ToInt32(cell.IndentLevel, CultureInfo.InvariantCulture));
+                    }
+                    finally { ComRelease.Owned(fontObject); ComRelease.Owned(cellObject); }
+                }
+            return new FormatBlockSnapshot(selection, Convert.ToInt32(range.Row, CultureInfo.InvariantCulture),
+                Convert.ToInt32(range.Column, CultureInfo.InvariantCulture), new FormatBlock(rows, columns, values));
+        }
+        finally
+        {
+            ComRelease.Owned(cellsObject); ComRelease.Owned(areasObject); ComRelease.Owned(columnsObject); ComRelease.Owned(rowsObject);
+            ComRelease.Owned(rangeObject); ComRelease.Owned(worksheetObject);
+            ComRelease.Owned(worksheetsObject); ComRelease.Owned(workbookObject);
+        }
+    }
+
+    private void WriteFormatBlockOnce(SelectionContext target, FormatBlock contents)
+    {
+        object? applicationObject = null;
+        object? workbookObject = null;
+        object? worksheetsObject = null;
+        object? worksheetObject = null;
+        object? rangeObject = null;
+        object? rowsObject = null;
+        object? columnsObject = null;
+        object? cellsObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            workbookObject = ((dynamic)applicationObject).ActiveWorkbook;
+            if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open the planned workbook and retry.");
+            RequireWorkbookIdentity(workbookObject, target.WorkbookId);
+            worksheetsObject = ((dynamic)workbookObject).Worksheets;
+            worksheetObject = ((dynamic)worksheetsObject)[target.WorksheetName];
+            rangeObject = ((dynamic)worksheetObject).Range[target.Address];
+            rowsObject = ((dynamic)rangeObject).Rows; columnsObject = ((dynamic)rangeObject).Columns;
+            if (Convert.ToInt32(((dynamic)rowsObject).Count, CultureInfo.InvariantCulture) != contents.RowCount ||
+                Convert.ToInt32(((dynamic)columnsObject).Count, CultureInfo.InvariantCulture) != contents.ColumnCount)
+                throw new CommandRefusedException(RefusalCodes.StaleContext, "The planned format destination shape changed.", "Refresh the plan and retry.");
+            cellsObject = ((dynamic)rangeObject).Cells;
+            ApplicationStateGuard.Run(new ExcelApplicationStateAdapter(applicationObject), ApplicationStateChangeSet.PropertyMutation(), () =>
+            {
+                for (var row = 0; row < contents.RowCount; row++)
+                    for (var column = 0; column < contents.ColumnCount; column++)
+                    {
+                        object? cellObject = null;
+                        object? fontObject = null;
+                        try
+                        {
+                            cellObject = ((dynamic)cellsObject)[row + 1, column + 1];
+                            dynamic cell = cellObject;
+                            fontObject = cell.Font;
+                            dynamic font = fontObject;
+                            var value = contents[row, column];
+                            cell.NumberFormat = value.NumberFormat;
+                            font.Name = value.FontName; font.Size = value.FontSize; font.Bold = value.FontBold;
+                            font.Italic = value.FontItalic; font.Underline = UnderlineValue(value.Underline);
+                            cell.HorizontalAlignment = HorizontalAlignmentValue(value.HorizontalAlignment);
+                            cell.VerticalAlignment = VerticalAlignmentValue(value.VerticalAlignment);
+                            cell.IndentLevel = value.IndentLevel;
+                        }
+                        finally { ComRelease.Owned(fontObject); ComRelease.Owned(cellObject); }
+                    }
+            });
+        }
+        finally
+        {
+            ComRelease.Owned(cellsObject); ComRelease.Owned(columnsObject); ComRelease.Owned(rowsObject);
+            ComRelease.Owned(rangeObject); ComRelease.Owned(worksheetObject); ComRelease.Owned(worksheetsObject); ComRelease.Owned(workbookObject);
+        }
     }
 
     public FormulaBlockSnapshot CaptureFormulaBlock(SelectionContext target)

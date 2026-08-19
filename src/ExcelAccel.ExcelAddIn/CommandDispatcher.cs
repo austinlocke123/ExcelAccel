@@ -74,6 +74,8 @@ internal static class CommandDispatcher
             if ((descriptor.Id == "formula.transpose" || descriptor.Id == "paste.formulas_only" || descriptor.Id == "paste.values_only") &&
                 !FormulaSourceRuntime.TryGet(out _, out var sourceReason))
                 return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, sourceReason, "Select the source and run Capture Formula Source first.");
+            if (descriptor.Id == "paste.formats_only" && !FormulaSourceRuntime.TryGetFormat(out _, out var formatReason))
+                return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, formatReason, "Select a source of at most 100 cells and run Capture Formula Source first.");
             if (descriptor.Impact != CommandImpact.ReadOnly && descriptor.ContextRequirement.HasFlag(CommandContextRequirement.Selection))
             {
                 if (snapshot.Safety.AreaCount != 1 || snapshot.Safety.HasMergedCells)
@@ -351,6 +353,7 @@ internal static class CommandDispatcher
         if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(commandId))
             return CommandResult.Refused(commandId, "Formula mutation is disabled in safe mode or quarantine.", RefusalCodes.CommandQuarantined);
         if (commandId == "formula.source.capture") return FormulaSourceRuntime.Capture();
+        if (commandId == "paste.formats_only") return ApplyFormatsPaste(commandId);
         var descriptor = FormulaCommandCatalog.GetRequired(commandId);
         var port = CreateSelectionAdapter();
         var command = new FormulaBlockCommand(descriptor);
@@ -450,6 +453,25 @@ internal static class CommandDispatcher
             destination.FirstRow - 1, destination.FirstColumn + destination.Contents.ColumnCount - 1).Address;
         return port.CaptureFormulaBlock(new SelectionContext(destination.Selection.Context.WorkbookId,
             destination.Selection.Context.WorksheetName, address));
+    }
+
+    private static CommandResult ApplyFormatsPaste(string commandId)
+    {
+        if (!FormulaSourceRuntime.TryGetFormat(out var source, out var reason) || source is null)
+            return CommandResult.Refused(commandId, reason, RefusalCodes.CommandUnavailable);
+        var descriptor = FormulaCommandCatalog.GetRequired(commandId);
+        var port = CreateSelectionAdapter();
+        var command = new FormatPasteCommand(descriptor);
+        var plan = command.Plan(source, port.CaptureFormatBlock());
+        var preview = plan.CommandPlan.Summary + "\n\nApproved properties:\n" +
+            "Number format; font name, size, bold, italic, underline; horizontal/vertical alignment; indent level.\n\n" +
+            "Values, formulas, colors, fills, borders, validation, comments, hyperlinks, and dimensions are not changed.\n\nApply this exact plan?";
+        var owner = ExcelWindowOwner.TryCreate();
+        var response = owner is null
+            ? MessageBox.Show(preview, "ExcelAccel formats-only preview", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+            : MessageBox.Show(owner, preview, "ExcelAccel formats-only preview", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        if (response != DialogResult.Yes) return CommandResult.Refused(plan.CommandPlan, "Formats-only preview was cancelled.", "USER_CANCELLED");
+        return command.Execute(plan, port, plan.CommandPlan.PlanHash, UndoRuntime.Store);
     }
 
     public static CommandResult ApplyDataCleaningCommand(string commandId)

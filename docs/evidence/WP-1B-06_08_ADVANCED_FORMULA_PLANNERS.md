@@ -63,9 +63,31 @@ subsequent typed snapshots.
 - All previous formatting/style/data/selection/fault checks pass, the workbook
   closes, and Excel exits naturally with no surviving process.
 
-## Remaining WP-1B-08 work
+## Formats-only completion
 
-- Add the approved property-scoped formatting snapshot and transaction for
-  formats-only paste.
+`paste.formats_only` is now registered with a mandatory preview and a separate
+property-scoped transaction. Its approved v1 set is number format; font name,
+size, bold, italic, and underline; horizontal/vertical alignment; and indent.
+It intentionally excludes font color, fill, borders, dimensions, validation,
+comments, hyperlinks, values, and formulas. Both source and destination are
+capped at 100 cells to keep per-cell COM work responsive and receipts bounded.
+
+The format source is captured with the internal source command and expires with
+it. Planning requires same-sheet, nonoverlapping exact-shape or whole-multiple
+mapping. Execution revalidates every source and destination property, writes
+under one state guard, captures every property again for postcondition proof,
+and restores/verifies the complete destination matrix on failure. Undo is
+optimistic and refuses if any planned post-state property changed.
+
+Seven additional tests cover serialization, exact repetition, overlap/shape
+refusal, verified execution plus undo, stale-source refusal, and verified
+rollback when receipt storage fails for format or formula/value matrices. The current
+Release suite is **288 passed**, zero failed. Hidden-Excel smoke verifies all
+nine approved properties, unchanged values/formulas, preservation of excluded
+font/fill colors, exact undo, all previous smoke assertions, and natural Excel
+exit.
+
+## Remaining phase work
+
 - Run consolidated Phase 1B fault, locale, performance, and soak qualification
   in WP-1B-12.

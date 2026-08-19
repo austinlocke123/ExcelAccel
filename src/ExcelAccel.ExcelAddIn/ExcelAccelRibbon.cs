@@ -86,6 +86,7 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.FormulaTranspose' label='Transpose Captured Source Here...' keytip='TP' tag='formula.transpose' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.PasteFormulasOnly' label='Paste Formulas Only' keytip='PF' tag='paste.formulas_only' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.PasteValuesOnly' label='Paste Values Only...' keytip='PV' tag='paste.values_only' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.PasteFormatsOnly' label='Paste Formats Only...' keytip='PT' tag='paste.formats_only' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaCopyDown' label='Smart Copy Down' keytip='CD' tag='formula.copy.down' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaCopyRight' label='Smart Copy Right' keytip='CR' tag='formula.copy.right' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaSpacingRows' label='Space Formulas by Rows...' keytip='SR' tag='formula.spacing.rows' onAction='OnFormulaCommand'/>

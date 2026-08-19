@@ -98,6 +98,16 @@ public static class ExcelAccelNativeMethods
     $sequence2 = $null
     $sequence3 = $null
     $sequence4 = $null
+    $formatSource = $null
+    $formatDestination = $null
+    $formatSourceFont = $null
+    $formatSourceInterior = $null
+    $formatDestinationFont = $null
+    $formatDestinationInterior = $null
+    $formatDestination1 = $null
+    $formatDestination2 = $null
+    $formatDestination3 = $null
+    $formatDestination4 = $null
     $quitReturned = $false
 
     try {
@@ -502,6 +512,79 @@ public static class ExcelAccelNativeMethods
         if (-not $dateSequenceExact) { throw 'Date sequence did not follow the workbook 1900 date system and explicit direction.' }
         [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
 
+        $formatSource = $worksheet.Range('A80')
+        $formatDestination = $worksheet.Range('D80:E81')
+        $formatSourceFont = $formatSource.Font
+        $formatSourceInterior = $formatSource.Interior
+        $formatDestinationFont = $formatDestination.Font
+        $formatDestinationInterior = $formatDestination.Interior
+        $formatDestination1 = $worksheet.Range('D80')
+        $formatDestination2 = $worksheet.Range('E80')
+        $formatDestination3 = $worksheet.Range('D81')
+        $formatDestination4 = $worksheet.Range('E81')
+        $formatSource.Value2 = 'format source value'
+        $formatSource.NumberFormat = '0.00'
+        $formatSourceFont.Name = 'Arial'
+        $formatSourceFont.Size = 12
+        $formatSourceFont.Bold = $true
+        $formatSourceFont.Italic = $true
+        $formatSourceFont.Underline = 2
+        $formatSourceFont.Color = 0x0000FF
+        $formatSourceInterior.Color = 0x0000FF
+        $formatSource.HorizontalAlignment = -4152
+        $formatSource.VerticalAlignment = -4108
+        $formatSource.IndentLevel = 1
+        $formatDestination1.Formula = '=1+1'
+        $formatDestination2.Value2 = 'keep'
+        $formatDestination3.Value2 = 8
+        $formatDestination4.ClearContents()
+        $formatDestination.NumberFormat = 'General'
+        $formatDestinationFont.Name = 'Aptos'
+        $formatDestinationFont.Size = 11
+        $formatDestinationFont.Bold = $false
+        $formatDestinationFont.Italic = $false
+        $formatDestinationFont.Underline = -4142
+        $formatDestinationFont.Color = 0x008000
+        $formatDestinationInterior.Color = 0xFF0000
+        $formatDestination.HorizontalAlignment = -4131
+        $formatDestination.VerticalAlignment = -4160
+        $formatDestination.IndentLevel = 0
+        [void]$formatDestination.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.PasteFormats')
+        $formatPasteExact =
+            ([string]$formatDestination.NumberFormat -eq '0.00') -and
+            ([string]$formatDestinationFont.Name -eq 'Arial') -and
+            ([double]$formatDestinationFont.Size -eq 12) -and
+            ([bool]$formatDestinationFont.Bold) -and ([bool]$formatDestinationFont.Italic) -and
+            ([int]$formatDestinationFont.Underline -eq 2) -and
+            ([int]$formatDestination.HorizontalAlignment -eq -4152) -and
+            ([int]$formatDestination.VerticalAlignment -eq -4108) -and
+            ([int]$formatDestination.IndentLevel -eq 1) -and
+            ([int]$formatDestinationFont.Color -eq 0x008000) -and
+            ([int]$formatDestinationInterior.Color -eq 0xFF0000) -and
+            ([string]$formatDestination1.Formula -eq '=1+1') -and
+            ([string]$formatDestination2.Value2 -eq 'keep') -and
+            ([double]$formatDestination3.Value2 -eq 8) -and
+            ($null -eq $formatDestination4.Value2)
+        [Console]::WriteLine("formats_only_exact=$formatPasteExact")
+        [Console]::Out.Flush()
+        if (-not $formatPasteExact) { throw 'Formats-only paste changed excluded properties/content or missed an approved property.' }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $formatPasteUndoExact =
+            ([string]$formatDestination.NumberFormat -eq 'General') -and
+            ([string]$formatDestinationFont.Name -eq 'Aptos') -and
+            ([double]$formatDestinationFont.Size -eq 11) -and
+            (-not [bool]$formatDestinationFont.Bold) -and (-not [bool]$formatDestinationFont.Italic) -and
+            ([int]$formatDestinationFont.Underline -eq -4142) -and
+            ([int]$formatDestination.HorizontalAlignment -eq -4131) -and
+            ([int]$formatDestination.VerticalAlignment -eq -4160) -and
+            ([int]$formatDestination.IndentLevel -eq 0) -and
+            ([int]$formatDestinationFont.Color -eq 0x008000) -and
+            ([int]$formatDestinationInterior.Color -eq 0xFF0000)
+        [Console]::WriteLine("formats_only_undo_exact=$formatPasteUndoExact")
+        [Console]::Out.Flush()
+        if (-not $formatPasteUndoExact) { throw 'Formats-only paste undo did not restore the exact approved property matrix.' }
+
         $navigationCell = $worksheet.Range('D5')
         [void]$navigationCell.Select()
         [void]$excel.Run('ExcelAccel.Smoke.NavigateA1')
@@ -651,6 +734,16 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $sequence2
         Release-ComObject $sequence1
         Release-ComObject $sequenceRange
+        Release-ComObject $formatDestination4
+        Release-ComObject $formatDestination3
+        Release-ComObject $formatDestination2
+        Release-ComObject $formatDestination1
+        Release-ComObject $formatDestinationInterior
+        Release-ComObject $formatDestinationFont
+        Release-ComObject $formatSourceInterior
+        Release-ComObject $formatSourceFont
+        Release-ComObject $formatDestination
+        Release-ComObject $formatSource
         Release-ComObject $aboveAbsolute
         Release-ComObject $aboveInput2
         Release-ComObject $aboveInput1
@@ -771,6 +864,8 @@ try {
         'value_from_above_exact=True',
         'numeric_sequence_exact=True',
         'date_sequence_exact=True',
+        'formats_only_exact=True',
+        'formats_only_undo_exact=True',
         'state_restored_after_fault=True',
         'stale_property_refused=True',
         'protected_target_refused=True',
