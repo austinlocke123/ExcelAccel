@@ -18,7 +18,7 @@ public interface IFormulaBlockPort : ISelectionPort, IPropertyReceiptPort
 public sealed class FormulaBlockPlan
 {
     public FormulaBlockPlan(CommandPlan commandPlan, FormulaBlockSnapshot before, FormulaCellBlock after,
-        int changedCount, int skippedCount, IEnumerable<string> samples)
+        int changedCount, int skippedCount, IEnumerable<string> samples, bool requiresExternalSourceRevalidation = false)
     {
         CommandPlan = commandPlan ?? throw new ArgumentNullException(nameof(commandPlan));
         Before = before ?? throw new ArgumentNullException(nameof(before));
@@ -30,6 +30,7 @@ public sealed class FormulaBlockPlan
         ChangedCount = changedCount;
         SkippedCount = skippedCount;
         Samples = Array.AsReadOnly((samples ?? throw new ArgumentNullException(nameof(samples))).Take(10).ToArray());
+        RequiresExternalSourceRevalidation = requiresExternalSourceRevalidation;
     }
     public CommandPlan CommandPlan { get; }
     public FormulaBlockSnapshot Before { get; }
@@ -37,6 +38,7 @@ public sealed class FormulaBlockPlan
     public int ChangedCount { get; }
     public int SkippedCount { get; }
     public IReadOnlyList<string> Samples { get; }
+    public bool RequiresExternalSourceRevalidation { get; }
 }
 
 public enum FormulaCopyDirection
@@ -185,6 +187,8 @@ public sealed class FormulaBlockCommand
         if (port is null) throw new ArgumentNullException(nameof(port));
         var authorization = CommandExecutionGate.Authorize(_descriptor, plan.CommandPlan, confirmedPlanHash);
         if (!authorization.Allowed) return CommandResult.Refused(plan.CommandPlan, authorization.Message, authorization.RefusalCode);
+        if (plan.RequiresExternalSourceRevalidation)
+            return CommandResult.Refused(plan.CommandPlan, "Execution requires an exact external source-range revalidation adapter that is not yet qualified.", RefusalCodes.CommandUnavailable);
         if (receiptSink is null) return CommandResult.Refused(plan.CommandPlan, "Formula mutation requires an available bounded undo receipt store.", RefusalCodes.CommandUnavailable);
         var current = port.CaptureFormulaBlock();
         try { RequireSafe(current); }
