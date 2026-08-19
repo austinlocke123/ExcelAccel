@@ -1,8 +1,9 @@
 # ADR-0002: Runtime and target frameworks
 
-- Status: **Proposed**
+- Status: **Accepted**
 - Date: 2026-08-18
-- Deciders: open
+- Accepted: 2026-08-19
+- Decider: project owner
 
 ## Context
 
@@ -16,7 +17,7 @@ Windows and provides AppDomain isolation, while modern .NET requires a matching
 desktop runtime and only one modern .NET runtime version can be loaded in an
 Excel process. See <https://excel-dna.net/docs/guides-basic/dotnet-runtime-support/>.
 
-## Proposed decision
+## Decision
 
 Use:
 
@@ -61,3 +62,11 @@ choice.
 - disable/unload and repeated open/close soak;
 - package signing, update, and rollback;
 - dependency availability and security support.
+
+## Acceptance note
+
+The `.NET Framework 4.8` x64 host plus `netstandard2.0` pure-core split is
+accepted for Phase 1A. It has produced deterministic Debug/Release builds,
+packed XLLs, isolated Excel runs, and a pure-core test suite without an
+additional runtime deployment prerequisite. Clean-machine, coexistence, and
+signed installer evidence remain WP-1A-12 release qualification.

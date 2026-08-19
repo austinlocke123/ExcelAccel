@@ -1,8 +1,9 @@
 # ADR-0001: Excel-DNA host
 
-- Status: **Proposed**
+- Status: **Accepted**
 - Date: 2026-08-18
-- Deciders: open
+- Accepted: 2026-08-19
+- Decider: project owner
 
 ## Context
 
@@ -11,7 +12,7 @@ large-range performance, Excel C API and COM access, offline operation, and
 event/lifecycle control. Office.js does not expose the required integration
 surface. The original draft selected Excel-DNA and retained VSTO as a fallback.
 
-## Proposed decision
+## Decision
 
 Use Excel-DNA as the only designed production host. Do not build a dual-host
 abstraction or implement VSTO in parallel.
@@ -39,3 +40,12 @@ resolved within the Phase 0 evidence budget.
 - supported x64 Excel clean-VM matrix;
 - signed packaging feasibility;
 - cold/warm startup and soak results.
+
+## Acceptance note
+
+The host decision is accepted for Phase 1A source implementation. The packed
+x64 XLL, callback boundary, property mutation, fault restoration, repeated
+fresh-process soak, and local signing mechanics passed. Clean-VM, coexistence,
+task-pane, full disable/unload, and signed-distribution qualification remain
+release gates; failure of one reopens this ADR rather than silently introducing
+a second host.

@@ -3,9 +3,11 @@
 ExcelAccel is a native Windows Excel add-in for fast, deterministic,
 keyboard-first financial-modeling workflows.
 
-The repository is in **Phase 0 implementation**. The first vertical slice is a
-real 64-bit Excel-DNA `.xll` with a pure command core, a reliability boundary,
-one read-only command, and one property-scoped formatting command.
+The repository has **closed Phase 0 for the Phase 1A production foundation**.
+It contains a real 64-bit Excel-DNA `.xll`, a pure command core, reliability
+boundaries, one read-only command, and one property-scoped formatting command.
+It is not yet qualified for distribution; retained formula, performance,
+collaboration, and clean-machine gates remain fail-closed.
 
 ## Start here
 
@@ -27,6 +29,7 @@ one read-only command, and one property-scoped formatting command.
 16. [WP-P0-07 performance evidence](docs/evidence/WP-P0-07_PERFORMANCE_BASELINE.md)
 17. [Package and trust protocol](docs/packaging/PACKAGE_AND_TRUST_PROTOCOL.md)
 18. [WP-P0-08 packaging evidence](docs/evidence/WP-P0-08_PACKAGING_TRUST.md)
+19. [Phase 0 closure and gate ledger](docs/evidence/PHASE0_CLOSURE.md)
 
 ## Build and test
 
@@ -42,6 +45,7 @@ dotnet test ExcelAccel.sln --configuration Debug --no-build --no-restore
 ./scripts/Test-ExcelFormulaOracle.ps1
 ./scripts/Test-ExcelCollaborationSignals.ps1
 ./scripts/Test-ExcelPerformance.ps1 -Profile Quick
+./scripts/Test-ExcelReliabilitySoak.ps1 -Iterations 10
 ./scripts/New-ExcelAccelPackage.ps1 -Version 0.0.0-local
 ./scripts/Test-ExcelAccelPackage.ps1 -PackageDirectory ./.tools/packages/ExcelAccel-0.0.0-local-x64 -LoadInExcel
 ```
@@ -75,8 +79,8 @@ inputs to the Markdown specification, not the normative implementation source.
 
 ## Current boundary
 
-Only Phase 0 vertical-slice, reliability, formula-strategy, collaboration-
-safety, performance-baseline, and packaging/trust prototype work is implemented.
-Feature families remain governed by their command contracts and phase gates;
-successful spikes do not mark proposed ADRs or the broader acceptance matrix
-complete.
+Phase 0 vertical-slice, reliability, formula-strategy, collaboration-safety,
+performance-baseline, and packaging/trust prototype work is implemented. Phase
+1A begins with the production foundation. Feature families remain governed by
+their command contracts and retained gates; Phase 0 closure does not imply
+release readiness.

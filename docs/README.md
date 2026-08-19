@@ -7,7 +7,9 @@ facts that change at different rates and prevents an implementation agent from
 treating an idea, a design option, and an accepted requirement as equivalent.
 
 For the current branch stack, completed work, open gates, and recommended
-restart point, see [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+restart point, see [`PROJECT_STATUS.md`](PROJECT_STATUS.md). The Phase 0 start
+decision and retained capability/release gates are recorded in
+[`evidence/PHASE0_CLOSURE.md`](evidence/PHASE0_CLOSURE.md).
 
 ## Document authority
 

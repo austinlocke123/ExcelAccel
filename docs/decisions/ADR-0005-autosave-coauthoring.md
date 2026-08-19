@@ -1,8 +1,9 @@
 # ADR-0005: AutoSave and coauthoring safety policy
 
-- Status: **Proposed**
+- Status: **Accepted**
 - Date: 2026-08-18
-- Deciders: open
+- Accepted: 2026-08-19
+- Decider: project owner
 
 ## Context
 
@@ -11,7 +12,7 @@ merge into the local copy. Plans, cached snapshots, receipts, and rollback
 assumptions can become stale between capture and mutation. Available event
 coverage must not be assumed to be a complete transaction/version log.
 
-## Proposed decision
+## Decision
 
 1. Detect AutoSave and all qualified coauthoring indicators in command context.
 2. Never silently change AutoSave.
@@ -73,6 +74,9 @@ revision, exact-property fingerprint, collaboration state, and a separately
 held bounded lease. Read-only, low-, medium-, and high-impact policies are
 defined in [`POLICY_MATRIX.md`](../collaboration/POLICY_MATRIX.md).
 
-This does not accept the ADR. Production remote-change event wiring, real cloud
-coauthor sessions, AutoSave on/off/disabled fixtures, build/channel coverage,
-and undo behavior remain unresolved.
+The decision is accepted with deliberately narrow authority. Production
+remote-change event wiring, real cloud coauthor sessions, AutoSave
+on/off/disabled fixtures, build/channel coverage, and undo behavior remain
+unqualified. Until that evidence exists, unknown collaboration states and all
+medium/high-impact collaborative mutations are refused; acceptance of this ADR
+does not convert an unknown signal into a safe state.

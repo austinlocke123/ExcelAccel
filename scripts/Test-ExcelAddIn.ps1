@@ -152,6 +152,13 @@ public static class ExcelAccelNativeMethods
             throw 'The formatting command mutated a merged-cell selection.'
         }
 
+        $excelProcess = Get-Process -Id ([int]$excelProcessId)
+        $excelProcess.Refresh()
+        [Console]::WriteLine("working_set_bytes=$($excelProcess.WorkingSet64)")
+        [Console]::WriteLine("private_memory_bytes=$($excelProcess.PrivateMemorySize64)")
+        [Console]::WriteLine("handle_count=$($excelProcess.HandleCount)")
+        [Console]::Out.Flush()
+
         $workbook.Close($false)
         $workbook = $null
         [Console]::WriteLine('workbook_closed=true')
@@ -261,6 +268,9 @@ try {
         'protected_target_refused=True',
         'multi_area_refused=True',
         'merged_target_refused=True',
+        'working_set_bytes=',
+        'private_memory_bytes=',
+        'handle_count=',
         'workbook_closed=true',
         'quit_returned=true'
     )

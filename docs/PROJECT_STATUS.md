@@ -2,10 +2,10 @@
 
 Snapshot date: **2026-08-19**
 
-ExcelAccel is in Phase 0 engineering qualification. The repository contains a
-working Excel-DNA add-in vertical slice and progressively stacked reliability
-spikes. Product feature families are specified but intentionally remain behind
-their implementation gates.
+ExcelAccel has closed Phase 0 for the Phase 1A production foundation. The
+repository contains a working Excel-DNA add-in vertical slice, progressively
+stacked reliability spikes, and an explicit closure ledger. It is not qualified
+for end-user distribution.
 
 ## Published branch stack
 
@@ -17,74 +17,73 @@ their implementation gates.
 | `agent/phase-0-formula-strategy` | `ced68b1` | Formula strategy spike | Draft PR #3, stacked on PR #2 |
 | `agent/phase-0-autosave-coauthoring` | `a85143b` | WP-P0-06 collaboration safety | Draft PR #4, stacked on PR #3 |
 | `agent/phase-0-performance-baseline` | `29c91e8` | WP-P0-07 performance baseline | Draft PR #5, stacked on PR #4 |
-| `agent/phase-0-packaging-trust` | local work in progress | WP-P0-08 packaging and trust | Started from `29c91e8`; not yet published |
+| `agent/phase-0-packaging-trust` | `b30a4ad` | WP-P0-08 packaging and trust | Draft PR #6, stacked on PR #5 |
+| `agent/phase-0-closure` | local work in progress | Gate ledger, ADR acceptance, boundary enforcement, and reliability soak | Started from `b30a4ad` |
 
 ## Completed engineering work
 
-- WP-P0-01 through WP-P0-03 are represented by the vertical slice: Excel-DNA
-  lifecycle boundaries, a test/process harness, and read-only plus
-  property-only commands.
-- WP-P0-04 hardens Excel-thread dispatch, application-state restoration,
+- WP-P0-01 through WP-P0-03 provide the Excel-DNA lifecycle boundary, isolated
+  Excel harness, canonical command lifecycle, one read-only command, and one
+  property-only mutation.
+- WP-P0-04 provides Excel-thread dispatch, application-state restoration,
   reentrancy protection, bounded retries, stale-context refusal, and COM
   ownership boundaries.
-- WP-P0-05 records the formula corpus/oracle evidence and the proposed hybrid
-  parsing strategy. ADR-0004 remains proposed pending its acceptance gate.
-- WP-P0-06 introduces conservative AutoSave/coauthoring classification,
-  workbook revision tracking, expiring plan leases, precondition fingerprints,
-  an impact-tier policy matrix, and stale-property refusal before mutation.
-  ADR-0005 remains proposed pending real cloud/coauthor build evidence.
+- WP-P0-05 provides the formula corpus/oracle and lossless syntax prototype.
+  Formula mutation remains disabled while ADR-0004 is open.
+- WP-P0-06 provides conservative collaboration classification, revision and
+  lease invalidation, exact-property fingerprints, and fail-closed impact
+  policy. ADR-0005 is accepted only with unknown-state refusal.
+- WP-P0-07 provides a versioned performance corpus, distribution math, Quick
+  real-Excel evidence, and regression-gate mechanics. Full Qualification and
+  frozen budgets remain open.
+- WP-P0-08 provides package path/hash/length verification, signing mechanics,
+  production refusal of untrusted artifacts, isolated package loading, and a
+  sandboxed version/upgrade/rollback/disable/uninstall rehearsal.
+- Phase 0 closure adds public-API architecture boundary tests and a passing
+  ten-session real-Excel reliability soak with natural process exit and XLL
+  unlock checks.
 
-The current WP-P0-06 qualification result is:
+Current local verification is 99 unit tests with zero failures and Debug and
+Release builds with zero warnings/errors. See
+[`evidence/PHASE0_CLOSURE.md`](evidence/PHASE0_CLOSURE.md) for the gate-by-gate
+decision and exact measured evidence.
 
-- Debug and Release builds: zero warnings and zero errors;
-- Debug and Release unit suites: 72 of 72 passing in each configuration;
-- packed-XLL real-Excel smoke test: passing, including stale-property refusal;
-- collaboration signal probe: passing with AutoSave unchanged;
-- Excel process cleanup and packed-XLL unlock checks: passing;
-- debug smoke entry point excluded from the Release assembly.
+## Accepted and open decisions
 
-Detailed evidence is under [`evidence/`](evidence/), with the current
-collaboration policy in [`collaboration/POLICY_MATRIX.md`](collaboration/POLICY_MATRIX.md).
+- Accepted: ADR-0001 Excel-DNA host.
+- Accepted: ADR-0002 net48 x64 host plus netstandard2.0 pure core.
+- Proposed: ADR-0003 session-only optimistic property undo.
+- Open: ADR-0004 formula parser/semantic transform strategy.
+- Accepted with fail-closed scope: ADR-0005 collaboration policy.
+- Accepted design, not distribution approval: ADR-0006 package lifecycle.
 
-## Open decisions and limitations
+## Retained gates
 
-- Proposed ADRs are evidence-backed recommendations, not accepted architecture.
-- WP-P0-06 does not yet qualify real concurrent Microsoft 365 cloud edits or a
-  production remote-change event sink across supported Excel builds.
-- The reference machine, benchmark workbook corpus, measurement protocol, and
-  frozen Phase 1 performance budgets are not yet defined.
-- Installer, signing, clean-VM compatibility, and update/rollback work remains
-  in WP-P0-08.
-- Feature-family implementation must not begin merely because a spike passed;
-  the gates in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) still apply.
+- Formula-mutating commands remain unregistered until AC-P0-005 and ADR-0004
+  pass.
+- WP-1A-07 and frozen performance budgets remain blocked by AC-P0-006,
+  including repeatable Qualification completion and UI-heartbeat evidence.
+- Unknown collaboration state and medium/high-impact collaborative mutation
+  remain refused pending real cloud/build evidence.
+- Distribution remains blocked until a CA-issued timestamped signature, signed
+  installer, exact registry ownership, allowlisting behavior, and complete
+  clean-VM lifecycle pass.
+- Supported Excel/Windows build matrix, coexistence, accessibility, and
+  long-duration in-process soak remain release qualification.
 
 ## Current work and restart point
 
-WP-P0-07 has an initial published slice with deterministic
-distribution/regression math, a versioned synthetic corpus, a cold/warm
-protocol, and an isolated real-Excel harness. Its Quick result is exploratory;
-the reference machine and budgets are not accepted or frozen.
+Finish and publish `agent/phase-0-closure`, then create Phase 1A from that exact
+commit. Begin with WP-1A-01 production structure and architecture enforcement,
+followed by WP-1A-02 command contracts and WP-1A-03 adapter/state boundaries.
 
-**WP-P0-08: packaging and trust** is in progress on
-`agent/phase-0-packaging-trust`, stacked from WP-P0-07. The initial local slice
-contains manifest/path/hash verification, optional post-pack Authenticode
-signing, production refusal of unsigned/untrusted artifacts, isolated package
-load evidence, a passing sandboxed side-by-side lifecycle rehearsal, ADR-0006,
-and a clean-VM lifecycle protocol.
-
-On restart, continue WP-P0-08 by:
-
-1. selecting a signed installer/container technology and privilege model;
-2. obtaining a CA-issued code-signing certificate and RFC 3161 timestamp;
-3. running install/startup-load/disable/upgrade/failure-rollback/uninstall on a
-   disposable clean VM;
-4. qualifying exact registry ownership plus MOTW/trusted-publisher/enterprise
-   allowlisting behavior;
-5. returning to the remaining WP-P0-07 UI-heartbeat and full-distribution gates
-   before treating Phase 0 as complete.
+Do not start with formula transforms, AutoColor, installer mutation, or broad
+workbook commands: those are still behind their retained gates. The first
+Phase 1A slice should consolidate production interfaces, dependency direction,
+and test enforcement without expanding workbook mutation authority.
 
 ## Local-worktree caution
 
-At this snapshot, `PRD/PRD_Review_Feedback.md` and `.claude/` are separate user
-work. They are not part of the Phase 0 implementation commits and must not be
-staged unless the user explicitly requests it.
+`PRD/PRD_Review_Feedback.md` and `.claude/` are separate user work. They are not
+part of implementation commits and must not be staged unless the user
+explicitly requests it.
