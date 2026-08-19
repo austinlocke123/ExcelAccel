@@ -1,6 +1,6 @@
 # Agent-ready implementation plan
 
-Status: **Phase 1B engineering checkpoint completed and qualified on 2026-08-19; distribution gates retained**
+Status: **Phase 2 active; WP-2-01 reference snapshot/direct-precedent foundation in progress as of 2026-08-19**
 
 This plan decomposes implementation work. The documentation baseline and Phase
 0 start were approved on 2026-08-18. Phase 1A foundation work was authorized on

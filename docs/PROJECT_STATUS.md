@@ -2,8 +2,8 @@
 
 Snapshot date: **2026-08-19**
 
-Status: **Phase 1B is integrated on `main`; lightweight post-merge verification
-passed and the next implementation package is Phase 2 WP-2-01.**
+Status: **Phase 2 is active; the pure-core WP-2-01 reference snapshot and direct-
+precedent foundation is implemented and its Excel capture slice is next.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
@@ -46,6 +46,7 @@ receipt-storage failure rolls the completed mutation back.
 
 ## Current verification
 
+- WP-2-01 pure-core slice: **302/302 Release tests passed**.
 - Post-merge Release build: **zero warnings, zero errors**.
 - Post-merge Release tests: **288/288 passed**.
 - Post-merge Debug build: **zero warnings, zero errors**.
@@ -87,8 +88,11 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. Review and merge the post-merge status update.
-2. Start Phase 2 WP-2-01: reference snapshot/index and direct precedents.
+1. Continue WP-2-01 with the bounded Excel main-thread reference capture adapter
+   and Application coordinator described in
+   `docs/evidence/WP-2-01_REFERENCE_SNAPSHOT.md`.
+2. Keep the production direct-precedents command unregistered until its read-only
+   result view and cleanup path exist.
 3. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.
 4. Continue the normal per-package Release tests and use the short real-Excel
