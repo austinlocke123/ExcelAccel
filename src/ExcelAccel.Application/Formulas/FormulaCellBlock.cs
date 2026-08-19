@@ -16,6 +16,76 @@ public enum FormulaCellKind
     Boolean,
 }
 
+public enum UnderlyingValueKind
+{
+    Blank,
+    Text,
+    Number,
+    Boolean,
+    Error,
+}
+
+public sealed class UnderlyingCellValue : IEquatable<UnderlyingCellValue>
+{
+    private UnderlyingCellValue(UnderlyingValueKind kind, string invariantValue)
+    {
+        Kind = kind;
+        InvariantValue = invariantValue ?? throw new ArgumentNullException(nameof(invariantValue));
+    }
+    public UnderlyingValueKind Kind { get; }
+    public string InvariantValue { get; }
+    public static UnderlyingCellValue Blank() => new UnderlyingCellValue(UnderlyingValueKind.Blank, string.Empty);
+    public static UnderlyingCellValue Text(string value) => new UnderlyingCellValue(UnderlyingValueKind.Text, value ?? string.Empty);
+    public static UnderlyingCellValue Number(double value)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value)) throw new ArgumentOutOfRangeException(nameof(value));
+        return new UnderlyingCellValue(UnderlyingValueKind.Number, value.ToString("R", CultureInfo.InvariantCulture));
+    }
+    public static UnderlyingCellValue Boolean(bool value) => new UnderlyingCellValue(UnderlyingValueKind.Boolean, value ? "true" : "false");
+    public static UnderlyingCellValue Error(int code) => new UnderlyingCellValue(UnderlyingValueKind.Error, code.ToString(CultureInfo.InvariantCulture));
+    public double AsNumber()
+    {
+        if (Kind != UnderlyingValueKind.Number) throw new InvalidOperationException("The underlying value is not numeric.");
+        return double.Parse(InvariantValue, NumberStyles.Float, CultureInfo.InvariantCulture);
+    }
+    public bool Equals(UnderlyingCellValue? other) => other is not null && Kind == other.Kind &&
+        string.Equals(InvariantValue, other.InvariantValue, StringComparison.Ordinal);
+    public override bool Equals(object? obj) => Equals(obj as UnderlyingCellValue);
+    public override int GetHashCode() => ((int)Kind * 397) ^ StringComparer.Ordinal.GetHashCode(InvariantValue);
+}
+
+public sealed class UnderlyingValueBlock
+{
+    private readonly UnderlyingCellValue[] _cells;
+    public UnderlyingValueBlock(int rowCount, int columnCount, IEnumerable<UnderlyingCellValue> cells)
+    {
+        if (rowCount < 1 || columnCount < 1 || (long)rowCount * columnCount > FormulaCellBlock.MaximumCells)
+            throw new ArgumentOutOfRangeException(nameof(rowCount));
+        _cells = (cells ?? throw new ArgumentNullException(nameof(cells))).ToArray();
+        if (_cells.Length != rowCount * columnCount || _cells.Any(value => value is null))
+            throw new ArgumentException("The underlying value count must match the block dimensions.", nameof(cells));
+        RowCount = rowCount;
+        ColumnCount = columnCount;
+    }
+    public int RowCount { get; }
+    public int ColumnCount { get; }
+    public UnderlyingCellValue this[int row, int column] => _cells[checked((row * ColumnCount) + column)];
+    public string Fingerprint
+    {
+        get
+        {
+            var builder = new StringBuilder("UVB1|").Append(RowCount.ToString(CultureInfo.InvariantCulture)).Append('|')
+                .Append(ColumnCount.ToString(CultureInfo.InvariantCulture)).Append('|');
+            foreach (var cell in _cells)
+                builder.Append(((int)cell.Kind).ToString(CultureInfo.InvariantCulture)).Append(':')
+                    .Append(Convert.ToBase64String(Encoding.UTF8.GetBytes(cell.InvariantValue))).Append('|');
+            return PreconditionFingerprint.Create(builder.ToString());
+        }
+    }
+    public bool ContentEquals(UnderlyingValueBlock? other) => other is not null && RowCount == other.RowCount &&
+        ColumnCount == other.ColumnCount && _cells.SequenceEqual(other._cells);
+}
+
 public sealed class FormulaCellValue : IEquatable<FormulaCellValue>
 {
     private FormulaCellValue(FormulaCellKind kind, string invariantValue)
@@ -163,18 +233,27 @@ public sealed class FormulaCellBlock
 
 public sealed class FormulaBlockSnapshot
 {
-    public FormulaBlockSnapshot(SelectionSnapshot selection, int firstRow, int firstColumn, FormulaCellBlock contents)
+    public FormulaBlockSnapshot(SelectionSnapshot selection, int firstRow, int firstColumn, FormulaCellBlock contents,
+        UnderlyingValueBlock? underlyingValues = null)
     {
         Selection = selection ?? throw new ArgumentNullException(nameof(selection));
         if (firstRow < 1) throw new ArgumentOutOfRangeException(nameof(firstRow));
         if (firstColumn < 1) throw new ArgumentOutOfRangeException(nameof(firstColumn));
         Contents = contents ?? throw new ArgumentNullException(nameof(contents));
         if (selection.CellCount != contents.CellCount) throw new ArgumentException("Selection and content cell counts must match.", nameof(contents));
+        if (underlyingValues is not null &&
+            (underlyingValues.RowCount != contents.RowCount || underlyingValues.ColumnCount != contents.ColumnCount))
+            throw new ArgumentException("Underlying values must match the formula block dimensions.", nameof(underlyingValues));
         FirstRow = firstRow;
         FirstColumn = firstColumn;
+        UnderlyingValues = underlyingValues;
     }
     public SelectionSnapshot Selection { get; }
     public int FirstRow { get; }
     public int FirstColumn { get; }
     public FormulaCellBlock Contents { get; }
+    public UnderlyingValueBlock? UnderlyingValues { get; }
+    public bool SourceContentEquals(FormulaBlockSnapshot? other) => other is not null &&
+        FirstRow == other.FirstRow && FirstColumn == other.FirstColumn && Contents.ContentEquals(other.Contents) &&
+        (UnderlyingValues is null || UnderlyingValues.ContentEquals(other.UnderlyingValues));
 }

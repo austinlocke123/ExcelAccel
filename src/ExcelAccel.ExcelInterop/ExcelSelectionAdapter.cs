@@ -187,6 +187,26 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         return ExcelComRetry.Execute(() => CaptureFormulaBlockOnce(selection));
     }
 
+    public ExcelDateSystem CaptureDateSystem()
+    {
+        _verifyExcelThread();
+        return ExcelComRetry.Execute(() =>
+        {
+            object? applicationObject = null;
+            object? workbookObject = null;
+            try
+            {
+                applicationObject = _getApplication();
+                ExcelCommandReadiness.RequireReady(applicationObject);
+                workbookObject = ((dynamic)applicationObject).ActiveWorkbook;
+                if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open a workbook and retry.");
+                return Convert.ToBoolean(((dynamic)workbookObject).Date1904, CultureInfo.InvariantCulture)
+                    ? ExcelDateSystem.Excel1904 : ExcelDateSystem.Excel1900;
+            }
+            finally { ComRelease.Owned(workbookObject); }
+        });
+    }
+
     public FormulaBlockSnapshot CaptureFormulaBlock(SelectionContext target)
     {
         _verifyExcelThread();
@@ -259,11 +279,17 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             object formulaValues = range.Formula;
             object valueValues = range.Value2;
             var cells = new FormulaCellValue[rowCount * columnCount];
+            var underlying = new UnderlyingCellValue[rowCount * columnCount];
             for (var row = 0; row < rowCount; row++)
                 for (var column = 0; column < columnCount; column++)
-                    cells[(row * columnCount) + column] = ConvertFormulaCell(
-                        ArrayValue(formulaValues, row, column), ArrayValue(valueValues, row, column));
-            return new FormulaBlockSnapshot(selection, firstRow, firstColumn, new FormulaCellBlock(rowCount, columnCount, cells));
+                {
+                    var formulaValue = ArrayValue(formulaValues, row, column);
+                    var calculatedValue = ArrayValue(valueValues, row, column);
+                    cells[(row * columnCount) + column] = ConvertFormulaCell(formulaValue, calculatedValue);
+                    underlying[(row * columnCount) + column] = ConvertUnderlyingValue(calculatedValue);
+                }
+            return new FormulaBlockSnapshot(selection, firstRow, firstColumn,
+                new FormulaCellBlock(rowCount, columnCount, cells), new UnderlyingValueBlock(rowCount, columnCount, underlying));
         }
         catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException exception)
         {
@@ -458,11 +484,17 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
             object formulaValues = selection.Formula;
             object valueValues = selection.Value2;
             var cells = new FormulaCellValue[rowCount * columnCount];
+            var underlying = new UnderlyingCellValue[rowCount * columnCount];
             for (var row = 0; row < rowCount; row++)
                 for (var column = 0; column < columnCount; column++)
-                    cells[(row * columnCount) + column] = ConvertFormulaCell(
-                        ArrayValue(formulaValues, row, column), ArrayValue(valueValues, row, column));
-            return new FormulaBlockSnapshot(snapshot, firstRow, firstColumn, new FormulaCellBlock(rowCount, columnCount, cells));
+                {
+                    var formulaValue = ArrayValue(formulaValues, row, column);
+                    var calculatedValue = ArrayValue(valueValues, row, column);
+                    cells[(row * columnCount) + column] = ConvertFormulaCell(formulaValue, calculatedValue);
+                    underlying[(row * columnCount) + column] = ConvertUnderlyingValue(calculatedValue);
+                }
+            return new FormulaBlockSnapshot(snapshot, firstRow, firstColumn,
+                new FormulaCellBlock(rowCount, columnCount, cells), new UnderlyingValueBlock(rowCount, columnCount, underlying));
         }
         finally
         {
@@ -556,6 +588,17 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         if (IsNumeric(formulaValue)) return FormulaCellValue.Number(Convert.ToDouble(formulaValue, CultureInfo.InvariantCulture));
         throw new CommandRefusedException(RefusalCodes.ExcelCapabilityMissing,
             $"Excel returned unsupported cell value type '{formulaValue.GetType().FullName}'.", "Remove unsupported cell types from the selection.");
+    }
+
+    private static UnderlyingCellValue ConvertUnderlyingValue(object? value)
+    {
+        if (value is null || value is DBNull) return UnderlyingCellValue.Blank();
+        if (value is ErrorWrapper error) return UnderlyingCellValue.Error(error.ErrorCode);
+        if (value is string text) return UnderlyingCellValue.Text(text);
+        if (value is bool boolean) return UnderlyingCellValue.Boolean(boolean);
+        if (IsNumeric(value)) return UnderlyingCellValue.Number(Convert.ToDouble(value, CultureInfo.InvariantCulture));
+        throw new CommandRefusedException(RefusalCodes.ExcelCapabilityMissing,
+            $"Excel returned unsupported underlying value type '{value.GetType().FullName}'.", "Remove unsupported cell types from the selection.");
     }
 
     private static object? ToExcelFormulaValue(FormulaCellValue value)
