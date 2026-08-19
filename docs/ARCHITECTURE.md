@@ -38,7 +38,7 @@ The production project names and dependency direction are normative.
 | `ExcelAccel.Application` | Command registry, orchestration, impact policy, preview routing, cancellation, results | Domain and abstractions only |
 | `ExcelAccel.Core` | Immutable workbook models, formulas, pure policies, reliability primitives, performance math, and bounded package-integrity primitives | BCL and approved pure libraries only |
 | `ExcelAccel.ExcelInterop` | Excel COM/C API snapshots, capability detection, mutation writers, state guard | Application abstractions; Office interop |
-| `ExcelAccel.Persistence` (planned WP-1A-04) | Profiles, settings, schema migration, atomic local files | Core/application DTOs only |
+| `ExcelAccel.Persistence` | Profiles, settings, schema migration, atomic local files | Core/application DTOs only |
 | `ExcelAccel.PresentationInterop` | Deferred PowerPoint automation | Separate optional adapter only |
 
 ### Dependency rules

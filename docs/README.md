@@ -14,6 +14,8 @@ The first Phase 1A boundary implementation is recorded in
 [`evidence/WP-1A-01_FOUNDATION.md`](evidence/WP-1A-01_FOUNDATION.md).
 Command-runtime evidence is recorded in
 [`evidence/WP-1A-02_03_COMMAND_RUNTIME.md`](evidence/WP-1A-02_03_COMMAND_RUNTIME.md).
+Profile and Quick Key evidence is recorded in
+[`evidence/WP-1A-04_05_PROFILES_QUICK_KEYS.md`](evidence/WP-1A-04_05_PROFILES_QUICK_KEYS.md).
 
 ## Document authority
 
