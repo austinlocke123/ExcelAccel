@@ -35,6 +35,8 @@ public static class ExcelAccelNativeMethods
     $worksheet = $null
     $cell = $null
     $secondCell = $null
+    $navigationCell = $null
+    $font = $null
     $multiArea = $null
     $mergedRange = $null
     $quitReturned = $false
@@ -82,6 +84,30 @@ public static class ExcelAccelNativeMethods
         [Console]::Out.Flush()
         if ($formatAfter -ne '$#,##0.00;($#,##0.00);-' -or -not $formatPreservedContent) {
             throw 'The formatting command did not produce the exact property-scoped result.'
+        }
+
+        $font = $cell.Font
+        $font.Color = 0x563412
+        $valueBefore = $cell.Value2
+        [void]$cell.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.ApplyFontColorCycle')
+        $fontColorAfter = [int]$font.Color
+        $fontColorPreservedContent = ($valueBefore -eq $cell.Value2)
+        [Console]::WriteLine("font_color_after=$fontColorAfter")
+        [Console]::WriteLine("font_color_content_preserved=$fontColorPreservedContent")
+        [Console]::Out.Flush()
+        if ($fontColorAfter -ne 0 -or -not $fontColorPreservedContent) {
+            throw 'The profile font-color cycle did not change only the declared property.'
+        }
+
+        $navigationCell = $worksheet.Range('D5')
+        [void]$navigationCell.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.NavigateA1')
+        $navigationAddress = [string]$excel.Selection.Address($false, $false)
+        [Console]::WriteLine("navigation_address=$navigationAddress")
+        [Console]::Out.Flush()
+        if ($navigationAddress -ne 'A1') {
+            throw 'Read-only A1 navigation did not select the exact target.'
         }
 
         $excel.ScreenUpdating = $true
@@ -186,6 +212,8 @@ public static class ExcelAccelNativeMethods
         Release-ComObject $mergedRange
         Release-ComObject $multiArea
         Release-ComObject $secondCell
+        Release-ComObject $navigationCell
+        Release-ComObject $font
         Release-ComObject $cell
         Release-ComObject $worksheet
         Release-ComObject $workbook
@@ -263,6 +291,9 @@ try {
         'version=',
         'currency_format=$#,##0.00;($#,##0.00);-',
         'content_preserved=True',
+        'font_color_after=0',
+        'font_color_content_preserved=True',
+        'navigation_address=A1',
         'state_restored_after_fault=True',
         'stale_property_refused=True',
         'protected_target_refused=True',

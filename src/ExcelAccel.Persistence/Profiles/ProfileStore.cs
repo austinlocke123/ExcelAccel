@@ -165,13 +165,28 @@ public sealed class ProfileStore
         [JsonProperty("number_formats", Order = 6, Required = Required.Always)]
         public SortedDictionary<string, string> NumberFormats { get; set; } = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
-        [JsonProperty("quick_keys", Order = 7, Required = Required.Always)]
+        [JsonProperty("horizontal_alignment_cycle", Order = 7, Required = Required.Always)]
+        public string[] HorizontalAlignmentCycle { get; set; } = Array.Empty<string>();
+
+        [JsonProperty("vertical_alignment_cycle", Order = 8, Required = Required.Always)]
+        public string[] VerticalAlignmentCycle { get; set; } = Array.Empty<string>();
+
+        [JsonProperty("underline_cycle", Order = 9, Required = Required.Always)]
+        public string[] UnderlineCycle { get; set; } = Array.Empty<string>();
+
+        [JsonProperty("row_height_cycle", Order = 10, Required = Required.Always)]
+        public double[] RowHeightCycle { get; set; } = Array.Empty<double>();
+
+        [JsonProperty("column_width_cycle", Order = 11, Required = Required.Always)]
+        public double[] ColumnWidthCycle { get; set; } = Array.Empty<double>();
+
+        [JsonProperty("quick_keys", Order = 12, Required = Required.Always)]
         public QuickKeyDto[] QuickKeys { get; set; } = Array.Empty<QuickKeyDto>();
 
-        [JsonProperty("immediate_preview_cell_limit", Order = 8, Required = Required.Always)]
+        [JsonProperty("immediate_preview_cell_limit", Order = 13, Required = Required.Always)]
         public long ImmediatePreviewCellLimit { get; set; }
 
-        [JsonProperty("wrap_sheet_navigation", Order = 9, Required = Required.Always)]
+        [JsonProperty("wrap_sheet_navigation", Order = 14, Required = Required.Always)]
         public bool WrapSheetNavigation { get; set; }
 
         public ProfileDefinition ToDefinition() => new ProfileDefinition(
@@ -180,6 +195,11 @@ public sealed class ProfileStore
             FontColorCycle,
             FillColorCycle,
             FontSizeCycle,
+            HorizontalAlignmentCycle,
+            VerticalAlignmentCycle,
+            UnderlineCycle,
+            RowHeightCycle,
+            ColumnWidthCycle,
             NumberFormats,
             QuickKeys.Select(value => new QuickKeyBinding(value.CommandId, value.Sequence)),
             ImmediatePreviewCellLimit,
@@ -192,6 +212,11 @@ public sealed class ProfileStore
             FontColorCycle = profile.FontColorCycle.ToArray(),
             FillColorCycle = profile.FillColorCycle.ToArray(),
             FontSizeCycle = profile.FontSizeCycle.ToArray(),
+            HorizontalAlignmentCycle = profile.HorizontalAlignmentCycle.ToArray(),
+            VerticalAlignmentCycle = profile.VerticalAlignmentCycle.ToArray(),
+            UnderlineCycle = profile.UnderlineCycle.ToArray(),
+            RowHeightCycle = profile.RowHeightCycle.ToArray(),
+            ColumnWidthCycle = profile.ColumnWidthCycle.ToArray(),
             NumberFormats = CopyFormats(profile.NumberFormats),
             QuickKeys = profile.QuickKeys
                 .OrderBy(value => value.CommandId, StringComparer.Ordinal)

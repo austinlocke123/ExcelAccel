@@ -33,6 +33,9 @@ host with an enforced acyclic dependency graph.
 18. [WP-P0-08 packaging evidence](docs/evidence/WP-P0-08_PACKAGING_TRUST.md)
 19. [Phase 0 closure and gate ledger](docs/evidence/PHASE0_CLOSURE.md)
 20. [WP-1A-01 production foundation evidence](docs/evidence/WP-1A-01_FOUNDATION.md)
+21. [WP-1A-02/03 command runtime evidence](docs/evidence/WP-1A-02_03_COMMAND_RUNTIME.md)
+22. [WP-1A-04/05 profiles and Quick Keys evidence](docs/evidence/WP-1A-04_05_PROFILES_QUICK_KEYS.md)
+23. [WP-1A-06/08 formatting and navigation evidence](docs/evidence/WP-1A-06_08_FORMATTING_NAVIGATION.md)
 
 ## Build and test
 

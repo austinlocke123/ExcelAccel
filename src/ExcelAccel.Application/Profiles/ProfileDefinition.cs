@@ -6,7 +6,7 @@ namespace ExcelAccel.Application.Profiles;
 
 public sealed class ProfileDefinition
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
     public const int MaximumBindings = 512;
 
     public ProfileDefinition(
@@ -15,6 +15,11 @@ public sealed class ProfileDefinition
         IEnumerable<string> fontColorCycle,
         IEnumerable<string> fillColorCycle,
         IEnumerable<double> fontSizeCycle,
+        IEnumerable<string> horizontalAlignmentCycle,
+        IEnumerable<string> verticalAlignmentCycle,
+        IEnumerable<string> underlineCycle,
+        IEnumerable<double> rowHeightCycle,
+        IEnumerable<double> columnWidthCycle,
         IEnumerable<KeyValuePair<string, string>> numberFormats,
         IEnumerable<QuickKeyBinding> quickKeys,
         long immediatePreviewCellLimit,
@@ -34,6 +39,12 @@ public sealed class ProfileDefinition
         {
             throw new ArgumentException("Font-size cycles require values from 6 through 72 points.", nameof(fontSizeCycle));
         }
+
+        HorizontalAlignmentCycle = NormalizeTokens(horizontalAlignmentCycle, nameof(horizontalAlignmentCycle));
+        VerticalAlignmentCycle = NormalizeTokens(verticalAlignmentCycle, nameof(verticalAlignmentCycle));
+        UnderlineCycle = NormalizeTokens(underlineCycle, nameof(underlineCycle));
+        RowHeightCycle = NormalizeDimensions(rowHeightCycle, 3, 409, nameof(rowHeightCycle));
+        ColumnWidthCycle = NormalizeDimensions(columnWidthCycle, 1, 255, nameof(columnWidthCycle));
 
         var formats = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var format in numberFormats ?? throw new ArgumentNullException(nameof(numberFormats)))
@@ -68,6 +79,11 @@ public sealed class ProfileDefinition
     public IReadOnlyList<string> FontColorCycle { get; }
     public IReadOnlyList<string> FillColorCycle { get; }
     public IReadOnlyList<double> FontSizeCycle { get; }
+    public IReadOnlyList<string> HorizontalAlignmentCycle { get; }
+    public IReadOnlyList<string> VerticalAlignmentCycle { get; }
+    public IReadOnlyList<string> UnderlineCycle { get; }
+    public IReadOnlyList<double> RowHeightCycle { get; }
+    public IReadOnlyList<double> ColumnWidthCycle { get; }
     public IReadOnlyDictionary<string, string> NumberFormats { get; }
     public IReadOnlyList<QuickKeyBinding> QuickKeys { get; }
     public long ImmediatePreviewCellLimit { get; }
@@ -88,6 +104,28 @@ public sealed class ProfileDefinition
 
     private static bool IsHex(char value) =>
         (value >= '0' && value <= '9') || (value >= 'A' && value <= 'F');
+
+    private static IReadOnlyList<string> NormalizeTokens(IEnumerable<string> values, string parameterName)
+    {
+        var result = (values ?? throw new ArgumentNullException(parameterName))
+            .Select(value => RequireToken(value, parameterName).ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return result.Length == 0
+            ? throw new ArgumentException("A formatting cycle cannot be empty.", parameterName)
+            : result;
+    }
+
+    private static IReadOnlyList<double> NormalizeDimensions(IEnumerable<double> values, double minimum, double maximum, string parameterName)
+    {
+        var result = (values ?? throw new ArgumentNullException(parameterName)).ToArray();
+        if (result.Length == 0 || result.Any(value => value < minimum || value > maximum || double.IsNaN(value) || double.IsInfinity(value)))
+        {
+            throw new ArgumentException($"Dimension cycles require values from {minimum} through {maximum}.", parameterName);
+        }
+
+        return result;
+    }
 
     private static string RequireToken(string value, string parameterName) =>
         string.IsNullOrWhiteSpace(value)
