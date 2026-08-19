@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExcelAccel.Application.Styles;
 using ExcelAccel.Persistence.Profiles;
+using ExcelAccel.Application.Formulas;
 
 namespace ExcelAccel.ExcelAddIn;
 
@@ -42,6 +43,7 @@ internal static class CommandDispatcher
             return CommandResult.Refused(commandId, "Select a concrete command or favorite in Command Search.", RefusalCodes.CommandUnavailable);
         if (Phase1AFormattingCatalog.All.Any(value => value.Id == commandId)) return ApplyProfileFormatting(commandId);
         if (NavigationCommandCatalog.All.Any(value => value.Id == commandId)) return Navigate(commandId);
+        if (FormulaCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyFormulaCommand(commandId);
         return CommandResult.Refused(commandId, "The registered command has no available host dispatcher.", RefusalCodes.CommandUnavailable);
     }
 
@@ -335,6 +337,60 @@ internal static class CommandDispatcher
             new SelectionContext(location.WorkbookId, location.WorksheetName, location.Address), new string[0], 0, "Read-only navigation.");
         return succeeded ? CommandResult.Success(plan, "Navigation completed without changing workbook content.") :
             CommandResult.Refused(plan, "No valid navigation target is available.", RefusalCodes.SelectionUnsupported);
+    }
+
+    public static CommandResult ApplyFormulaCommand(string commandId)
+    {
+        if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(commandId))
+            return CommandResult.Refused(commandId, "Formula mutation is disabled in safe mode or quarantine.", RefusalCodes.CommandQuarantined);
+        var descriptor = FormulaCommandCatalog.GetRequired(commandId);
+        var port = CreateSelectionAdapter();
+        var command = new FormulaBlockCommand(descriptor);
+        var snapshot = port.CaptureFormulaBlock();
+        var previewLimit = checked((int)Math.Min(ProfileRuntime.Current.ImmediatePreviewCellLimit, int.MaxValue));
+        FormulaBlockPlan plan;
+        switch (commandId)
+        {
+            case "formula.copy.down":
+                plan = command.PlanCopy(snapshot, FormulaCopyDirection.Down, previewLimit);
+                break;
+            case "formula.copy.right":
+                plan = command.PlanCopy(snapshot, FormulaCopyDirection.Right, previewLimit);
+                break;
+            case "formula.iferror.toggle":
+                plan = command.PlanIfError(snapshot, ProfileRuntime.Current.FormulaIfErrorFallback, previewLimit);
+                break;
+            case "formula.sign.reverse":
+                plan = command.PlanReverseSign(snapshot, includeNumericConstants: false, previewLimit);
+                break;
+            case "formula.units.to_thousands":
+                plan = command.PlanScale(snapshot, 1000, divide: true, includeNumericConstants: false, previewLimit);
+                break;
+            case "formula.units.from_thousands":
+                plan = command.PlanScale(snapshot, 1000, divide: false, includeNumericConstants: false, previewLimit);
+                break;
+            case "formula.units.to_millions":
+                plan = command.PlanScale(snapshot, 1000000, divide: true, includeNumericConstants: false, previewLimit);
+                break;
+            case "formula.units.from_millions":
+                plan = command.PlanScale(snapshot, 1000000, divide: false, includeNumericConstants: false, previewLimit);
+                break;
+            default:
+                return CommandResult.Refused(commandId, "The formula command has no qualified host route.", RefusalCodes.CommandUnavailable);
+        }
+
+        string? confirmation = null;
+        if (plan.CommandPlan.RequiresPreview)
+        {
+            var preview = plan.CommandPlan.Summary + "\n\n" + string.Join("\n", plan.Samples) + "\n\nApply this exact plan?";
+            var owner = ExcelWindowOwner.TryCreate();
+            var response = owner is null
+                ? MessageBox.Show(preview, "ExcelAccel formula preview", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+                : MessageBox.Show(owner, preview, "ExcelAccel formula preview", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (response != DialogResult.Yes) return CommandResult.Refused(plan.CommandPlan, "Formula preview was cancelled.", "USER_CANCELLED");
+            confirmation = plan.CommandPlan.PlanHash;
+        }
+        return command.Execute(plan, port, confirmation, UndoRuntime.Store);
     }
 
     private static ExcelSelectionAdapter CreateSelectionAdapter() =>

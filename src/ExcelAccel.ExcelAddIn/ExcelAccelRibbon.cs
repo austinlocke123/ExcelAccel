@@ -81,6 +81,16 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.StyleWarning' label='Warning' keytip='W' tag='warning' onAction='OnApplyBuiltInStyle'/>
                       <button id='ExcelAccel.StyleTotal' label='Total' keytip='T' tag='total' onAction='OnApplyBuiltInStyle'/>
                     </menu>
+                    <menu id='ExcelAccel.Formulas' label='Formulas' keytip='M' imageMso='FunctionWizard'>
+                      <button id='ExcelAccel.FormulaCopyDown' label='Smart Copy Down' keytip='CD' tag='formula.copy.down' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaCopyRight' label='Smart Copy Right' keytip='CR' tag='formula.copy.right' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaIfError' label='Toggle IFERROR' keytip='IE' tag='formula.iferror.toggle' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaReverseSign' label='Reverse Sign' keytip='RS' tag='formula.sign.reverse' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaToThousands' label='To Thousands (÷1,000)' keytip='UT' tag='formula.units.to_thousands' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaFromThousands' label='From Thousands (×1,000)' keytip='UF' tag='formula.units.from_thousands' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaToMillions' label='To Millions (÷1,000,000)' keytip='UM' tag='formula.units.to_millions' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaFromMillions' label='From Millions (×1,000,000)' keytip='UN' tag='formula.units.from_millions' onAction='OnFormulaCommand'/>
+                    </menu>
                     <menu id='ExcelAccel.Navigation' label='Navigate' keytip='V' imageMso='GoTo'>
                       <button id='ExcelAccel.PreviousSheet' label='Previous Sheet' keytip='P' tag='navigate.sheet.previous' onAction='OnNavigate'/>
                       <button id='ExcelAccel.NextSheet' label='Next Sheet' keytip='N' tag='navigate.sheet.next' onAction='OnNavigate'/>
@@ -133,6 +143,12 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         var commandId = control.Tag;
         CallbackBoundary.Run(commandId, () => CommandDispatcher.Navigate(commandId));
+    }
+
+    public void OnFormulaCommand(IRibbonControl control)
+    {
+        var commandId = control.Tag;
+        CallbackBoundary.Run(commandId, () => CommandDispatcher.ApplyFormulaCommand(commandId));
     }
 
     public void OnOpenStyleLibrary(IRibbonControl control)

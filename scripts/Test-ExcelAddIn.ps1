@@ -40,6 +40,10 @@ public static class ExcelAccelNativeMethods
     $interior = $null
     $multiArea = $null
     $mergedRange = $null
+    $formulaRange = $null
+    $formulaSource = $null
+    $formulaDestination1 = $null
+    $formulaDestination2 = $null
     $quitReturned = $false
 
     try {
@@ -137,6 +141,37 @@ public static class ExcelAccelNativeMethods
         [Console]::Out.Flush()
         if (-not $styleUndoExact) {
             throw 'One session undo did not restore every built-in style property.'
+        }
+
+        $formulaRange = $worksheet.Range('A10:A12')
+        $formulaSource = $worksheet.Range('A10')
+        $formulaDestination1 = $worksheet.Range('A11')
+        $formulaDestination2 = $worksheet.Range('A12')
+        $formulaRange.ClearContents()
+        $formulaSource.Formula = '=B10+$C$1'
+        [void]$formulaRange.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.FormulaCopyDown')
+        [Console]::WriteLine("formula_source=$([string]$formulaSource.Formula)")
+        [Console]::WriteLine("formula_destination_1=$([string]$formulaDestination1.Formula)")
+        [Console]::WriteLine("formula_destination_2=$([string]$formulaDestination2.Formula)")
+        $formulaCopyExact =
+            ([string]$formulaSource.Formula -eq '=B10+$C$1') -and
+            ([string]$formulaDestination1.Formula -eq '=B11+$C$1') -and
+            ([string]$formulaDestination2.Formula -eq '=B12+$C$1')
+        [Console]::WriteLine("formula_copy_down_exact=$formulaCopyExact")
+        [Console]::Out.Flush()
+        if (-not $formulaCopyExact) {
+            throw 'Transactional formula copy-down did not produce the exact translated formulas.'
+        }
+        [void]$excel.Run('ExcelAccel.Smoke.UndoLastProperty')
+        $formulaUndoExact =
+            ([string]$formulaSource.Formula -eq '=B10+$C$1') -and
+            ($null -eq $formulaDestination1.Value2) -and
+            ($null -eq $formulaDestination2.Value2)
+        [Console]::WriteLine("formula_block_undo_exact=$formulaUndoExact")
+        [Console]::Out.Flush()
+        if (-not $formulaUndoExact) {
+            throw 'Optimistic formula block undo did not restore the exact prior matrix.'
         }
 
         $navigationCell = $worksheet.Range('D5')
@@ -249,6 +284,10 @@ public static class ExcelAccelNativeMethods
         catch {
         }
         Release-ComObject $mergedRange
+        Release-ComObject $formulaDestination2
+        Release-ComObject $formulaDestination1
+        Release-ComObject $formulaSource
+        Release-ComObject $formulaRange
         Release-ComObject $multiArea
         Release-ComObject $secondCell
         Release-ComObject $navigationCell

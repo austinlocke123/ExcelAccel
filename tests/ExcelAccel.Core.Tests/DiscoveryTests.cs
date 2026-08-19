@@ -113,7 +113,7 @@ public sealed class DiscoveryTests
     {
         var store = new ProfileStore();
         var current = store.Serialize(store.LoadDefault());
-        var v2 = current.Replace("\"schema_version\": 4", "\"schema_version\": 2", StringComparison.Ordinal)
+        var v2 = current.Replace("\"schema_version\": 5", "\"schema_version\": 2", StringComparison.Ordinal)
             .Replace("  \"favorites\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal)
             .Replace("  \"local_styles\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal);
 
@@ -131,7 +131,7 @@ public sealed class DiscoveryTests
         var store = new ProfileStore();
         var profile = store.LoadDefault().WithFavorites(new[] { new FavoriteDefinition("favorite.currency", "format.number.currency", 1) });
         var v3 = store.Serialize(profile)
-            .Replace("\"schema_version\": 4", "\"schema_version\": 3", StringComparison.Ordinal)
+            .Replace("\"schema_version\": 5", "\"schema_version\": 3", StringComparison.Ordinal)
             .Replace("  \"local_styles\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal);
 
         var migrated = store.Parse(v3);
@@ -139,6 +139,36 @@ public sealed class DiscoveryTests
         Assert.Single(migrated.Favorites);
         Assert.Empty(migrated.LocalStyles);
         Assert.Equal(ProfileDefinition.CurrentSchemaVersion, migrated.SchemaVersion);
+    }
+
+    [Fact]
+    public void ProfileV4MigratesWithQualifiedDefaultIfErrorFallback()
+    {
+        var store = new ProfileStore();
+        var v4 = store.Serialize(store.LoadDefault())
+            .Replace("\"schema_version\": 5", "\"schema_version\": 4", StringComparison.Ordinal)
+            .Replace("  \"formula_iferror_fallback\": \"0\"" + Environment.NewLine, string.Empty, StringComparison.Ordinal)
+            .Replace("  \"wrap_sheet_navigation\": true," + Environment.NewLine,
+                "  \"wrap_sheet_navigation\": true" + Environment.NewLine, StringComparison.Ordinal);
+
+        var migrated = store.Parse(v4);
+
+        Assert.Equal(ProfileDefinition.CurrentSchemaVersion, migrated.SchemaVersion);
+        Assert.Equal("0", migrated.FormulaIfErrorFallback);
+        Assert.Contains("\"formula_iferror_fallback\": \"0\"", store.Serialize(migrated), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("=0")]
+    [InlineData("NamedFallback")]
+    [InlineData("Table1[Fallback]")]
+    public void ProfileRejectsUnsafeIfErrorFallback(string fallback)
+    {
+        var store = new ProfileStore();
+        var json = store.Serialize(store.LoadDefault())
+            .Replace("\"formula_iferror_fallback\": \"0\"", "\"formula_iferror_fallback\": \"" + fallback + "\"", StringComparison.Ordinal);
+
+        Assert.Throws<System.IO.InvalidDataException>(() => store.Parse(json));
     }
 
     private static CommandDescriptor Descriptor(string id, string name, string category, string description,

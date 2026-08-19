@@ -1,6 +1,6 @@
 {
-  "schema_version": 4,
-  "profile_id": "excelaccel.default.v4",
+  "schema_version": 5,
+  "profile_id": "excelaccel.default.v5",
   "font_color_cycle": ["#000000", "#0000FF", "#008000", "#FF0000"],
   "fill_color_cycle": ["#FFFFFF", "#FFF2CC", "#D9EAD3", "#F4CCCC"],
   "font_size_cycle": [8, 9, 10, 11, 12, 14],
@@ -32,5 +32,6 @@
   "favorites": [],
   "local_styles": [],
   "immediate_preview_cell_limit": 50000,
-  "wrap_sheet_navigation": true
+  "wrap_sheet_navigation": true,
+  "formula_iferror_fallback": "0"
 }

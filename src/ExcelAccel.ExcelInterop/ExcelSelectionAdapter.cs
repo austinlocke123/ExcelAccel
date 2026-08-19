@@ -6,12 +6,13 @@ using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Undo;
 using ExcelAccel.Application.Styles;
+using ExcelAccel.Application.Formulas;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Core.Reliability;
 
 namespace ExcelAccel.ExcelInterop;
 
-public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort, IStylePort
+public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPort, IStylePort, IFormulaBlockPort
 {
     private readonly Func<object> _getApplication;
     private readonly Action _verifyExcelThread;
@@ -149,7 +150,9 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         try
         {
             if (!target.Equals(CaptureSelection().Context)) return false;
-            value = ReadFormattingProperty(propertyId);
+            value = propertyId == FormulaBlockCommand.ReceiptPropertyId
+                ? CaptureFormulaBlock().Contents.Serialize()
+                : ReadFormattingProperty(propertyId);
             return true;
         }
         catch (CommandRefusedException) { return false; }
@@ -161,11 +164,177 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         try
         {
             if (!target.Equals(CaptureSelection().Context)) return false;
-            WriteFormattingProperty(propertyId, value);
+            if (propertyId == FormulaBlockCommand.ReceiptPropertyId)
+                WriteFormulaBlock(FormulaCellBlock.Deserialize(value));
+            else
+                WriteFormattingProperty(propertyId, value);
             return true;
         }
         catch (CommandRefusedException) { return false; }
         catch (System.Runtime.InteropServices.COMException) { return false; }
+    }
+
+    public FormulaBlockSnapshot CaptureFormulaBlock()
+    {
+        _verifyExcelThread();
+        var selection = CaptureSelection();
+        return ExcelComRetry.Execute(() => CaptureFormulaBlockOnce(selection));
+    }
+
+    public void WriteFormulaBlock(FormulaCellBlock contents)
+    {
+        _verifyExcelThread();
+        if (contents is null) throw new ArgumentNullException(nameof(contents));
+        ExcelComRetry.Execute(() => WriteFormulaBlockOnce(contents));
+    }
+
+    private FormulaBlockSnapshot CaptureFormulaBlockOnce(SelectionSnapshot snapshot)
+    {
+        object? applicationObject = null;
+        object? selectionObject = null;
+        object? rowsObject = null;
+        object? columnsObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            dynamic application = applicationObject;
+            selectionObject = application.Selection;
+            if (selectionObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "A cell range selection is required.", "Select one rectangular range.");
+            dynamic selection = selectionObject;
+            var address = Convert.ToString(selection.Address[false, false, 1, false], CultureInfo.InvariantCulture) ?? string.Empty;
+            if (!string.Equals(address, snapshot.Context.Address, StringComparison.OrdinalIgnoreCase))
+                throw new CommandRefusedException(RefusalCodes.StaleContext, "The selection changed during formula capture.", "Retry the command without changing the selection.");
+            rowsObject = selection.Rows;
+            columnsObject = selection.Columns;
+            var rowCount = Convert.ToInt32(((dynamic)rowsObject).Count, CultureInfo.InvariantCulture);
+            var columnCount = Convert.ToInt32(((dynamic)columnsObject).Count, CultureInfo.InvariantCulture);
+            var firstRow = Convert.ToInt32(selection.Row, CultureInfo.InvariantCulture);
+            var firstColumn = Convert.ToInt32(selection.Column, CultureInfo.InvariantCulture);
+            if ((long)rowCount * columnCount > FormulaCellBlock.MaximumCells)
+                throw new CommandRefusedException(RefusalCodes.ResourceLimit, "The selection exceeds the bounded formula cell limit.", "Select a smaller range.");
+            object formulaValues = selection.Formula;
+            object valueValues = selection.Value2;
+            var cells = new FormulaCellValue[rowCount * columnCount];
+            for (var row = 0; row < rowCount; row++)
+                for (var column = 0; column < columnCount; column++)
+                    cells[(row * columnCount) + column] = ConvertFormulaCell(
+                        ArrayValue(formulaValues, row, column), ArrayValue(valueValues, row, column));
+            return new FormulaBlockSnapshot(snapshot, firstRow, firstColumn, new FormulaCellBlock(rowCount, columnCount, cells));
+        }
+        finally
+        {
+            ComRelease.Owned(columnsObject);
+            ComRelease.Owned(rowsObject);
+            ComRelease.Owned(selectionObject);
+        }
+    }
+
+    private void WriteFormulaBlockOnce(FormulaCellBlock contents)
+    {
+        object? applicationObject = null;
+        object? selectionObject = null;
+        object? rowsObject = null;
+        object? columnsObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            dynamic application = applicationObject;
+            selectionObject = application.Selection;
+            if (selectionObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "A cell range selection is required.", "Select one rectangular range.");
+            dynamic selection = selectionObject;
+            rowsObject = selection.Rows;
+            columnsObject = selection.Columns;
+            var rowCount = Convert.ToInt32(((dynamic)rowsObject).Count, CultureInfo.InvariantCulture);
+            var columnCount = Convert.ToInt32(((dynamic)columnsObject).Count, CultureInfo.InvariantCulture);
+            if (rowCount != contents.RowCount || columnCount != contents.ColumnCount)
+                throw new CommandRefusedException(RefusalCodes.StaleContext, "The selection shape changed before the formula write.", "Refresh the preview and retry.");
+            object writeValue;
+            if (contents.CellCount == 1) writeValue = ToExcelFormulaValue(contents[0, 0]);
+            else
+            {
+                var values = new object[rowCount, columnCount];
+                for (var row = 0; row < rowCount; row++)
+                    for (var column = 0; column < columnCount; column++)
+                        values[row, column] = ToExcelFormulaValue(contents[row, column]);
+                writeValue = values;
+            }
+            ApplicationStateGuard.Run(
+                new ExcelApplicationStateAdapter(applicationObject),
+                ApplicationStateChangeSet.PropertyMutation(),
+                () => selection.Formula = writeValue);
+        }
+        finally
+        {
+            ComRelease.Owned(columnsObject);
+            ComRelease.Owned(rowsObject);
+            ComRelease.Owned(selectionObject);
+        }
+    }
+
+    private static object? ArrayValue(object value, int row, int column)
+    {
+        if (!(value is Array array)) return row == 0 && column == 0 ? value : null;
+        if (array.Rank != 2) throw new CommandRefusedException(RefusalCodes.ExcelCapabilityMissing, "Excel returned an unsupported formula matrix shape.", "Retry with a smaller rectangular selection.");
+        return array.GetValue(row + array.GetLowerBound(0), column + array.GetLowerBound(1));
+    }
+
+    private static FormulaCellValue ConvertFormulaCell(object? formulaValue, object? calculatedValue)
+    {
+        if (formulaValue is null || formulaValue is DBNull) return FormulaCellValue.Blank();
+        if (formulaValue is ErrorWrapper || calculatedValue is ErrorWrapper)
+        {
+            if (formulaValue is string errorFormula && errorFormula.StartsWith("=", StringComparison.Ordinal))
+                return FormulaCellValue.Formula(errorFormula);
+            throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "Constant Excel error values are outside the formula receipt contract.", "Remove constant error cells from the selection.");
+        }
+        if (formulaValue is string text)
+        {
+            if (text.Length == 0 && (calculatedValue is null || calculatedValue is DBNull ||
+                (calculatedValue is string emptyCalculated && emptyCalculated.Length == 0)))
+                return FormulaCellValue.Blank();
+            if (text.StartsWith("=", StringComparison.Ordinal) &&
+                !(calculatedValue is string calculatedText && string.Equals(text, calculatedText, StringComparison.Ordinal)))
+                return FormulaCellValue.Formula(text);
+            return FormulaCellValue.Text(calculatedValue as string ?? text.TrimStart('\''));
+        }
+        if (formulaValue is bool boolean) return FormulaCellValue.Boolean(boolean);
+        if (IsNumeric(formulaValue)) return FormulaCellValue.Number(Convert.ToDouble(formulaValue, CultureInfo.InvariantCulture));
+        throw new CommandRefusedException(RefusalCodes.ExcelCapabilityMissing,
+            $"Excel returned unsupported cell value type '{formulaValue.GetType().FullName}'.", "Remove unsupported cell types from the selection.");
+    }
+
+    private static object ToExcelFormulaValue(FormulaCellValue value)
+    {
+        switch (value.Kind)
+        {
+            case FormulaCellKind.Blank: return string.Empty;
+            case FormulaCellKind.Formula: return value.InvariantValue;
+            case FormulaCellKind.Text: return value.InvariantValue.StartsWith("=", StringComparison.Ordinal) ? "'" + value.InvariantValue : value.InvariantValue;
+            case FormulaCellKind.Number: return value.AsNumber();
+            case FormulaCellKind.Boolean: return value.InvariantValue == "true";
+            default: throw new InvalidOperationException("Unsupported formula cell kind.");
+        }
+    }
+
+    private static bool IsNumeric(object value)
+    {
+        switch (Type.GetTypeCode(value.GetType()))
+        {
+            case TypeCode.Byte:
+            case TypeCode.SByte:
+            case TypeCode.UInt16:
+            case TypeCode.UInt32:
+            case TypeCode.UInt64:
+            case TypeCode.Int16:
+            case TypeCode.Int32:
+            case TypeCode.Int64:
+            case TypeCode.Decimal:
+            case TypeCode.Double:
+            case TypeCode.Single: return true;
+            default: return false;
+        }
     }
 
     private string ReadFormattingPropertyOnce(string propertyId)

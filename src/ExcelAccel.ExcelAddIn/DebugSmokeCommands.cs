@@ -5,6 +5,7 @@ using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Reliability;
 using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.ExcelInterop;
+using ExcelAccel.Application.Formulas;
 using System.Windows.Forms;
 
 namespace ExcelAccel.ExcelAddIn;
@@ -150,6 +151,22 @@ public static class DebugSmokeCommands
         {
             DiagnosticLog.Error("smoke.format.number.currency.stale", exception);
         }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.FormulaCopyDown", Description = "Debug-only transactional formula block hook.")]
+    public static void FormulaCopyDown()
+    {
+        try
+        {
+            var port = new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var command = new FormulaBlockCommand(FormulaCommandCatalog.GetRequired("formula.copy.down"));
+            var plan = command.PlanCopy(port.CaptureFormulaBlock(), FormulaCopyDirection.Down);
+            var result = command.Execute(plan, port, null, UndoRuntime.Store);
+            DiagnosticLog.Info("smoke.formula.copy.down.result", result.Status + ":" + result.Message);
+            if (!result.Succeeded) throw new InvalidOperationException(result.Message);
+            DiagnosticLog.Info("smoke.formula.copy.down", "success");
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.formula.copy.down", exception); throw; }
     }
 }
 #endif

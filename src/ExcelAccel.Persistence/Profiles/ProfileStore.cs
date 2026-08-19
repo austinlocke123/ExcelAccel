@@ -207,12 +207,16 @@ public sealed class ProfileStore
         [JsonProperty("wrap_sheet_navigation", Order = 17, Required = Required.Always)]
         public bool WrapSheetNavigation { get; set; }
 
+        [JsonProperty("formula_iferror_fallback", Order = 18, Required = Required.Default)]
+        public string? FormulaIfErrorFallback { get; set; }
+
         public ProfileDefinition ToDefinition()
         {
             if (SchemaVersion < 2 || SchemaVersion > ProfileDefinition.CurrentSchemaVersion)
                 throw new InvalidDataException($"Profile schema {SchemaVersion} is not supported.");
             if (SchemaVersion >= 3 && Favorites is null) throw new InvalidDataException("Schema v3+ profiles require a favorites array.");
             if (SchemaVersion >= 4 && LocalStyles is null) throw new InvalidDataException("Schema v4 profiles require a local_styles array.");
+            if (SchemaVersion >= 5 && FormulaIfErrorFallback is null) throw new InvalidDataException("Schema v5 profiles require formula_iferror_fallback.");
             return new ProfileDefinition(
             ProfileDefinition.CurrentSchemaVersion,
             ProfileId,
@@ -230,7 +234,8 @@ public sealed class ProfileStore
             (Favorites ?? Array.Empty<FavoriteDto>()).Select(value => value.ToDefinition()),
             (LocalStyles ?? Array.Empty<StyleDto>()).Select(value => value.ToDefinition()),
             ImmediatePreviewCellLimit,
-            WrapSheetNavigation);
+            WrapSheetNavigation,
+            FormulaIfErrorFallback ?? "0");
         }
 
         public static ProfileDto From(ProfileDefinition profile) => new ProfileDto
@@ -261,6 +266,7 @@ public sealed class ProfileStore
                 .ToArray(),
             ImmediatePreviewCellLimit = profile.ImmediatePreviewCellLimit,
             WrapSheetNavigation = profile.WrapSheetNavigation,
+            FormulaIfErrorFallback = profile.FormulaIfErrorFallback,
         };
 
         private static SortedDictionary<string, string> CopyFormats(IReadOnlyDictionary<string, string> source)
