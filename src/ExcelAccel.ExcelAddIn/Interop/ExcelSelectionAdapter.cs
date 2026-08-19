@@ -64,6 +64,7 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
             bool workbookReadOnly = Convert.ToBoolean(workbook.ReadOnly, CultureInfo.InvariantCulture);
             bool hasLegacyArray = ConvertUnsafeBoolean(selection.HasArray);
             bool spillCheckSupported = TryReadOptionalUnsafeBoolean(selectionObject, "HasSpill", out var hasDynamicArraySpill);
+            var collaboration = ExcelWorkbookCollaborationAdapter.Capture(workbookObject);
 
             return new SelectionSnapshot(
                 new SelectionContext(workbookId, worksheetName, address),
@@ -77,7 +78,8 @@ internal sealed class ExcelSelectionAdapter : ISelectionPort
                     workbookReadOnly,
                     hasLegacyArray,
                     hasDynamicArraySpill,
-                    spillCheckSupported));
+                    spillCheckSupported),
+                collaboration);
         }
         catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException exception)
         {

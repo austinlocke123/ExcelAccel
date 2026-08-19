@@ -12,7 +12,8 @@ public sealed class CommandPlan
         SelectionContext context,
         IEnumerable<string> changedProperties,
         long affectedCellCount,
-        string summary)
+        string summary,
+        string preconditionFingerprint = "")
     {
         if (string.IsNullOrWhiteSpace(commandId))
         {
@@ -33,6 +34,7 @@ public sealed class CommandPlan
             .ToArray();
         AffectedCellCount = affectedCellCount;
         Summary = summary ?? string.Empty;
+        PreconditionFingerprint = preconditionFingerprint ?? throw new ArgumentNullException(nameof(preconditionFingerprint));
 
         if (Impact == CommandImpact.ReadOnly && ChangedProperties.Count != 0)
         {
@@ -56,4 +58,6 @@ public sealed class CommandPlan
     public long AffectedCellCount { get; }
 
     public string Summary { get; }
+
+    public string PreconditionFingerprint { get; }
 }

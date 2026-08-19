@@ -22,6 +22,7 @@ one read-only command, and one property-scoped formatting command.
 11. [Phase 0 implementation evidence](docs/evidence/PHASE0_VERTICAL_SLICE.md)
 12. [Excel adapter and state-guard evidence](docs/evidence/WP-P0-04_ADAPTER_STATE_GUARD.md)
 13. [Formula strategy spike evidence](docs/evidence/WP-P0-05_FORMULA_STRATEGY.md)
+14. [AutoSave and coauthoring spike evidence](docs/evidence/WP-P0-06_AUTOSAVE_COAUTHORING.md)
 
 ## Build and test
 
@@ -35,6 +36,7 @@ dotnet build ExcelAccel.sln --configuration Debug --no-restore
 dotnet test ExcelAccel.sln --configuration Debug --no-build --no-restore
 ./scripts/Test-ExcelAddIn.ps1
 ./scripts/Test-ExcelFormulaOracle.ps1
+./scripts/Test-ExcelCollaborationSignals.ps1
 ```
 
 The packed debug add-in is produced at
@@ -46,6 +48,9 @@ The formula-oracle script drives a temporary workbook from the versioned parser
 corpus and requires exact qualified native `Formula` round-trip plus clean
 process exit. R1C1 remains excluded after a recorded lifecycle failure; the
 script does not register a formula command.
+The collaboration-signal script performs read-only AutoSave and legacy-sharing
+probes in a temporary workbook, demonstrates intervening-property detection,
+and requires clean process exit.
 
 ## Source material
 
@@ -57,7 +62,7 @@ inputs to the Markdown specification, not the normative implementation source.
 
 ## Current boundary
 
-Only Phase 0 vertical-slice, reliability, and formula-strategy prototype work is
-implemented. Feature families remain governed by their command contracts and
-phase gates; successful spikes do not mark proposed ADRs or the broader
-acceptance matrix complete.
+Only Phase 0 vertical-slice, reliability, formula-strategy, and collaboration-
+safety prototype work is implemented. Feature families remain governed by
+their command contracts and phase gates; successful spikes do not mark proposed
+ADRs or the broader acceptance matrix complete.

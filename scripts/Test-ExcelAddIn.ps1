@@ -95,6 +95,16 @@ public static class ExcelAccelNativeMethods
         }
 
         $cell.NumberFormat = 'General'
+        [void]$cell.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.ApplyCurrencyFormatAfterInterveningChange')
+        $stalePropertyRefused = [string]$cell.NumberFormat -eq '0.00'
+        [Console]::WriteLine("stale_property_refused=$stalePropertyRefused")
+        [Console]::Out.Flush()
+        if (-not $stalePropertyRefused) {
+            throw 'The formatting command applied a stale plan after its planned property changed.'
+        }
+
+        $cell.NumberFormat = 'General'
         $worksheet.Protect()
         try {
             [void]$cell.Select()
@@ -247,6 +257,7 @@ try {
         'currency_format=$#,##0.00;($#,##0.00);-',
         'content_preserved=True',
         'state_restored_after_fault=True',
+        'stale_property_refused=True',
         'protected_target_refused=True',
         'multi_area_refused=True',
         'merged_target_refused=True',
