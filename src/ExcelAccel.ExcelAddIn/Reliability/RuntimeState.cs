@@ -24,8 +24,19 @@ internal static class RuntimeState
 
     public static bool IsSafeMode { get; private set; }
 
+    /// <summary>
+    /// Set once the add-in has begun unloading. Anything that would call into
+    /// Excel must stop: a COM call during teardown can throw from a UI event
+    /// handler, and an exception escaping the message loop leaves Excel alive
+    /// behind an Excel-DNA diagnostic window.
+    /// </summary>
+    public static bool IsShuttingDown { get; private set; }
+
+    public static void BeginShutdown() => IsShuttingDown = true;
+
     public static void Start()
     {
+        IsShuttingDown = false;
         _excelThreadId = Thread.CurrentThread.ManagedThreadId;
         Directory.CreateDirectory(SessionDirectory);
         IsSafeMode = Directory.EnumerateFiles(SessionDirectory, "*.running")

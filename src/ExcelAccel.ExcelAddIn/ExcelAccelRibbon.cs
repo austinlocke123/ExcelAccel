@@ -133,6 +133,9 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.DirectDependents' label='Trace Direct Dependents' keytip='DD' tag='audit.dependents.direct' onAction='OnAuditCommand'
                               screentip='Scan this worksheet for formulas that read the selection'
                               supertip='Opens a read-only view of the formulas on the active worksheet that read the selected cell or range. The scan is bounded, cancellable, confirmed before a large worksheet, and never widens beyond this worksheet. No Excel trace arrow or workbook annotation is used.'/>
+                      <button id='ExcelAccel.InspectFormula' label='Inspect Formula' keytip='FI' tag='audit.formula.inspect' onAction='OnAuditCommand'
+                              screentip='Show the structure of the selected formula'
+                              supertip='Opens a read-only tree of the selected formula: functions, operators, constants, and references, each with its exact source span. Nothing is evaluated, scored, or explained, and the workbook is never changed.'/>
                       <button id='ExcelAccel.WorkbookDependents' label='Trace Dependents Across Workbook' keytip='DW' tag='audit.dependents.workbook' onAction='OnAuditCommand'
                               screentip='Scan every worksheet for formulas that read the selection'
                               supertip='Opens a read-only view of the formulas anywhere in this workbook that read the selected cell or range. The sheet inventory is always confirmed before anything is read, a worksheet that cannot be bounded is excluded with a stated reason, and the scan is cancellable.'/>

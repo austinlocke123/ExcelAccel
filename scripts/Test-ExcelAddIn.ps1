@@ -56,6 +56,7 @@ public static class ExcelAccelNativeMethods
     $checkD = $null
     $secondSheet = $null
     $secondSheetCell = $null
+    $inspectCell = $null
     $font = $null
     $interior = $null
     $multiArea = $null
@@ -679,6 +680,7 @@ public static class ExcelAccelNativeMethods
         if ($auditViewSecondResult -ne 'open|success') {
             throw 'The direct-precedent view did not present the second workbook result.'
         }
+        Release-ComObject $inspectCell
         Release-ComObject $secondSheetCell
         Release-ComObject $secondSheet
         Release-ComObject $checkD
@@ -863,6 +865,25 @@ public static class ExcelAccelNativeMethods
             throw "Model Check rescan did not repeat the prior scope: $modelCheckRescan"
         }
 
+
+        $inspectCell = $worksheet.Range('F230')
+        $inspectCell.Formula = '=IF(A200>0,SUM(B200:B210)*2,-C200)'
+        [void]$inspectCell.Select()
+        $inspectResult = [string]$excel.Run('ExcelAccel.Smoke.InspectFormula')
+        $inspectPreserved = ([string]$inspectCell.Formula -eq '=IF(A200>0,SUM(B200:B210)*2,-C200)')
+        [Console]::WriteLine("formula_inspector=$inspectResult")
+        [Console]::WriteLine("formula_inspector_content_preserved=$inspectPreserved")
+        [Console]::Out.Flush()
+        if ($inspectResult -ne 'open|success') {
+            throw "The registered formula-inspector route did not open a read-only tree: $inspectResult"
+        }
+        if (-not $inspectPreserved) { throw 'The formula inspector changed workbook contents.' }
+        $inspectClose = [string]$excel.Run('ExcelAccel.Smoke.CloseInspectFormula')
+        [Console]::WriteLine("formula_inspector_explicit_close=$inspectClose")
+        [Console]::Out.Flush()
+        if ($inspectClose -ne 'closed') {
+            throw 'The formula inspector did not release on the explicit close path.'
+        }
 
         $secondSheet = $workbook.Worksheets.Add()
         $secondSheet.Name = 'WorkbookScopeProbe'
@@ -1128,7 +1149,7 @@ try {
         $workerProcess.Refresh()
     }
 
-    $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)$').Groups[1].Value
+    $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)').Groups[1].Value
     if ($excelProcessId) {
         $excelProcess = Get-Process -Id ([int]$excelProcessId) -ErrorAction SilentlyContinue
         if ($excelProcess) {
@@ -1190,6 +1211,9 @@ try {
         'model_check_rescan=success|',
         'model_check_explicit_close=closed',
         'workbook_dependents_unconfirmed=Refused|AUDIT_PREVIEW_REQUIRED|0',
+        'formula_inspector=open|success',
+        'formula_inspector_content_preserved=True',
+        'formula_inspector_explicit_close=closed',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
         'typed_conversions_exact=True',

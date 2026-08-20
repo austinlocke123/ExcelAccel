@@ -42,6 +42,23 @@ internal static class TraceViewRuntimes
     public static void Reset() => Indirect.Reset();
 }
 
+internal static class InspectorViewRuntime
+{
+    private static readonly TraceViewRuntime Runtime = new TraceViewRuntime(
+        AuditingCommandCatalog.InspectFormulaId,
+        "Read-only structure of one formula. This view never changes the workbook and never evaluates anything.",
+        CommandDispatcher.NavigateToTraceTarget);
+
+    public static bool IsOpen => Runtime.IsOpen;
+
+    public static CommandResult Present(FormulaInspectorReport report, string workbookId, IWorkbookPresencePort presence) =>
+        Runtime.Present(report.ToPresentation(), workbookId, presence);
+
+    public static bool RevalidateSource() => Runtime.RevalidateSource();
+
+    public static void Reset() => Runtime.Reset();
+}
+
 internal static class DependentViewRuntime
 {
     private static readonly TraceViewRuntime Runtime = new TraceViewRuntime(

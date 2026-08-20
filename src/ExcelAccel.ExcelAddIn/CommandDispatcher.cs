@@ -7,6 +7,7 @@ using ExcelAccel.Application.Operations;
 using ExcelAccel.Application.ModelCheck;
 using ExcelAccel.Core.ModelCheck;
 using ExcelAccel.Core.Auditing;
+using ExcelAccel.Core.Formulas;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Application.Undo;
 using System;
@@ -58,6 +59,7 @@ internal static class CommandDispatcher
         if (commandId == AuditingCommandCatalog.WorkbookDependentsId) return ShowDirectDependents(DependentScanScopeKind.Workbook);
         if (commandId == AuditingCommandCatalog.IndirectPrecedentsId) return ShowIndirectTrace(TraceDirection.Precedents);
         if (commandId == AuditingCommandCatalog.IndirectDependentsId) return ShowIndirectTrace(TraceDirection.Dependents);
+        if (commandId == AuditingCommandCatalog.InspectFormulaId) return InspectFormula();
         if (commandId == ModelCheckCommandCatalog.RunSelectionId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Selection);
         if (commandId == ModelCheckCommandCatalog.RunWorksheetId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Worksheet);
         if (commandId == ModelCheckCommandCatalog.RunWorkbookId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Workbook);
@@ -601,6 +603,21 @@ internal static class CommandDispatcher
             ? MessageBox.Show(message, "ExcelAccel", MessageBoxButtons.OKCancel, MessageBoxIcon.Question)
             : MessageBox.Show(owner, message, "ExcelAccel", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
         return answer == DialogResult.OK;
+    }
+
+    public static CommandResult InspectFormula()
+    {
+        var snapshot = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var capture = snapshot.CaptureTarget();
+        var parse = new FormulaParser().Parse(capture.Formula, new FormulaParseOptions(capture.Dialect));
+        var tree = parse.IsSuccess
+            ? FormulaTreeBuilder.Build(parse.Document!)
+            : FormulaTreeResult.Refused(parse.RefusalCode, parse.Message);
+        var report = FormulaInspectorReport.Create(capture.Target, capture.Formula, tree);
+        DiagnosticLog.Info(
+            AuditingCommandCatalog.InspectFormulaId,
+            $"status:{report.Status};nodes:{tree.NodeCount};limitation:{tree.LimitationCode ?? "none"}");
+        return InspectorViewRuntime.Present(report, capture.Target.WorkbookId, snapshot);
     }
 
     public static CommandResult ShowIndirectTrace(TraceDirection direction)

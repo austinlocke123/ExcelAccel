@@ -208,7 +208,45 @@ mutation remains out of scope.
 - `audit.dependents.workbook` (`Alt, X, A, A, DW`) and `model_check.run.workbook`
   (`Alt, X, A, K, MB`) are registered, read-only, and declare a mandatory preview.
 
-## Current verification
+## Fixed: a dead exit check, and the process leak it was hiding
+
+Two defects, found and fixed on 2026-08-20 while qualifying WP-2-04.
+
+**1. The Excel-exit verification was dead across the whole harness.** Six scripts
+matched the worker's reported process id with
+`[regex]::Match($output, '(?m)^excel_pid=(\d+)$')`. Worker output uses CRLF, so
+in .NET the `$` anchor never matches after the digits, the captured id was always
+empty, and the entire "did Excel exit?" block was skipped. Five of the six
+scripts predate Phase 2, so **every "Excel exited naturally, no surviving
+process" claim this harness produced before 2026-08-20 was unverified**, not
+wrong on purpose but never actually checked. Fixed by dropping the anchor. The
+repaired check immediately caught the defect below, which is the point.
+
+**2. A smoke hook leaked an Excel process.** With the check working, a full smoke
+run left one hidden Excel alive behind an Excel-DNA diagnostic window.
+
+Isolating it: the pre-Phase-2 smoke script run against the current add-in was
+clean, which ruled out product code. Removing only the trace-navigation step
+removed the leak. `ExcelAccel.Smoke.TraceNavigate` took `ActiveWorkbook` and
+`Selection` into locals and never released them, ignoring the `ComRelease.Owned`
+pattern every production adapter follows. An un-released COM reference keeps
+Excel's COM server alive, so the process survived `Quit`.
+
+Fixed by releasing both objects in a `finally`. Two consecutive smoke runs now
+pass with the exit check active and zero surviving processes.
+
+**Worth keeping in mind:** the leak was in a Debug-only test hook, never in
+shipped code. But it went unnoticed for six merges because the check that should
+have caught it was broken, and the same broken check means earlier
+process-hygiene evidence rests on the unit and behavioural assertions rather than
+on a verified clean exit.
+
+A related note observed while debugging: `AutoClose` never runs in this smoke
+setup. `addin.close` has been logged zero times against 263 `addin.open` events,
+so the add-in's unload path is not exercised by the smoke at all. That is a real
+coverage gap, recorded here rather than fixed.
+
+## Current verification## Current verification
 
 - WP-2-02b workbook scope: **505/505 Release tests passed**; in real Excel the
   workbook scan returned `Complete|Sheet1!B200,Sheet1!C200,WorkbookScopeProbe!A1|workbook|0`,
@@ -288,8 +326,10 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. WP-2-04, the Formula Inspector, the last remaining Phase 2 package. Read the
-   implementation plan note first: the
+1. **Cover the add-in unload path.** `AutoClose` is never invoked by the smoke,
+   so `addin.close`, the runtime resets, and the recovery-marker cleanup are
+   entirely unexercised.
+2. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
    dependency table understates it. `FormulaSyntaxDocument` exposes a token
    stream and a flat reference list, with no syntax tree, while AC-AUD-016
    requires an immutable tree of functions, operators, constants, references,

@@ -193,7 +193,7 @@ try {
         $workerProcess.Refresh()
     }
 
-    $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)$').Groups[1].Value
+    $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)').Groups[1].Value
     if ($excelProcessId) {
         $excelProcess = Get-Process -Id ([int]$excelProcessId) -ErrorAction SilentlyContinue
         if ($excelProcess) {

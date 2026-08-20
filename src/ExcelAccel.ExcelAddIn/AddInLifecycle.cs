@@ -19,6 +19,7 @@ public sealed class AddInLifecycle : IExcelAddIn
     {
         CallbackBoundary.RunLifecycle("addin.close", () =>
         {
+            RuntimeState.BeginShutdown();
             CommandSearchRuntime.Reset();
             StyleLibraryRuntime.Reset();
             ProfileRuntime.Reset();
@@ -28,6 +29,7 @@ public sealed class AddInLifecycle : IExcelAddIn
             PrecedentViewRuntime.Reset();
             DependentViewRuntime.Reset();
             TraceViewRuntimes.Reset();
+            InspectorViewRuntime.Reset();
             ModelCheckRuntime.Reset();
             DiagnosticLog.Info("addin.close", "normal");
             RuntimeState.StopCleanly();

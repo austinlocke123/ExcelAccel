@@ -13,6 +13,7 @@ public static class AuditingCommandCatalog
     public const string WorkbookDependentsId = "audit.dependents.workbook";
     public const string IndirectPrecedentsId = "audit.precedents.indirect";
     public const string IndirectDependentsId = "audit.dependents.indirect";
+    public const string InspectFormulaId = "audit.formula.inspect";
 
     private static readonly IReadOnlyList<CommandDescriptor> Commands = new[]
     {
@@ -101,6 +102,23 @@ public static class AuditingCommandCatalog
             "Follow the dependent chain downstream from the selection within this worksheet, breadth-first within explicit depth and node caps. The worksheet is scanned once, cycles terminate, and reaching a cap produces an explicit truncated result.",
             new[] { "indirect dependents", "dependent chain", "trace downstream" },
             "Alt, X, A, A, DI"),
+        new CommandDescriptor(
+            InspectFormulaId,
+            1,
+            "Inspect Formula",
+            CommandImpact.ReadOnly,
+            Array.Empty<string>(),
+            false,
+            "Ribbon KeyTips: Alt, X, A, A, FI",
+            "CAP-AUD-002",
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
+            PreviewPolicy.None,
+            UndoPolicy.None,
+            new[] { "AC-AUD-016", "AC-AUD-017", "AC-AUD-018", "AC-AUD-019" },
+            "Auditing",
+            "Show the structure of the selected formula as a tree of functions, operators, constants, and references, each with its exact source span. Nothing is evaluated, scored, or explained.",
+            new[] { "inspect formula", "formula tree", "formula structure" },
+            "Alt, X, A, A, FI"),
     }.OrderBy(value => value.Id, StringComparer.Ordinal).ToArray();
 
     public static IReadOnlyList<CommandDescriptor> All => Commands;

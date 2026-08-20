@@ -63,7 +63,8 @@ internal sealed class TraceViewRuntime
     /// <summary>Returns true while a view is still presenting a result.</summary>
     public bool RevalidateSource()
     {
-        if (!IsOpen) return false;
+        // Never call into Excel while it is unloading.
+        if (RuntimeState.IsShuttingDown || !IsOpen) return false;
         var action = _session.Revalidate();
         if (_session.LastProbeError is not null)
         {
@@ -156,7 +157,21 @@ internal sealed class TraceResultView : Form
         Controls.Add(_headline);
         Controls.Add(buttons);
         CancelButton = close;
-        Activated += (_, __) => revalidate();
+        // Closing one trace view activates the next one, so this fires during
+        // teardown as well. Nothing here may escape into the WinForms message
+        // loop: an unhandled exception there leaves Excel running behind an
+        // Excel-DNA diagnostic window.
+        Activated += (_, __) =>
+        {
+            try
+            {
+                revalidate();
+            }
+            catch (Exception exception)
+            {
+                DiagnosticLog.Error("trace.view.activated", exception);
+            }
+        };
     }
 
     public void Render(TraceResultPresentation presentation, string? notice)
