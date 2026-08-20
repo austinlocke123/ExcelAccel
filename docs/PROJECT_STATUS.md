@@ -72,6 +72,12 @@ for **worksheet scope only**, with progress and cancellation wired.
 - Each formula is parsed once at build time; queries intersect rectangles and
   never re-parse. The index is capped at 20,000 formulas and truncates
   explicitly. An independent brute-force oracle proves AC-AUD-007 equivalence.
+- Coverage gaps are counted **per cause**. Structured references, dynamic arrays,
+  and intersections are gaps; external references, unions, and resolved names are
+  not, because they cannot conceal an in-scope edge. This needed the parser to
+  expose every coverage cause rather than only the first, added additively as
+  `FormulaSyntaxDocument.LimitationCodes`. A worksheet containing an external
+  link can now claim completeness, which it previously never could.
 - **Excel's reported used range is untrusted and is never a resource bound.** A
   region above 250,000 cells, or wider than the 10,000-cell band ceiling, is
   refused before any block is read. Otherwise the region is banded by rows so no
@@ -110,6 +116,8 @@ capture read and display the wrong cell. See
 
 ## Current verification
 
+- Per-cause coverage slice: **417/417 Release tests passed**; the live worksheet
+  scan moved from `Partial|B200,C200|16|1` to `Complete|B200,C200|16|0`.
 - WP-2-02a presentation/registration slice: **389/389 Release tests passed**;
   Release and Debug builds warning-free; the registered `audit.dependents.direct`
   route opened its read-only view in real Excel (`open|success`), preserved the

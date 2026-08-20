@@ -152,7 +152,8 @@ public sealed class FormulaSyntaxDocument
         IReadOnlyList<FormulaToken> tokens,
         IReadOnlyList<FormulaReference> references,
         FormulaCoverageDisposition disposition,
-        string? limitationCode)
+        string? limitationCode,
+        IReadOnlyList<string>? limitationCodes = null)
     {
         SourceText = sourceText ?? throw new ArgumentNullException(nameof(sourceText));
         Dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
@@ -185,6 +186,14 @@ public sealed class FormulaSyntaxDocument
         References = Array.AsReadOnly(references.ToArray());
         Disposition = disposition;
         LimitationCode = limitationCode;
+        LimitationCodes = limitationCodes is null
+            ? Array.AsReadOnly(limitationCode is null ? new string[0] : new[] { limitationCode })
+            : Array.AsReadOnly(limitationCodes.ToArray());
+        if (limitationCodes is not null && limitationCode is not null &&
+            (LimitationCodes.Count == 0 || LimitationCodes[0] != limitationCode))
+        {
+            throw new ArgumentException("The first coverage cause must be the reported limitation code.", nameof(limitationCodes));
+        }
     }
 
     public string SourceText { get; }
@@ -197,7 +206,19 @@ public sealed class FormulaSyntaxDocument
 
     public FormulaCoverageDisposition Disposition { get; }
 
+    /// <summary>
+    /// The first coverage limitation, in the parser's fixed precedence order.
+    /// Kept for callers that only need to name one reason.
+    /// </summary>
     public string? LimitationCode { get; }
+
+    /// <summary>
+    /// Every coverage limitation this formula carries, in the same precedence
+    /// order, with the reported <see cref="LimitationCode"/> first. A caller that
+    /// must decide whether a specific construct could hide something needs all of
+    /// them, because the first cause alone does not rule the others out.
+    /// </summary>
+    public IReadOnlyList<string> LimitationCodes { get; }
 
     public string Serialize() => SourceText;
 }

@@ -103,20 +103,76 @@ public sealed class ReverseReferenceIndexTests
     }
 
     /// <summary>
-    /// An external reference cannot address an in-scope cell, so in principle it
-    /// need not reduce confidence. The parser reports only its first coverage
-    /// limitation, so a formula reported as external may also contain another
-    /// unqualified construct. Counting it as a gap keeps the completeness claim
-    /// conservative rather than assuming the parser's precedence order.
+    /// An external reference addresses another workbook, so it can never conceal
+    /// a reference to an in-scope cell and must not block the completeness claim.
+    /// This matters in practice: external links are common in the models this
+    /// add-in targets, and treating them as gaps made the completeness signal
+    /// read "not claimed" in nearly every real workbook.
     /// </summary>
     [Fact]
-    public void AnExternalReferenceStillCountsAsAConservativeCoverageGap()
+    public void AnExternalReferenceDoesNotBlockTheCompletenessClaim()
     {
         var index = Build(("B1", "='[Other.xlsx]Model'!A1+A1"));
 
         var result = index.FindDirectDependents(Cell("A1"));
 
         Assert.Single(result.Dependents);
+        Assert.Equal(0, result.CoverageGapCount);
+        Assert.True(result.CanClaimCompleteness);
+    }
+
+    [Fact]
+    public void AUnionReadsEveryOperandSoItDoesNotBlockCompleteness()
+    {
+        var index = Build(("B1", "=A1,C1"));
+
+        var result = index.FindDirectDependents(Cell("A1"));
+
+        Assert.Single(result.Dependents);
+        Assert.Equal(0, result.CoverageGapCount);
+        Assert.True(result.CanClaimCompleteness);
+    }
+
+    [Fact]
+    public void AResolvedNameDoesNotBlockCompletenessEvenThoughTheParserNotesIt()
+    {
+        var names = new[] { new AuditNameBinding("Rate", AuditNameScope.Workbook, Cell("A1")) };
+        var index = ReverseReferenceIndex.Build(WorksheetScope, Formulas(("B1", "=Rate*2")), names);
+
+        var result = index.FindDirectDependents(Cell("A1"));
+
+        Assert.Single(result.Dependents);
+        Assert.Equal(0, result.CoverageGapCount);
+        Assert.True(result.CanClaimCompleteness);
+    }
+
+    /// <summary>
+    /// A structured reference resolves to real cells but produces no parsed
+    /// reference, so it is a genuine blind spot and must stay a gap.
+    /// </summary>
+    [Fact]
+    public void AStructuredReferenceRemainsAGapEvenBesideAnExternalReference()
+    {
+        var index = Build(("B1", "='[Other.xlsx]Model'!A1+SUM(Table1[Amount])"));
+
+        var result = index.FindDirectDependents(Cell("A1"));
+
+        Assert.Equal(1, result.CoverageGapCount);
+        Assert.False(result.CanClaimCompleteness);
+    }
+
+    /// <summary>
+    /// The parser reports only its first limitation and checks external before
+    /// intersection, so a formula carrying both must still be a gap. This is the
+    /// case that made the old first-cause-only reading unsafe to refine.
+    /// </summary>
+    [Fact]
+    public void AnIntersectionBesideAnExternalReferenceIsStillAGap()
+    {
+        var index = Build(("B1", "='[Other.xlsx]Model'!A1+SUM(A1:C3 B1:B5)"));
+
+        var result = index.FindDirectDependents(Cell("A1"));
+
         Assert.Equal(1, result.CoverageGapCount);
         Assert.False(result.CanClaimCompleteness);
     }
