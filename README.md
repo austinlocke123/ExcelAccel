@@ -3,7 +3,7 @@
 ExcelAccel is a native Windows Excel add-in for fast, deterministic,
 keyboard-first financial-modeling workflows.
 
-The repository has **closed Phase 0 and Phase 1A/1B, and Phase 2 is active**.
+The repository has **closed Phase 0, Phase 1A/1B, and Phase 2**.
 It contains a real 64-bit Excel-DNA `.xll`, a pure command core, reliability
 boundaries, profile-driven property-scoped formatting, read-only navigation,
 optimistic session undo, recovery/diagnostics, per-user installer source, the
@@ -12,7 +12,9 @@ traversal, and the Model Check rule engine.
 Core, Application, ExcelInterop, and the thin Excel-DNA host are separated by an
 enforced acyclic dependency graph.
 
-It is not yet qualified for distribution; retained formula, performance,
+It **is installable and usable on a developer machine today**; see
+[Session handoff](docs/SESSION_HANDOFF.md) for the commands. It is not qualified
+for distribution to other people, and retained formula, performance,
 collaboration, and clean-machine gates remain fail-closed. See
 [Project status](docs/PROJECT_STATUS.md) for the current snapshot, verification
 numbers, and the restart point.
@@ -59,6 +61,7 @@ numbers, and the restart point.
 38. [WP-2-02b workbook scope evidence](docs/evidence/WP-2-02B_WORKBOOK_SCOPE.md)
 39. [WP-2-09 Phase 2 qualification evidence](docs/evidence/WP-2-09_PHASE2_QUALIFICATION.md)
 40. [Project status and restart guide](docs/PROJECT_STATUS.md)
+41. [Session handoff](docs/SESSION_HANDOFF.md)
 
 ## Build and test
 

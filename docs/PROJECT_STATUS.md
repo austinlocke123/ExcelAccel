@@ -2,12 +2,26 @@
 
 Snapshot date: **2026-08-20**
 
-Status: **Phase 2 is active; WP-2-01, WP-2-02a, WP-2-02b, WP-2-03, WP-2-05 through WP-2-08 (Model Check), and WP-2-09 qualification are complete. Only WP-2-04 remains, and it needs parser work.**
+Status: **Phase 2 is complete.** WP-2-01, WP-2-02a, WP-2-02b, WP-2-03, WP-2-04,
+WP-2-05 through WP-2-08 (Model Check), and WP-2-09 qualification are all merged.
+There is no Phase 3: the implementation plan deliberately treats the remaining
+work as thirteen individually gated packages, each needing its own approval.
 
-ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
-contains the Phase 0 safety foundation, Phase 1A command/format/navigation
-runtime, and the Phase 1B daily-speed feature core. It is not qualified for
-end-user distribution and is not an Excel for the web add-in.
+For what a fresh session would otherwise rediscover — including that the add-in
+is installed and usable today — read
+[`SESSION_HANDOFF.md`](SESSION_HANDOFF.md) alongside this file.
+
+ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository contains
+the Phase 0 safety foundation, the Phase 1A command/format/navigation runtime,
+the Phase 1B daily-speed feature core, and the complete Phase 2 formula auditing
+and Model Check capability.
+
+It **is installable and usable on a developer machine today** via
+`scripts/New-ExcelAccelPackage.ps1` and `scripts/Install-ExcelAccel.ps1
+-AllowUntrustedPrototype`; see the handoff for the exact commands. It is not
+qualified for *distribution* to other people, and is not an Excel for the web
+add-in. The deferred distribution gates govern shipping to others, not personal
+use.
 
 ## Integrated baseline
 
@@ -208,6 +222,35 @@ mutation remains out of scope.
 - `audit.dependents.workbook` (`Alt, X, A, A, DW`) and `model_check.run.workbook`
   (`Alt, X, A, K, MB`) are registered, read-only, and declare a mandatory preview.
 
+## WP-2-04 Formula Inspector delivered behavior
+
+- `FormulaTreeBuilder` builds the immutable syntax tree the qualified parser
+  never had: precedence climbing over its token stream, right-associative `^`,
+  unary and postfix operators, function argument lists, groups, and typed leaves
+  for references, names, numbers, text, booleans, and error literals.
+- The build is **additive**. The parser's own tokens, references, coverage
+  disposition, and limitation codes are unchanged, so nothing that already worked
+  moved.
+- A construct the parser marks inspect-only for a structural reason yields an
+  explicit limitation **with its exact span**, never a tree that looks complete.
+- Every node carries the source span that quotes its own text, and pre-order
+  flattening is the keyboard focus order.
+- Nothing is evaluated, scored, or explained; a test asserts the vocabulary.
+- `audit.formula.inspect` is registered on `Alt, X, A, A, FI` and renders through
+  the shared trace view.
+
+## Result presentation is no longer interrupting
+
+A command that succeeds no longer opens a dialog. Successful outcomes go to the
+Excel status bar, which needs no dismissing, so keyboard-driven work is never
+blocked. Dialogs are reserved for refusals, failures, partial results, and
+faults.
+
+The internal `showResult` flag therefore governs **failure** dialogs only. It
+stays suppressed solely where a result view already presents the refusal itself:
+the three Model Check scan commands and the auditing commands. Model Check rescan
+is deliberately not suppressed, because it can refuse before any view exists.
+
 ## Fixed: a dead exit check, and the process leak it was hiding
 
 Two defects, found and fixed on 2026-08-20 while qualifying WP-2-04.
@@ -246,8 +289,14 @@ setup. `addin.close` has been logged zero times against 263 `addin.open` events,
 so the add-in's unload path is not exercised by the smoke at all. That is a real
 coverage gap, recorded here rather than fixed.
 
-## Current verification## Current verification
+## Current verification
 
+- **Head of `main`: 528/528 Release tests pass**, Release and Debug builds are
+  warning-free, and the hidden-Excel smoke passes with the process-exit check
+  working and no surviving Excel process.
+- WP-2-04 Formula Inspector: 528/528 Release tests; in real Excel the registered
+  route returned `formula_inspector=open|success` with workbook contents
+  unchanged.
 - WP-2-02b workbook scope: **505/505 Release tests passed**; in real Excel the
   workbook scan returned `Complete|Sheet1!B200,Sheet1!C200,WorkbookScopeProbe!A1|workbook|0`,
   reaching dependents on both worksheets with no coverage gap, and an unconfirmed
@@ -326,27 +375,47 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. **Cover the add-in unload path.** `AutoClose` is never invoked by the smoke,
-   so `addin.close`, the runtime resets, and the recovery-marker cleanup are
-   entirely unexercised.
-2. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
-   dependency table understates it. `FormulaSyntaxDocument` exposes a token
-   stream and a flat reference list, with no syntax tree, while AC-AUD-016
-   requires an immutable tree of functions, operators, constants, references,
-   arrays, and nesting. It is parser work under ADR-0004, not view-layer work.
-   The shared trace view and `TraceResultPresentation` are already in place, so
-   only the tree itself is missing.
-2. Folding Model Check ignores into the profile schema, if the separate atomic
+Phase 2 is finished, so nothing here is blocking. The most useful next step is to
+**use the add-in on a real model and let the friction set the backlog**, ahead of
+any remaining plan row.
+
+If engineering work is wanted instead, in rough order of value:
+
+1. **Cover the add-in unload path.** `AutoClose` is never invoked by the smoke:
+   `addin.close` has been logged zero times against 263 `addin.open` events, so
+   the unload path, the runtime resets, and the recovery-marker cleanup are
+   entirely unexercised. This is the largest remaining reliability gap.
+2. **WP-G-02 external-link inventory** and **WP-G-01 named-range inventory**.
+   Both are read-only and reuse the shared trace view, the registration pattern,
+   and the export-with-manifest that already exist, so they are the cheapest
+   genuine features left. **WP-G-03 compare** is the larger user win and is
+   unblocked now that WP-2-04 has landed.
+3. **Settle the WP-1A-12 dependency.** WP-G-04, G-09, G-11, and G-13 depend on
+   it; the installer source exists but its GA gates are deferred, so "depends on
+   WP-1A-12" is ambiguous. Same class of document conflict as the workbook-scale
+   gate, and worth resolving before starting any of them.
+4. **Decide AutoColor.** The planner is complete and tested but registered
+   nowhere, and execution is hard-stopped pending a transactional adapter,
+   rollback and fault-injection evidence, and worksheet-scale preview UI. Note
+   that this document lists it as disabled while WP-G-13 assumes workbook
+   AutoColor gets built.
+5. Folding Model Check ignores into the profile schema, if the separate atomic
    ignore file is not acceptable long term.
-3. Extending the Phase 2 corpus beyond one dense rectangular shape, and running
-   a long-duration soak of the Phase 2 operations. Three iterations cannot show
+6. Extending the Phase 2 corpus beyond one dense rectangular shape, and running a
+   long-duration soak of the Phase 2 operations. Three iterations cannot show
    slow leakage, and the existing ten-iteration soak covers Phase 1B only.
-3. Do not use Excel trace arrows or workbook annotations.
-4. Keep all retained gates above closed unless a dedicated work package supplies
-   their missing evidence.
-5. Continue the normal per-package Release tests and use the short real-Excel
-   smoke whenever a package changes the Excel adapter, host, or command wiring.
-6. Resume heavier release qualification only when distribution is approaching.
+
+Standing constraints for any of the above:
+
+- Do not use Excel trace arrows or workbook annotations.
+- Keep the retained gates above closed unless a dedicated work package supplies
+  their missing evidence.
+- Run the per-package Release tests, and the short real-Excel smoke whenever a
+  package changes the Excel adapter, the host, or command wiring.
+- Never kill Excel by name during harness work; target the reported PID. A
+  force-kill leaves `*.running` markers in `%LOCALAPPDATA%\ExcelAccel\sessions`
+  that put the next run into safe mode, which then looks like an unrelated
+  formatting failure.
 
 ## Local-worktree caution
 
