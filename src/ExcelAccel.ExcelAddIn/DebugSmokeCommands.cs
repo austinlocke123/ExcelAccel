@@ -1,5 +1,6 @@
 #if DEBUG
 using System;
+using System.Globalization;
 using ExcelDna.Integration;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Reliability;
@@ -212,23 +213,48 @@ public static class DebugSmokeCommands
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.trace.indirect.close", exception); throw; }
     }
 
+    /// <summary>
+    /// Releases one COM object taken by a smoke hook. ExcelInterop keeps its own
+    /// internal helper; this mirrors it for the Debug-only hooks.
+    /// </summary>
+    private static void ReleaseComObject(object? value)
+    {
+        if (value is not null && System.Runtime.InteropServices.Marshal.IsComObject(value))
+        {
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(value);
+        }
+    }
+
     [ExcelCommand(Name = "ExcelAccel.Smoke.TraceNavigate", Description = "Debug-only trace navigation hook.")]
     public static string TraceNavigate(string worksheetName, string address)
     {
+        // Every COM object taken here is released in the finally block. An
+        // un-released reference keeps Excel's COM server alive, so the process
+        // survives Quit and the run leaks a hidden Excel.
+        object? workbookObject = null;
+        object? selectionObject = null;
         try
         {
-            var app = (dynamic)ExcelDnaUtil.Application;
-            object? workbook = app.ActiveWorkbook;
-            string workbookId = Convert.ToString(((dynamic)workbook!).FullName) ?? string.Empty;
-            var before = ExcelAccel.ExcelAddIn.NavigationRuntime.Session.HistoryCount;
+            var applicationObject = ExcelDnaUtil.Application;
+            workbookObject = ((dynamic)applicationObject).ActiveWorkbook;
+            if (workbookObject is null) throw new InvalidOperationException("An open workbook is required.");
+            var workbookId = Convert.ToString(((dynamic)workbookObject).FullName, CultureInfo.InvariantCulture) ?? string.Empty;
+            var before = NavigationRuntime.Session.HistoryCount;
             CommandDispatcher.NavigateToTraceTarget(
                 new ExcelAccel.Core.Auditing.AuditCellIdentity(workbookId, worksheetName, address));
-            var after = ExcelAccel.ExcelAddIn.NavigationRuntime.Session.HistoryCount;
-            var summary = ((string)app.Selection.Address(false, false)) + "|" + (after > before ? "recorded" : "not_recorded");
+            var after = NavigationRuntime.Session.HistoryCount;
+            selectionObject = ((dynamic)applicationObject).Selection;
+            var selected = Convert.ToString(((dynamic)selectionObject).Address[false, false], CultureInfo.InvariantCulture) ?? string.Empty;
+            var summary = selected + "|" + (after > before ? "recorded" : "not_recorded");
             DiagnosticLog.Info("smoke.audit.trace.navigate", summary);
             return summary;
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.trace.navigate", exception); throw; }
+        finally
+        {
+            ReleaseComObject(selectionObject);
+            ReleaseComObject(workbookObject);
+        }
     }
 
     [ExcelCommand(Name = "ExcelAccel.Smoke.DirectDependentsView", Description = "Debug-only registered dependent-view route hook.")]
