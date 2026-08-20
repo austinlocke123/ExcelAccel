@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using ExcelAccel.Application.Auditing;
+using ExcelAccel.Application.ModelCheck;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
 using ExcelAccel.Application.Undo;
@@ -80,6 +81,7 @@ public static class BuiltInCommandRegistry
         .Concat(DataCleaningCommandCatalog.All)
         .Concat(SelectionCommandCatalog.All)
         .Concat(AuditingCommandCatalog.All)
+        .Concat(ModelCheckCommandCatalog.All)
         .OrderBy(command => command.Id, System.StringComparer.Ordinal)
         .ToArray();
 

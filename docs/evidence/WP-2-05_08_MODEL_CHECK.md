@@ -1,10 +1,10 @@
-# WP-2-05 to WP-2-07 Model Check engine, finding schema, and rules
+# WP-2-05 to WP-2-08 Model Check engine, rules, and results
 
 Date: 2026-08-19
 
-Status: **Engine, finding schema, and all seven rules implemented in pure Core.
-Result commands, Excel wiring, and registration are WP-2-08 and remain in
-progress.**
+Status: **Complete, together with WP-2-08. The engine, finding schema, seven
+rules, result commands, Excel wiring, and registration are implemented and
+verified. Workbook scope remains gated.**
 
 ## Contract
 
@@ -13,8 +13,8 @@ progress.**
 - Acceptance: AC-CHECK-001 through AC-CHECK-028
 - Allowed implementation: pure Core scan model, engine, rule set, deterministic
   tests, and engineering evidence
-- Excluded: result presentation, navigation, ignores, rescan, export, Excel
-  wiring, and command registration until WP-2-08
+- Acceptance also covers AC-CHECK-029 through AC-CHECK-037 via WP-2-08
+- Excluded: workbook-scope scanning, which remains gated
 
 ## Product boundary
 
@@ -97,7 +97,7 @@ Numeric text and cell constants are not misclassified as embedded literals
 ## Verification
 
 - Release build: **zero warnings, zero errors**.
-- Release tests: **481 passed**, zero failed.
+- Release tests: **502 passed**, zero failed.
 - Engine coverage: enabled-rule selection, the full finding schema, fingerprints
   free of raw content, reordering invariance, identical-input determinism, rule
   failure naming the rule, cancellation, ignore suppression by exact fingerprint,
@@ -124,7 +124,81 @@ Numeric text and cell constants are not misclassified as embedded literals
 - The engine has no performance corpus yet. AC-CHECK-007 and AC-CHECK-008 budgets
   are not measured; the scan is bounded by the snapshot and finding caps.
 
+## WP-2-08 results, wiring, and registration
+
+### Scan scoping
+
+`ModelCheckCoordinator` scans a selection or a worksheet. **Workbook scope is
+refused** with `CHECK_SCOPE_TOO_LARGE`, inheriting the same unresolved
+workbook-scale performance gate as WP-2-02b.
+
+A worksheet scan reuses the bounded `DependentScanRegion` plan, so the reported
+used range is untrusted here too: an over-large or over-wide region is refused
+before anything is read, and the rest is banded so no single read exceeds the
+block ceiling. A planned scan above 25,000 cells must be confirmed first; without
+confirmation nothing is read.
+
+Cancellation is checked before every band and inside the engine. A cancelled scan
+is refused and **the prior result is not replaced**, so previous findings stay on
+screen rather than being overwritten by a partial run (AC-CHECK-006).
+
+### Navigation, ignores, rescan, export
+
+- **Navigation (AC-CHECK-029)** reuses the shared trace view's Go To, which
+  revalidates the target through the navigation port and records the prior
+  location in session history. Every finding row is navigable because findings
+  always point at a real scanned cell.
+- **Local ignores (AC-CHECK-030..033)** store rule ID, rule version, and the
+  normalized fingerprint only. A test asserts the written file contains no
+  formula prefix. An ignore suppresses only an exactly matching fingerprint, so
+  it can never hide a different rule or location. The confirm dialog states
+  exactly what is stored and that a rescan is required. Active ignores are listed
+  and removable.
+- **Rescan (AC-CHECK-034)** repeats the exact prior scope and rule set against a
+  newly captured snapshot, refreshing only the ignore configuration. Prior
+  findings are never reused as current evidence.
+- **Export (AC-CHECK-035..037)** requires an explicit destination and a confirmed
+  manifest naming every included and excluded field. Evidence is **opt-in and off
+  by default**, so formulas and values are excluded by default. The write is
+  temp, validate, then replace, and a failure leaves existing destination data
+  intact. Nothing is transmitted.
+
+### Ignore storage deviation
+
+The contract says an ignore writes the local profile. Ignores are instead held in
+their own atomic file beside the profile, `model-check-ignores.tsv`.
+
+Adding them to `ProfileDefinition` would bump the shipped profile schema and
+ripple through profile export and import, which is a larger change than this
+package should make. The properties the acceptance criteria actually require -
+atomic local write, no raw content, exact-fingerprint matching, visibility,
+removal, and portability only through a deliberate action - are all provided.
+The `MODEL_CHECK.md` contract itself anticipates a local profile *or a separately
+exported ignore set*. Folding it into the profile schema remains open.
+
+### Registration
+
+Six commands are registered through the central dispatcher, Command Search, and a
+new Ribbon Model Check menu on KeyTip route `Alt, X, A, K`:
+`model_check.run.selection` (MS), `model_check.run.worksheet` (MW),
+`model_check.rescan` (MR), `model_check.finding.ignore_local` (MI),
+`model_check.finding.unignore_local` (MU), and `model_check.results.export` (ME).
+The three scan commands are read-only; ignore, unignore, and export declare their
+local writes and a mandatory preview.
+
+### Real-Excel verification
+
+Against a live worksheet with a seeded inconsistent formula, the registered
+selection route returned `open|success|2|0`: the view opened, two findings were
+reported (the pattern exception and its embedded literal), and **no rule failed**.
+Rescan repeated the scope and returned the same two findings. Workbook contents
+were unchanged, the view released on explicit close, and Excel exited naturally
+with no surviving process.
+
 ## Next
 
-WP-2-08: finding navigation, local ignores, rescan, and export, plus the Excel
-snapshot capture, scan scoping with preview, presentation, and registration.
+- WP-2-09: Phase 2 large-corpus, cancellation, privacy, performance, and soak
+  qualification. This is where the missing performance corpus belongs.
+- WP-2-04 (Formula Inspector) still needs the parse tree.
+- Workbook scope for both dependents and Model Check stays blocked on the
+  workbook-scale performance gate.

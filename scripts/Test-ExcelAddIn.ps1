@@ -50,6 +50,10 @@ public static class ExcelAccelNativeMethods
     $chainA = $null
     $chainB = $null
     $chainC = $null
+    $checkA = $null
+    $checkB = $null
+    $checkC = $null
+    $checkD = $null
     $font = $null
     $interior = $null
     $multiArea = $null
@@ -673,6 +677,10 @@ public static class ExcelAccelNativeMethods
         if ($auditViewSecondResult -ne 'open|success') {
             throw 'The direct-precedent view did not present the second workbook result.'
         }
+        Release-ComObject $checkD
+        Release-ComObject $checkC
+        Release-ComObject $checkB
+        Release-ComObject $checkA
         Release-ComObject $chainC
         Release-ComObject $chainB
         Release-ComObject $chainA
@@ -811,6 +819,51 @@ public static class ExcelAccelNativeMethods
         [Console]::Out.Flush()
         if ($indirectClose -ne 'closed') {
             throw 'The indirect trace view did not release on the explicit close path.'
+        }
+
+        $checkA = $worksheet.Range('F220')
+        $checkB = $worksheet.Range('F221')
+        $checkC = $worksheet.Range('F222')
+        $checkD = $worksheet.Range('F223')
+        $worksheet.Range('E220').Value2 = 10
+        $worksheet.Range('E221').Value2 = 20
+        $worksheet.Range('E222').Value2 = 30
+        $worksheet.Range('E223').Value2 = 40
+        $checkA.Formula = '=E220*2'
+        $checkB.Formula = '=E221*2'
+        $checkC.Formula = '=E222*7'
+        $checkD.Formula = '=E223*2'
+        [void]$worksheet.Range('F220:F223').Select()
+        $modelCheck = [string]$excel.Run('ExcelAccel.Smoke.ModelCheck', 'selection')
+        $modelCheckContentPreserved =
+            ([string]$checkA.Formula -eq '=E220*2') -and ([string]$checkC.Formula -eq '=E222*7')
+        [Console]::WriteLine("model_check_selection=$modelCheck")
+        [Console]::WriteLine("model_check_content_preserved=$modelCheckContentPreserved")
+        [Console]::Out.Flush()
+        $modelCheckParts = $modelCheck.Split('|')
+        if ($modelCheckParts[0] -ne 'open' -or $modelCheckParts[1] -ne 'success') {
+            throw "The registered Model Check selection route did not open a read-only result: $modelCheck"
+        }
+        if ([int]$modelCheckParts[2] -lt 1) {
+            throw "Model Check did not report the seeded inconsistent formula: $modelCheck"
+        }
+        if ($modelCheckParts[3] -ne '0') {
+            throw "A Model Check rule failed during the smoke: $modelCheck"
+        }
+        if (-not $modelCheckContentPreserved) { throw 'Model Check changed workbook contents.' }
+
+        $modelCheckRescan = [string]$excel.Run('ExcelAccel.Smoke.ModelCheckRescan')
+        [Console]::WriteLine("model_check_rescan=$modelCheckRescan")
+        [Console]::Out.Flush()
+        if (-not $modelCheckRescan.StartsWith('success|')) {
+            throw "Model Check rescan did not repeat the prior scope: $modelCheckRescan"
+        }
+
+        $modelCheckClose = [string]$excel.Run('ExcelAccel.Smoke.CloseModelCheck')
+        [Console]::WriteLine("model_check_explicit_close=$modelCheckClose")
+        [Console]::Out.Flush()
+        if ($modelCheckClose -ne 'closed') {
+            throw 'The Model Check view did not release on the explicit close path.'
         }
 
         $excel.ScreenUpdating = $true
@@ -1102,6 +1155,10 @@ try {
         'trace_navigate=C210|recorded',
         'indirect_trace_content_preserved=True',
         'indirect_trace_explicit_close=closed',
+        'model_check_selection=open|success|',
+        'model_check_content_preserved=True',
+        'model_check_rescan=success|',
+        'model_check_explicit_close=closed',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
         'typed_conversions_exact=True',

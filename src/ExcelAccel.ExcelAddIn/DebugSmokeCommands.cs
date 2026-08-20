@@ -66,6 +66,57 @@ public static class DebugSmokeCommands
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.cancelled", exception); throw; }
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Smoke.ModelCheck", Description = "Debug-only registered Model Check route hook.")]
+    public static string ModelCheck(string scope)
+    {
+        try
+        {
+            var commandId = scope == "worksheet"
+                ? ExcelAccel.Application.ModelCheck.ModelCheckCommandCatalog.RunWorksheetId
+                : ExcelAccel.Application.ModelCheck.ModelCheckCommandCatalog.RunSelectionId;
+            var result = CommandDispatcher.InvokeRegistered(commandId, null, InvocationSource.Ribbon);
+            System.Windows.Forms.Application.DoEvents();
+            var last = ModelCheckRuntime.LastResult;
+            var summary = (ModelCheckRuntime.IsOpen ? "open" : "closed") + "|" +
+                (result.Succeeded ? "success" : result.RefusalCode) + "|" +
+                (last is null ? "none" : last.Findings.Count.ToString()) + "|" +
+                (last is null ? "none" : last.RuleFailures.Count.ToString());
+            DiagnosticLog.Info("smoke.model_check", scope + ":" + summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.model_check", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.ModelCheckRescan", Description = "Debug-only Model Check rescan hook.")]
+    public static string ModelCheckRescan()
+    {
+        try
+        {
+            var result = CommandDispatcher.InvokeRegistered(
+                ExcelAccel.Application.ModelCheck.ModelCheckCommandCatalog.RescanId, null, InvocationSource.Ribbon);
+            System.Windows.Forms.Application.DoEvents();
+            var summary = (result.Succeeded ? "success" : result.RefusalCode) + "|" +
+                (ModelCheckRuntime.LastResult is null ? "none" : ModelCheckRuntime.LastResult.Findings.Count.ToString());
+            DiagnosticLog.Info("smoke.model_check.rescan", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.model_check.rescan", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.CloseModelCheck", Description = "Debug-only Model Check view close hook.")]
+    public static string CloseModelCheck()
+    {
+        try
+        {
+            ModelCheckRuntime.Reset();
+            System.Windows.Forms.Application.DoEvents();
+            var summary = ModelCheckRuntime.IsOpen ? "open" : "closed";
+            DiagnosticLog.Info("smoke.model_check.close", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.model_check.close", exception); throw; }
+    }
+
     [ExcelCommand(Name = "ExcelAccel.Smoke.IndirectTrace", Description = "Debug-only registered indirect-trace route hook.")]
     public static string IndirectTrace(string direction)
     {

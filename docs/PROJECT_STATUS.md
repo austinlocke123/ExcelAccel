@@ -2,7 +2,7 @@
 
 Snapshot date: **2026-08-19**
 
-Status: **Phase 2 is active; WP-2-01, WP-2-02a, and WP-2-03 are complete. WP-2-02b is gated; WP-2-04 is next and needs parser work.**
+Status: **Phase 2 is active; WP-2-01, WP-2-02a, WP-2-03, and WP-2-05 through WP-2-08 (Model Check) are complete. WP-2-02b and workbook-scope scanning are gated; WP-2-09 qualification and WP-2-04 remain.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
@@ -137,8 +137,33 @@ navigation.
   location so session Back returns there. External, unresolved, and cycle rows
   are not navigable.
 
+## Model Check delivered behavior (WP-2-05 to WP-2-08)
+
+- A deterministic read-only rule engine over one immutable snapshot. Rules run in
+  stable order, findings sort canonically, a rule failure names the rule and makes
+  the scan partial rather than dropping it, and a cancelled scan is refused with
+  the prior result left in place.
+- Seven rules: pattern inconsistency, constant interrupting a formula region,
+  embedded numeric constants, formula errors and broken references, external
+  references, circular references, and number-format inconsistency.
+- Findings carry rule, version, severity, target, evidence, coverage category, and
+  a SHA-256 fingerprint containing no raw formula or value content. No finding
+  declares correctness or carries a score, and a test asserts the vocabulary.
+- Selection and worksheet scopes. **Workbook scope is refused**, inheriting the
+  workbook-scale performance gate. A worksheet scan reuses the bounded region plan
+  and confirms anything above 25,000 cells before reading.
+- Navigation, local ignores by exact fingerprint, rescan against a fresh snapshot,
+  and export behind a confirmed manifest that excludes formulas and values by
+  default. Ignores live in their own atomic local file rather than the profile
+  schema; see the evidence for why and what remains open.
+- Six commands registered on the Ribbon Model Check menu, KeyTip `Alt, X, A, K`.
+
 ## Current verification
 
+- Model Check slice: **502/502 Release tests passed**; Release and Debug builds
+  warning-free; in real Excel the registered selection route returned
+  `open|success|2|0` against a seeded inconsistent formula with no rule failure,
+  rescan repeated the scope, and workbook contents were unchanged.
 - WP-2-03 traversal slice: **443/443 Release tests passed**; Release and Debug
   builds warning-free; in real Excel both indirect routes opened their read-only
   view over a live `A210 -> B210 -> C210` chain, trace navigation selected `C210`
@@ -206,15 +231,19 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
+1. WP-2-09: Phase 2 large-corpus, cancellation, privacy, performance, and soak
+   qualification. **This is where the missing performance corpus belongs.** No
+   scan or traversal in Phase 2 has a measured workload yet; every budget claim
+   currently rests on explicit ceilings and the live smoke.
+2. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
    dependency table understates it. `FormulaSyntaxDocument` exposes a token
    stream and a flat reference list, with no syntax tree, while AC-AUD-016
    requires an immutable tree of functions, operators, constants, references,
    arrays, and nesting. It is parser work under ADR-0004, not view-layer work.
    The shared trace view and `TraceResultPresentation` are already in place, so
    only the tree itself is missing.
-2. Alternatively WP-2-05 onward (Model Check), which depends on WP-2-01/02 and
-   does not need the parse tree.
+3. Folding Model Check ignores into the profile schema, if the separate atomic
+   ignore file is not acceptable long term.
 3. Do not use Excel trace arrows or workbook annotations.
 4. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.

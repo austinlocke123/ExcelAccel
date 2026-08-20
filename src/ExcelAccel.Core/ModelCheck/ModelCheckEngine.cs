@@ -115,6 +115,20 @@ public sealed class ModelCheckScanResult
     /// with no failure and no truncation.
     /// </summary>
     public bool CanClaimCompleteness => Status == AuditTraceStatus.Complete;
+
+    /// <summary>A scan that never ran, carrying its categorized reason.</summary>
+    public static ModelCheckScanResult Refused(ModelCheckSnapshot snapshot, string code, string message) =>
+        new ModelCheckScanResult(
+            AuditTraceStatus.Refused,
+            snapshot ?? throw new ArgumentNullException(nameof(snapshot)),
+            Array.Empty<string>(),
+            Array.Empty<ModelCheckFinding>(),
+            Array.Empty<ModelCheckRuleCoverage>(),
+            Array.Empty<ModelCheckRuleFailure>(),
+            false,
+            0,
+            !string.IsNullOrWhiteSpace(code) ? code : throw new ArgumentException("A refusal code is required.", nameof(code)),
+            message ?? string.Empty);
 }
 
 /// <summary>
