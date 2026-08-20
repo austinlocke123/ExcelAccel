@@ -35,7 +35,7 @@ public sealed class DirectPrecedentAnalyzer
                 for (var index = 0; index < document.Tokens.Count; index++)
                 {
                     var token = document.Tokens[index];
-                    if (IsNameCandidate(document.Tokens, index)) names.Add(token.Text);
+                    if (AuditNameCandidates.IsNameCandidate(document.Tokens, index)) names.Add(token.Text);
                 }
             }
         }
@@ -142,7 +142,7 @@ public sealed class DirectPrecedentAnalyzer
         for (var index = 0; index < document.Tokens.Count; index++)
         {
             var token = document.Tokens[index];
-            if (!IsNameCandidate(document.Tokens, index))
+            if (!AuditNameCandidates.IsNameCandidate(document.Tokens, index))
             {
                 continue;
             }
@@ -166,28 +166,6 @@ public sealed class DirectPrecedentAnalyzer
                 classification, token.Text, token.Span, false, false, classification == AuditCellClassification.Unknown);
         }
     }
-
-    private static FormulaToken? NextSignificant(IReadOnlyList<FormulaToken> tokens, int start)
-    {
-        for (var index = start; index < tokens.Count; index++)
-        {
-            if (tokens[index].Kind != FormulaTokenKind.Whitespace) return tokens[index];
-        }
-        return null;
-    }
-
-    private static bool IsNameCandidate(IReadOnlyList<FormulaToken> tokens, int index)
-    {
-        var token = tokens[index];
-        if (token.Kind != FormulaTokenKind.Identifier || IsBoolean(token.Text)) return false;
-        var next = NextSignificant(tokens, index + 1);
-        if (next?.Kind == FormulaTokenKind.OpenParenthesis) return false;
-        return index + 1 >= tokens.Count || tokens[index + 1].Kind != FormulaTokenKind.BracketedIdentifier;
-    }
-
-    private static bool IsBoolean(string value) =>
-        string.Equals(value, "TRUE", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(value, "FALSE", StringComparison.OrdinalIgnoreCase);
 
     private static void AddUnresolved(
         IDictionary<string, PrecedentAccumulator> results,
@@ -227,21 +205,10 @@ public sealed class DirectPrecedentAnalyzer
         var maxRow = Math.Max(first.Row.Value, second.Row.Value);
         var minColumn = Math.Min(first.Column.Value, second.Column.Value);
         var maxColumn = Math.Max(first.Column.Value, second.Column.Value);
-        return Cell(minRow, minColumn) + ":" + Cell(maxRow, maxColumn);
+        return AuditAddress.Cell(minRow, minColumn) + ":" + AuditAddress.Cell(maxRow, maxColumn);
     }
 
-    private static string Endpoint(FormulaReferenceEndpoint endpoint) => Cell(endpoint.Row.Value, endpoint.Column.Value);
-
-    private static string Cell(int row, int column)
-    {
-        var name = string.Empty;
-        for (var remaining = column; remaining > 0; remaining /= 26)
-        {
-            var zeroBased = (remaining - 1) % 26;
-            name = (char)('A' + zeroBased) + name;
-        }
-        return name + row.ToString(CultureInfo.InvariantCulture);
-    }
+    private static string Endpoint(FormulaReferenceEndpoint endpoint) => AuditAddress.Cell(endpoint.Row.Value, endpoint.Column.Value);
 
     private static string? UnquoteQualifier(string? qualifier)
     {

@@ -130,6 +130,18 @@ closing.
   multi-target, external, or oversized definitions remain explicit unresolved
   edges and therefore cannot produce a completeness claim.
 
+## Defect found after merge
+
+A1 column-name rendering was wrong for every column that is an exact multiple of
+26: Z became AZ, AZ became BZ, ZZ became AAZ. The capture plan therefore
+requested the shifted address from Excel, so a precedent in column Z was
+classified from the contents of column AZ and displayed at the wrong address.
+It escaped this package's suite because every fixture and the smoke used low
+columns. Found and fixed during WP-2-02; see
+[`WP-2-02_DIRECT_DEPENDENTS.md`](WP-2-02_DIRECT_DEPENDENTS.md). Address
+formatting now lives in the shared `AuditAddress` with value-verified coverage
+and two regression tests.
+
 ## Retained limitations
 
 - Results are a point-in-time capture. Nothing refreshes them automatically, and
