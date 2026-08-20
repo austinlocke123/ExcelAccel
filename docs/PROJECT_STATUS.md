@@ -91,9 +91,11 @@ for **worksheet scope only**, with progress and cancellation wired.
   completeness is claimed, and is discarded on close, on unload, and when its
   source workbook closes.
 - `AuditPresentationLabels` is the single definition of auditing wording, so the
-  precedent and dependent views cannot describe the same state differently. It
-  was extracted additively: `DirectPrecedentReport` kept its whole public
-  surface and the ten WP-2-01 presentation tests were not modified.
+  precedent and dependent views cannot describe the same state differently, and
+  `TraceResultPresentation` plus one shared `TraceViewRuntime` mean the view
+  lifecycle exists in one place. Both extractions were additive:
+  `DirectPrecedentReport` kept its whole public surface and the ten WP-2-01
+  presentation tests were never modified.
 
 Workbook scope stays unqualified pending the workbook-scale performance gate
 noted in the implementation plan. The scan has no performance corpus yet, so
@@ -169,15 +171,11 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. Before WP-2-03, extract the shared trace view from `PrecedentViewRuntime` and
-   `DependentViewRuntime` and add unit coverage for the runtime state machine.
-   The two are intentionally identical in shape so the extraction is mechanical.
-   They were duplicated on purpose: the report projections are protected by
-   exacting unit tests, but the view runtimes have **no unit coverage at all**
-   and are only exercised by the hidden-Excel smoke, so sharing them earlier
-   would have moved untested WinForms and COM lifecycle code with no net under
-   it. A third traversal view should not become a third copy.
-2. Then WP-2-03: indirect traversal, cycles, caps, and trace navigation.
+1. WP-2-03: indirect traversal, cycles, caps, and trace navigation. Every
+   auditing result now projects into `TraceResultPresentation` and is rendered by
+   one shared `TraceViewRuntime`, so a traversal view is a projection, not a new
+   window. Lifecycle decisions live in `TraceViewSession` in the Application
+   layer, which the test project can reference and which is unit-tested.
 3. Do not use Excel trace arrows or workbook annotations.
 4. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.

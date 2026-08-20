@@ -163,6 +163,33 @@ public sealed class DirectPrecedentReport
             summary.AsReadOnly());
     }
 
+    /// <summary>Projects this report into the shared trace view shape.</summary>
+    public TraceResultPresentation ToPresentation() => new TraceResultPresentation(
+        "ExcelAccel Direct Precedents",
+        Status,
+        Headline,
+        CompletenessStatement,
+        new[]
+        {
+            new TraceColumn("Target", 190),
+            new TraceColumn("Kind", 90),
+            new TraceColumn("Contents", 100),
+            new TraceColumn("State", 170),
+            new TraceColumn("Edges", 60),
+            new TraceColumn("Source reference", 240),
+        },
+        Rows.Select(row => (IReadOnlyList<string>)new[]
+        {
+            row.DisplayTarget,
+            row.Kind,
+            row.Classification,
+            row.State,
+            AuditPresentationLabels.Count(row.EdgeCount),
+            row.SourceEvidence,
+        }),
+        SummaryLines,
+        RefusalCode);
+
     private static string Summarize(DirectPrecedentResult result, string sourceDisplay, int count)
     {
         if (result.Status == AuditTraceStatus.Refused)
