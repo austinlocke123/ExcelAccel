@@ -132,6 +132,12 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.DirectDependents' label='Trace Direct Dependents' keytip='DD' tag='audit.dependents.direct' onAction='OnAuditCommand'
                               screentip='Scan this worksheet for formulas that read the selection'
                               supertip='Opens a read-only view of the formulas on the active worksheet that read the selected cell or range. The scan is bounded, cancellable, confirmed before a large worksheet, and never widens beyond this worksheet. No Excel trace arrow or workbook annotation is used.'/>
+                      <button id='ExcelAccel.IndirectPrecedents' label='Trace Indirect Precedents' keytip='PI' tag='audit.precedents.indirect' onAction='OnAuditCommand'
+                              screentip='Follow the precedent chain upstream'
+                              supertip='Opens a read-only view of the precedent chain above the selected formula cell, breadth-first within explicit depth and node caps. Cycles terminate and are shown as cycle edges. No Excel trace arrow or workbook annotation is used.'/>
+                      <button id='ExcelAccel.IndirectDependents' label='Trace Indirect Dependents' keytip='DI' tag='audit.dependents.indirect' onAction='OnAuditCommand'
+                              screentip='Follow the dependent chain downstream in this worksheet'
+                              supertip='Opens a read-only view of the dependent chain below the selection within the active worksheet, breadth-first within explicit depth and node caps. The worksheet is scanned once and cycles terminate. No Excel trace arrow or workbook annotation is used.'/>
                     </menu>
                     <menu id='ExcelAccel.Navigation' label='Navigate' keytip='V' imageMso='GoTo'>
                       <button id='ExcelAccel.PreviousSheet' label='Previous Sheet' keytip='P' tag='navigate.sheet.previous' onAction='OnNavigate'/>

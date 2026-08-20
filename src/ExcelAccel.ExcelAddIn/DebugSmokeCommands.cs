@@ -66,6 +66,57 @@ public static class DebugSmokeCommands
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.cancelled", exception); throw; }
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Smoke.IndirectTrace", Description = "Debug-only registered indirect-trace route hook.")]
+    public static string IndirectTrace(string direction)
+    {
+        try
+        {
+            var commandId = direction == "dependents"
+                ? AuditingCommandCatalog.IndirectDependentsId
+                : AuditingCommandCatalog.IndirectPrecedentsId;
+            var result = CommandDispatcher.InvokeRegistered(commandId, null, InvocationSource.Ribbon);
+            System.Windows.Forms.Application.DoEvents();
+            var summary = (TraceViewRuntimes.IsOpen ? "open" : "closed") + "|" +
+                (result.Succeeded ? "success" : result.RefusalCode);
+            DiagnosticLog.Info("smoke.audit.trace.indirect", direction + ":" + summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.trace.indirect", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.CloseIndirectTrace", Description = "Debug-only indirect-trace view close hook.")]
+    public static string CloseIndirectTrace()
+    {
+        try
+        {
+            TraceViewRuntimes.Reset();
+            System.Windows.Forms.Application.DoEvents();
+            var summary = TraceViewRuntimes.IsOpen ? "open" : "closed";
+            DiagnosticLog.Info("smoke.audit.trace.indirect.close", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.trace.indirect.close", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.TraceNavigate", Description = "Debug-only trace navigation hook.")]
+    public static string TraceNavigate(string worksheetName, string address)
+    {
+        try
+        {
+            var app = (dynamic)ExcelDnaUtil.Application;
+            object? workbook = app.ActiveWorkbook;
+            string workbookId = Convert.ToString(((dynamic)workbook!).FullName) ?? string.Empty;
+            var before = ExcelAccel.ExcelAddIn.NavigationRuntime.Session.HistoryCount;
+            CommandDispatcher.NavigateToTraceTarget(
+                new ExcelAccel.Core.Auditing.AuditCellIdentity(workbookId, worksheetName, address));
+            var after = ExcelAccel.ExcelAddIn.NavigationRuntime.Session.HistoryCount;
+            var summary = ((string)app.Selection.Address(false, false)) + "|" + (after > before ? "recorded" : "not_recorded");
+            DiagnosticLog.Info("smoke.audit.trace.navigate", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.trace.navigate", exception); throw; }
+    }
+
     [ExcelCommand(Name = "ExcelAccel.Smoke.DirectDependentsView", Description = "Debug-only registered dependent-view route hook.")]
     public static string DirectDependentsView()
     {

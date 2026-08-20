@@ -6,14 +6,24 @@ namespace ExcelAccel.Core.Auditing;
 
 public sealed class DirectDependentRow
 {
-    internal DirectDependentRow(string displayTarget, string workbookDisplay, string kinds, int edgeCount, string sourceEvidence)
+    internal DirectDependentRow(
+        string displayTarget,
+        string workbookDisplay,
+        string kinds,
+        int edgeCount,
+        string sourceEvidence,
+        AuditCellIdentity? target = null)
     {
+        Target = target;
         DisplayTarget = displayTarget;
         WorkbookDisplay = workbookDisplay;
         Kinds = kinds;
         EdgeCount = edgeCount;
         SourceEvidence = sourceEvidence;
     }
+
+    /// <summary>The workbook cell this row points at.</summary>
+    public AuditCellIdentity? Target { get; }
 
     public string DisplayTarget { get; }
 
@@ -166,13 +176,13 @@ public sealed class DirectDependentReport
             new TraceColumn("Edges", 60),
             new TraceColumn("Source reference", 300),
         },
-        Rows.Select(row => (IReadOnlyList<string>)new[]
+        Rows.Select(row => new TraceRow(new[]
         {
             row.DisplayTarget,
             row.Kinds,
             AuditPresentationLabels.Count(row.EdgeCount),
             row.SourceEvidence,
-        }),
+        }, row.Target)),
         SummaryLines,
         RefusalCode);
 
@@ -198,5 +208,6 @@ public sealed class DirectDependentReport
             .Distinct(StringComparer.Ordinal)
             .OrderBy(value => value, StringComparer.Ordinal)),
         dependent.Evidence.Count,
-        AuditPresentationLabels.EvidenceList(dependent.Evidence));
+        AuditPresentationLabels.EvidenceList(dependent.Evidence),
+        dependent.Dependent);
 }

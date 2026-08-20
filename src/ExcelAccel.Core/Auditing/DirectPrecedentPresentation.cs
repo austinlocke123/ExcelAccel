@@ -16,9 +16,11 @@ public sealed class DirectPrecedentRow
         string classification,
         string state,
         int edgeCount,
-        string sourceEvidence)
+        string sourceEvidence,
+        AuditCellIdentity? target = null)
     {
         NodeId = nodeId;
+        Target = target;
         DisplayTarget = displayTarget;
         WorkbookDisplay = workbookDisplay;
         Kind = kind;
@@ -29,6 +31,10 @@ public sealed class DirectPrecedentRow
     }
 
     public string NodeId { get; }
+
+    /// <summary>The workbook cell this row points at, when it resolves to one.</summary>
+    public AuditCellIdentity? Target { get; }
+
     public string DisplayTarget { get; }
     public string WorkbookDisplay { get; }
     public string Kind { get; }
@@ -178,7 +184,7 @@ public sealed class DirectPrecedentReport
             new TraceColumn("Edges", 60),
             new TraceColumn("Source reference", 240),
         },
-        Rows.Select(row => (IReadOnlyList<string>)new[]
+        Rows.Select(row => new TraceRow(new[]
         {
             row.DisplayTarget,
             row.Kind,
@@ -186,7 +192,7 @@ public sealed class DirectPrecedentReport
             row.State,
             AuditPresentationLabels.Count(row.EdgeCount),
             row.SourceEvidence,
-        }),
+        }, row.Target)),
         SummaryLines,
         RefusalCode);
 
@@ -211,7 +217,8 @@ public sealed class DirectPrecedentReport
         AuditPresentationLabels.Classification(precedent.Classification),
         StateLabelOf(precedent),
         precedent.Evidence.Count,
-        AuditPresentationLabels.EvidenceList(precedent.Evidence));
+        AuditPresentationLabels.EvidenceList(precedent.Evidence),
+        precedent.Target);
 
     private static string StateLabelOf(DirectPrecedent precedent)
     {
