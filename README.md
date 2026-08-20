@@ -101,7 +101,8 @@ The original draft and its review are retained under [`PRD/`](PRD/). They are
 inputs to the Markdown specification, not the normative implementation source.
 
 - `PRD/Native_Windows_Excel_Financial_Modeling_AddIn_PRD.docx`
-- `PRD/PRD_Review_Feedback.md`
+- `PRD/PRD_Review_Feedback.md` — intentionally untracked, so it is not present in
+  a fresh clone
 
 ## Current boundary
 

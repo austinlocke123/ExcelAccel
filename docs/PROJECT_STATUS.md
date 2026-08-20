@@ -224,5 +224,7 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Local-worktree caution
 
-`PRD/PRD_Review_Feedback.md` and `.claude/` are separate user work. They have
-not been staged or modified by implementation commits.
+`PRD/PRD_Review_Feedback.md` and `.claude/` are separate user work and were never
+staged or modified by implementation commits. The review feedback is now
+untracked and ignored by intent: it stays on its author's machine and is absent
+from a fresh clone.

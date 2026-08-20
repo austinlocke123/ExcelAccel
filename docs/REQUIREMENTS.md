@@ -1,7 +1,7 @@
 # ExcelAccel requirements
 
 Status: **Draft for review**  
-Source baseline: original PRD v1.0 plus `PRD_Review_Feedback.md`
+Source baseline: original PRD v1.0 plus `PRD_Review_Feedback.md` (the review is intentionally untracked and not present in a fresh clone)
 
 ## 1. Purpose
 
