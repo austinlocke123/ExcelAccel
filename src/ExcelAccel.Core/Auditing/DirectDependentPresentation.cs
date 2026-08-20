@@ -153,6 +153,29 @@ public sealed class DirectDependentReport
             summary.AsReadOnly());
     }
 
+    /// <summary>Projects this report into the shared trace view shape.</summary>
+    public TraceResultPresentation ToPresentation() => new TraceResultPresentation(
+        "ExcelAccel Direct Dependents",
+        Status,
+        Headline,
+        CompletenessStatement,
+        new[]
+        {
+            new TraceColumn("Dependent", 200),
+            new TraceColumn("Reached by", 120),
+            new TraceColumn("Edges", 60),
+            new TraceColumn("Source reference", 300),
+        },
+        Rows.Select(row => (IReadOnlyList<string>)new[]
+        {
+            row.DisplayTarget,
+            row.Kinds,
+            AuditPresentationLabels.Count(row.EdgeCount),
+            row.SourceEvidence,
+        }),
+        SummaryLines,
+        RefusalCode);
+
     private static string Summarize(DirectDependentResult result, string targetDisplay, int count)
     {
         if (result.Status == AuditTraceStatus.Refused)

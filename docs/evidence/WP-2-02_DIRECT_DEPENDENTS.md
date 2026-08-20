@@ -124,7 +124,7 @@ control. It writes nothing, uses no Excel trace arrow or workbook annotation, an
 is discarded on explicit close, on add-in unload, and when its source workbook is
 no longer open, using the same read-only presence probe as the precedent view.
 
-### Shared wording, duplicated view
+### Shared wording and, now, a shared view
 
 `AuditPresentationLabels` is now the single definition of how auditing results
 are worded: status, coverage, kind, and classification labels, count formatting,
@@ -134,15 +134,20 @@ it, so they cannot describe the same state in different words. This was extracte
 ten WP-2-01 presentation tests were not modified, so their passing is genuine
 proof that precedent behavior did not change.
 
-The **view was deliberately duplicated rather than shared**. The report is
-protected by exacting unit tests; the view runtime has none, because its real
-logic is WinForms plus COM — the workbook-close probe, the activation
-revalidation, the unknown-presence branch. Its only coverage is the hidden-Excel
-smoke. Extracting a shared view now would have moved untested lifecycle code with
-no net under it. The intended order is to extract a shared view from two working
-implementations once both are smoke-green, and to add unit coverage for the
-runtime state machine at that point. Both runtimes are intentionally identical in
-shape to make that extraction mechanical.
+The view was duplicated at first, on purpose: the reports are protected by
+exacting unit tests, but the view runtime had none, because its real logic is
+WinForms over COM and the test project cannot reference either. Extracting a
+shared view before both were proven would have moved untested lifecycle code with
+no net under it.
+
+Both are now shared. `TraceResultPresentation` is the display-ready shape every
+auditing result projects into, and one `TraceViewRuntime` renders it, so the
+lifecycle exists in exactly one place. The lifecycle decisions moved into
+`TraceViewSession` in the Application layer, which the test project **can**
+reference, so the state machine now has real unit coverage for the first time:
+open, closed, unverifiable, probe failure, recovery, re-presentation, discard,
+reentrancy, and empty-workbook cases. The view is left as a renderer that does
+what the session decides.
 
 ## Registration
 
@@ -243,8 +248,8 @@ analysis cannot drift apart.
 - Worksheet scope only. Workbook scope is representable so refusing it is
   explicit and testable, and stays unqualified until WP-2-02b and the
   workbook-scale performance gate are resolved.
-- The dependent view duplicates the precedent view rather than sharing one. This
-  is deliberate and is the first task of the next slice, not an oversight.
+- The trace view lifecycle is now shared and unit-tested, but the WinForms
+  rendering itself is still covered only by the hidden-Excel smoke.
 - A worksheet whose used region exceeds 250,000 cells, or spans more than 10,000
   columns, is refused outright rather than partially scanned. Both are deliberate
   fail-closed bounds, not partial results.
@@ -261,10 +266,9 @@ analysis cannot drift apart.
 
 WP-2-02a is complete. The next work is either:
 
-1. **WP-2-03**, indirect traversal, cycles, caps, and trace navigation. Before
-   starting it, extract the shared trace view from the two working runtimes and
-   add unit coverage for the runtime state machine, so a third traversal view
-   does not become a third copy of untested lifecycle code.
+1. **WP-2-03**, indirect traversal, cycles, caps, and trace navigation. The
+   shared trace view is in place, so a traversal result only needs to project
+   into `TraceResultPresentation`.
 2. **WP-2-02b**, workbook scope, which stays blocked on the workbook-scale
    performance gate recorded in the implementation plan and needs a
    dependent-scan performance corpus.
