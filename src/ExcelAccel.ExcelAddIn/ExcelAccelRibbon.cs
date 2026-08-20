@@ -202,7 +202,7 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
 
     public void OnOpenCommandSearch(IRibbonControl control)
     {
-        CallbackBoundary.Run("command.search.open", CommandSearchRuntime.Open, showResult: false);
+        CallbackBoundary.Run("command.search.open", CommandSearchRuntime.Open);
     }
 
     public void OnApplyCurrencyFormat(IRibbonControl control)
@@ -221,7 +221,12 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         var commandId = control.Tag;
         CallbackBoundary.Run(commandId, () => CommandDispatcher.InvokeRegistered(commandId, null, InvocationSource.Ribbon),
-            showResult: commandId != ModelCheckCommandCatalog.RunSelectionId && commandId != ModelCheckCommandCatalog.RunWorksheetId && commandId != ModelCheckCommandCatalog.RunWorkbookId && commandId != ModelCheckCommandCatalog.RescanId);
+            // The scan commands always present their own result view, including
+            // refusals. Rescan can refuse before any view exists, so it is not
+            // suppressed.
+            showResult: commandId != ModelCheckCommandCatalog.RunSelectionId &&
+                commandId != ModelCheckCommandCatalog.RunWorksheetId &&
+                commandId != ModelCheckCommandCatalog.RunWorkbookId);
     }
 
     public void OnAuditCommand(IRibbonControl control)
@@ -256,7 +261,7 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
 
     public void OnOpenStyleLibrary(IRibbonControl control)
     {
-        CallbackBoundary.Run("style.apply", StyleLibraryRuntime.Open, showResult: false);
+        CallbackBoundary.Run("style.apply", StyleLibraryRuntime.Open);
     }
 
     public void OnApplyBuiltInStyle(IRibbonControl control)
