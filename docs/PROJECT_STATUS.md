@@ -208,6 +208,47 @@ mutation remains out of scope.
 - `audit.dependents.workbook` (`Alt, X, A, A, DW`) and `model_check.run.workbook`
   (`Alt, X, A, K, MB`) are registered, read-only, and declare a mandatory preview.
 
+## Open defect: a surviving Excel process, and a check that never caught it
+
+Two defects, found on 2026-08-20 while qualifying WP-2-04.
+
+**1. The Excel-exit verification was dead across the whole harness.** Six scripts
+matched the worker's reported process id with
+`[regex]::Match($output, '(?m)^excel_pid=(\d+)$')`. Worker output uses CRLF, so
+in .NET the `$` anchor never matches after the digits, the captured id was always
+empty, and the entire "did Excel exit?" block was skipped. Five of the six
+scripts predate Phase 2, so **every "Excel exited naturally, no surviving
+process" claim this harness produced was unverified**, not wrong on purpose but
+never actually checked. Fixed by dropping the anchor; the check now works and
+immediately caught the defect below.
+
+**2. A Phase 2 change leaks an Excel process.** After a smoke run, one Excel
+survives holding an Excel-DNA "Diagnostic Display" window, which is modal enough
+to keep the process alive after `Quit()` returns. Bisected with the repaired
+check:
+
+| Commit | Package | Result |
+|---|---|---|
+| `9091d79` | pre-Phase-2 baseline | clean |
+| `9bf3fb6` | WP-2-01 | clean |
+| `09dcf4f` | WP-2-02a presentation | clean |
+| `68d5e59` | shared trace view | clean |
+| `dffde96` | **WP-2-03 traversal and trace navigation** | **leaks** |
+| `e8b0478` | WP-2-09 | leaks |
+
+So the cause is in WP-2-03, which added the indirect traversal, a third trace
+view runtime, and trace navigation. The exact line is **not yet identified**; an
+attempt to isolate it by disabling the trace-navigation smoke step broke the run
+rather than narrowing it.
+
+This is on `main` already. Landing the harness fix makes the smoke **fail** on
+`main` until the leak is fixed. That is the correct state: a red smoke that
+reports the truth is worth more than a green one that cannot see a leaked
+process.
+
+Until it is fixed, treat every prior "no surviving Excel process" statement in
+the evidence documents as unverified rather than false.
+
 ## Current verification
 
 - WP-2-02b workbook scope: **505/505 Release tests passed**; in real Excel the
@@ -288,8 +329,12 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. WP-2-04, the Formula Inspector, the last remaining Phase 2 package. Read the
-   implementation plan note first: the
+1. **Fix the leaked Excel process.** It is bisected to WP-2-03; start from the
+   indirect traversal, the third trace view runtime, and trace navigation. The
+   Excel-DNA Diagnostic Display window is what holds the process open, so look
+   for an unhandled exception reaching Excel-DNA or a form that outlives
+   `AutoClose`.
+2. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
    dependency table understates it. `FormulaSyntaxDocument` exposes a token
    stream and a flat reference list, with no syntax tree, while AC-AUD-016
    requires an immutable tree of functions, operators, constants, references,

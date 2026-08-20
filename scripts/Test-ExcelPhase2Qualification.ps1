@@ -264,7 +264,7 @@ for ($iteration = 1; $iteration -le $Iterations; $iteration++) {
             throw "Iteration $iteration timed out after $TimeoutSeconds seconds. Output:`n$output"
         }
 
-        $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)$').Groups[1].Value
+        $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)').Groups[1].Value
         if ($excelProcessId) {
             $excelProcess = Get-Process -Id ([int]$excelProcessId) -ErrorAction SilentlyContinue
             if ($excelProcess) {

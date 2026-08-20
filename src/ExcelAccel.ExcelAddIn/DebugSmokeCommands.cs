@@ -67,6 +67,36 @@ public static class DebugSmokeCommands
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.cancelled", exception); throw; }
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Smoke.InspectFormula", Description = "Debug-only registered formula-inspector hook.")]
+    public static string InspectFormula()
+    {
+        try
+        {
+            var result = CommandDispatcher.InvokeRegistered(
+                AuditingCommandCatalog.InspectFormulaId, null, InvocationSource.Ribbon);
+            System.Windows.Forms.Application.DoEvents();
+            var summary = (InspectorViewRuntime.IsOpen ? "open" : "closed") + "|" +
+                (result.Succeeded ? "success" : result.RefusalCode);
+            DiagnosticLog.Info("smoke.audit.formula.inspect", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.formula.inspect", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.CloseInspectFormula", Description = "Debug-only formula-inspector close hook.")]
+    public static string CloseInspectFormula()
+    {
+        try
+        {
+            InspectorViewRuntime.Reset();
+            System.Windows.Forms.Application.DoEvents();
+            var summary = InspectorViewRuntime.IsOpen ? "open" : "closed";
+            DiagnosticLog.Info("smoke.audit.formula.inspect.close", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.formula.inspect.close", exception); throw; }
+    }
+
     [ExcelCommand(Name = "ExcelAccel.Smoke.WorkbookDependents", Description = "Debug-only registered workbook dependent-scan hook.")]
     public static string WorkbookDependents()
     {

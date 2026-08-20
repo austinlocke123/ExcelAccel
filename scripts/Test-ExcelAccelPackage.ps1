@@ -187,7 +187,7 @@ if ($LoadInExcel) {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         }
 
-        $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)$').Groups[1].Value
+        $excelProcessId = [regex]::Match($output, '(?m)^excel_pid=(\d+)').Groups[1].Value
         if ($excelProcessId) {
             $excelProcess = Get-Process -Id ([int]$excelProcessId) -ErrorAction SilentlyContinue
             if ($excelProcess -and -not $excelProcess.WaitForExit(5000)) {
