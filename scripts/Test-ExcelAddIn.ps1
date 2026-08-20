@@ -745,6 +745,22 @@ public static class ExcelAccelNativeMethods
             throw 'A cancelled dependent scan did not fail closed.'
         }
 
+        [void]$depSource.Select()
+        $dependentViewResult = [string]$excel.Run('ExcelAccel.Smoke.DirectDependentsView')
+        $dependentViewSelectionPreserved = ([string]$excel.Selection.Address($false, $false) -eq 'A200')
+        [Console]::WriteLine("direct_dependents_view=$dependentViewResult")
+        [Console]::WriteLine("direct_dependents_view_selection_preserved=$dependentViewSelectionPreserved")
+        [Console]::Out.Flush()
+        if ($dependentViewResult -ne 'open|success' -or -not $dependentViewSelectionPreserved) {
+            throw 'The registered dependent-view route did not open a read-only result.'
+        }
+        $dependentViewClose = [string]$excel.Run('ExcelAccel.Smoke.CloseDirectDependentsView')
+        [Console]::WriteLine("direct_dependents_view_explicit_close=$dependentViewClose")
+        [Console]::Out.Flush()
+        if ($dependentViewClose -ne 'closed') {
+            throw 'The dependent view did not release on the explicit close path.'
+        }
+
         $excel.ScreenUpdating = $true
         $excel.EnableEvents = $true
         [void]$excel.Run('ExcelAccel.Smoke.ThrowInsideStateGuard')
@@ -1025,6 +1041,9 @@ try {
         'direct_dependents_selection_preserved=True',
         'direct_dependents_content_preserved=True',
         'direct_dependents_cancelled=Refused|AUDIT_SCAN_CANCELLED|0',
+        'direct_dependents_view=open|success',
+        'direct_dependents_view_selection_preserved=True',
+        'direct_dependents_view_explicit_close=closed',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
         'typed_conversions_exact=True',

@@ -9,6 +9,7 @@ namespace ExcelAccel.Application.Auditing;
 public static class AuditingCommandCatalog
 {
     public const string DirectPrecedentsId = "audit.precedents.direct";
+    public const string DirectDependentsId = "audit.dependents.direct";
 
     private static readonly IReadOnlyList<CommandDescriptor> Commands = new[]
     {
@@ -29,6 +30,23 @@ public static class AuditingCommandCatalog
             "Show the direct precedents of one selected formula cell in a read-only view. Closed external workbooks are listed but never opened, and no Excel trace arrow or workbook annotation is used.",
             new[] { "precedents", "trace precedents", "audit precedents" },
             "Alt, X, A, A, PD"),
+        new CommandDescriptor(
+            DirectDependentsId,
+            1,
+            "Trace Direct Dependents",
+            CommandImpact.ReadOnly,
+            Array.Empty<string>(),
+            false,
+            "Ribbon KeyTips: Alt, X, A, A, DD",
+            "CAP-AUD-001",
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
+            PreviewPolicy.Threshold,
+            UndoPolicy.None,
+            new[] { "AC-AUD-006", "AC-AUD-007", "AC-AUD-008", "AC-AUD-009" },
+            "Auditing",
+            "Scan the active worksheet for formulas that read the selected cell or range, and show them in a read-only view. The scan is bounded, cancellable, confirmed before a large worksheet, and never widens beyond the declared worksheet scope.",
+            new[] { "dependents", "trace dependents", "audit dependents", "precedents reverse" },
+            "Alt, X, A, A, DD"),
     }.OrderBy(value => value.Id, StringComparer.Ordinal).ToArray();
 
     public static IReadOnlyList<CommandDescriptor> All => Commands;

@@ -2,9 +2,10 @@
 
 Date: 2026-08-19
 
-Status: **WP-2-02a pure-core reverse index and bounded Excel worksheet scan
-boundary implemented, with progress and cancellation wired; read-only result
-presentation and command registration remain in progress**
+Status: **WP-2-02a complete. The reverse index, bounded Excel worksheet scan
+boundary, progress/cancellation, threshold preview, read-only result
+presentation, and command registration are implemented and verified.
+WP-2-02b (workbook scope) remains gated.**
 
 ## Contract
 
@@ -12,7 +13,8 @@ presentation and command registration remain in progress**
 - Governing decision: ADR-0004
 - Acceptance: AC-AUD-006 through AC-AUD-009
 - Allowed implementation: pure Core dependent model, reverse index, bounded
-  Excel worksheet scan boundary, deterministic tests, and engineering evidence
+  Excel worksheet scan boundary, read-only presentation, command registration,
+  deterministic tests, and engineering evidence
 - Excluded: workbook-scope scanning, indirect traversal, trace navigation, Model
   Check, workbook mutation, automatic external-workbook opening, parser
   expansion, and production command registration before the Excel scan boundary
@@ -90,6 +92,70 @@ coordinator owns the policy so it is testable without Excel:
   cancellable for its whole duration; the tracker's own rule then correctly
   refuses cancellation once the scan has completed.
 
+## Threshold preview
+
+The AUDITING contract requires a preview before a scan above the scan threshold.
+A planned region above **25,000 cells** must be confirmed before any block is
+read. Without confirmation the scan is refused with `AUDIT_PREVIEW_REQUIRED` and
+nothing is read at all. The preview describes the planned read only: worksheet,
+target, cell count, and block count.
+
+The confirmation gate deliberately reports no progress.
+`OperationPhase.AwaitingConfirmation` sorts *after* `Snapshot` in the phase enum
+because that order models a mutation flow, and the tracker requires monotonic
+phases; reporting it here would make the later snapshot reports throw. The gate
+runs before any work, so it has no progress to report.
+
+## Read-only result presentation
+
+`DirectDependentReport` is a pure Core projection of an existing
+`DirectDependentResult`. It formats what the index established and never scans,
+resolves, evaluates, reorders, or reclassifies anything.
+
+Every report states the target, workbook, worksheet, status, scan scope,
+limitation/refusal code, dependent count, formulas scanned, coverage gaps,
+truncation, and whether completeness is claimed. A dependent reached by more than
+one kind of reference lists each kind once and retains every source edge with its
+span. A refusal is presented in the same view with its categorized code and no
+dependent rows.
+
+`DirectDependentView` is a modeless read-only view with accessible names on every
+control. It writes nothing, uses no Excel trace arrow or workbook annotation, and
+is discarded on explicit close, on add-in unload, and when its source workbook is
+no longer open, using the same read-only presence probe as the precedent view.
+
+### Shared wording, duplicated view
+
+`AuditPresentationLabels` is now the single definition of how auditing results
+are worded: status, coverage, kind, and classification labels, count formatting,
+worksheet-qualified locations, and evidence spans. Both presentations read from
+it, so they cannot describe the same state in different words. This was extracted
+**additively**: `DirectPrecedentReport` kept its entire public surface, and the
+ten WP-2-01 presentation tests were not modified, so their passing is genuine
+proof that precedent behavior did not change.
+
+The **view was deliberately duplicated rather than shared**. The report is
+protected by exacting unit tests; the view runtime has none, because its real
+logic is WinForms plus COM — the workbook-close probe, the activation
+revalidation, the unknown-presence branch. Its only coverage is the hidden-Excel
+smoke. Extracting a shared view now would have moved untested lifecycle code with
+no net under it. The intended order is to extract a shared view from two working
+implementations once both are smoke-green, and to add unit coverage for the
+runtime state machine at that point. Both runtimes are intentionally identical in
+shape to make that extraction mechanical.
+
+## Registration
+
+- `audit.dependents.direct` is registered in `AuditingCommandCatalog`, joined into
+  `BuiltInCommandRegistry`, and routed through the central `CommandDispatcher`.
+  It is read-only, declares no changed property, has no undo policy, and declares
+  `PreviewPolicy.Threshold`.
+- Command Search reports it unavailable, with a reason, unless the selection is a
+  single area.
+- The Ribbon exposes it in the `Audit` menu on KeyTip route `Alt, X, A, A, DD`,
+  which does not collide with the precedent route `Alt, X, A, A, PD`.
+  Registry-wide keyboard-route uniqueness is asserted by an existing test.
+
 ## Coverage-gap accounting
 
 Any formula that cannot be fully resolved within qualified parser coverage is
@@ -130,7 +196,7 @@ analysis cannot drift apart.
 ## Verification
 
 - Release and Debug builds: **zero warnings, zero errors**.
-- Release tests: **376 passed**, zero failed.
+- Release tests: **389 passed**, zero failed.
 - New coverage includes cell and range dependents with retained evidence,
   partial range overlap, name-bound dependents, unbound names, inspect-only
   formulas that keep their resolvable edge, spill references, external
@@ -161,12 +227,24 @@ analysis cannot drift apart.
 - **Real-Excel cancellation:** a pre-cancelled scan through the same adapter
   returned `Refused|AUDIT_SCAN_CANCELLED|0`, proving the wiring fails closed end
   to end rather than only in unit tests.
+- Presentation and preview coverage adds claimed and withheld completeness, named
+  coverage gaps, multi-kind dependents retaining every edge, refusal rendering,
+  repeat determinism, shared wording between the two presentations, the
+  registered descriptor's read-only threshold-preview contract, and the preview
+  gate below, above, and exactly at its threshold boundary.
+- **Registered route in real Excel:** invoking `audit.dependents.direct` through
+  the central dispatcher opened the read-only view (`open|success`), preserved
+  the selection, and released on the explicit close path (`closed`).
+- The ten WP-2-01 presentation tests were **not modified** while the shared label
+  extraction landed, so their passing proves precedent behavior is unchanged.
 
 ## Retained limitations
 
 - Worksheet scope only. Workbook scope is representable so refusing it is
   explicit and testable, and stays unqualified until WP-2-02b and the
   workbook-scale performance gate are resolved.
+- The dependent view duplicates the precedent view rather than sharing one. This
+  is deliberate and is the first task of the next slice, not an oversight.
 - A worksheet whose used region exceeds 250,000 cells, or spans more than 10,000
   columns, is refused outright rather than partially scanned. Both are deliberate
   fail-closed bounds, not partial results.
@@ -181,13 +259,14 @@ analysis cannot drift apart.
 
 ## Next slice
 
-Add the read-only dependent result presentation and register
-`audit.dependents.direct` through the central dispatcher, Command Search, the
-Ribbon `Audit` menu, and a non-conflicting KeyTip. Generalizing the WP-2-01
-`DirectPrecedentReport` into a shared trace-result presentation is the natural
-move, since WP-2-03 and WP-2-04 need the same shape; that is a public-contract
-change to shipped code and should be a deliberate decision rather than a silent
-refactor. The AUDITING contract also requires a mandatory preview above a scan
-threshold, which is not implemented yet and belongs with registration.
+WP-2-02a is complete. The next work is either:
+
+1. **WP-2-03**, indirect traversal, cycles, caps, and trace navigation. Before
+   starting it, extract the shared trace view from the two working runtimes and
+   add unit coverage for the runtime state machine, so a third traversal view
+   does not become a third copy of untested lifecycle code.
+2. **WP-2-02b**, workbook scope, which stays blocked on the workbook-scale
+   performance gate recorded in the implementation plan and needs a
+   dependent-scan performance corpus.
 
 No Excel trace arrows or workbook annotations are permitted.

@@ -66,6 +66,36 @@ public static class DebugSmokeCommands
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.cancelled", exception); throw; }
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DirectDependentsView", Description = "Debug-only registered dependent-view route hook.")]
+    public static string DirectDependentsView()
+    {
+        try
+        {
+            var result = CommandDispatcher.InvokeRegistered(
+                AuditingCommandCatalog.DirectDependentsId, null, InvocationSource.Ribbon);
+            System.Windows.Forms.Application.DoEvents();
+            var summary = (DependentViewRuntime.IsOpen ? "open" : "closed") + "|" +
+                (result.Succeeded ? "success" : result.RefusalCode);
+            DiagnosticLog.Info("smoke.audit.dependents.view", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.view", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.CloseDirectDependentsView", Description = "Debug-only dependent-view close hook.")]
+    public static string CloseDirectDependentsView()
+    {
+        try
+        {
+            DependentViewRuntime.Reset();
+            System.Windows.Forms.Application.DoEvents();
+            var summary = DependentViewRuntime.IsOpen ? "open" : "closed";
+            DiagnosticLog.Info("smoke.audit.dependents.view.close", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.view.close", exception); throw; }
+    }
+
     [ExcelCommand(Name = "ExcelAccel.Smoke.DirectPrecedentsView", Description = "Debug-only direct-precedent view lifecycle hook.")]
     public static string DirectPrecedentsView()
     {

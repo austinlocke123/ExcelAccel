@@ -2,7 +2,7 @@
 
 Snapshot date: **2026-08-19**
 
-Status: **Phase 2 is active; WP-2-01 is complete and WP-2-02a is in progress.**
+Status: **Phase 2 is active; WP-2-01 and WP-2-02a are complete. WP-2-02b is gated; WP-2-03 is next.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
@@ -61,7 +61,7 @@ receipt-storage failure rolls the completed mutation back.
   workbook is no longer open. The workbook probe is read-only and subscribes to
   no Excel event.
 
-## WP-2-02a in progress
+## WP-2-02a delivered behavior
 
 The bounded reverse index and the Excel worksheet scan boundary are implemented
 for **worksheet scope only**, with progress and cancellation wired.
@@ -82,12 +82,24 @@ for **worksheet scope only**, with progress and cancellation wired.
   cancellation is checked before every band; and a cancelled scan is refused
   rather than reported as a partial result.
 
-Read-only result presentation and command registration remain, including the
-mandatory preview above a scan threshold that the AUDITING contract requires.
+- A planned region above 25,000 cells must be confirmed before any block is
+  read; without confirmation the scan is refused with `AUDIT_PREVIEW_REQUIRED`
+  and nothing is read.
+- `audit.dependents.direct` is registered through the central dispatcher, Command
+  Search, and the Ribbon `Audit` menu on KeyTip route `Alt, X, A, A, DD`. Its
+  read-only view states scan scope, coverage gaps, truncation, and whether
+  completeness is claimed, and is discarded on close, on unload, and when its
+  source workbook closes.
+- `AuditPresentationLabels` is the single definition of auditing wording, so the
+  precedent and dependent views cannot describe the same state differently. It
+  was extracted additively: `DirectPrecedentReport` kept its whole public
+  surface and the ten WP-2-01 presentation tests were not modified.
+
 Workbook scope stays unqualified pending the workbook-scale performance gate
 noted in the implementation plan. The scan has no performance corpus yet, so
-AC-AUD-009 rests on the ceilings and the live smoke rather than a measured
-large-worksheet workload.
+AC-AUD-009 rests on the ceilings, the band tiling, and the live smoke rather
+than a measured large-worksheet workload. The dependent view deliberately
+duplicates the precedent view; see the restart point below.
 
 A defect that shipped in WP-2-01 was found and fixed here: A1 column names were
 wrong for every exact multiple of 26 (Z rendered as AZ), which made precedent
@@ -96,6 +108,10 @@ capture read and display the wrong cell. See
 
 ## Current verification
 
+- WP-2-02a presentation/registration slice: **389/389 Release tests passed**;
+  Release and Debug builds warning-free; the registered `audit.dependents.direct`
+  route opened its read-only view in real Excel (`open|success`), preserved the
+  selection, and released on explicit close.
 - WP-2-02a scan-boundary slice: **376/376 Release tests passed**; Release and
   Debug builds warning-free; the live hidden-Excel dependent scan returned
   `Partial|B200,C200|16|1|Completed`, finding exactly the two direct dependents
@@ -153,17 +169,21 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. Finish WP-2-02a with the read-only dependent result view and registration of
-   `audit.dependents.direct`, including the mandatory preview above a scan
-   threshold. Consider generalizing the WP-2-01 `DirectPrecedentReport` into a
-   shared trace-result presentation first, since WP-2-03 and WP-2-04 need the
-   same shape; that changes a shipped public contract, so decide it deliberately.
-2. Do not use Excel trace arrows or workbook annotations.
-3. Keep all retained gates above closed unless a dedicated work package supplies
+1. Before WP-2-03, extract the shared trace view from `PrecedentViewRuntime` and
+   `DependentViewRuntime` and add unit coverage for the runtime state machine.
+   The two are intentionally identical in shape so the extraction is mechanical.
+   They were duplicated on purpose: the report projections are protected by
+   exacting unit tests, but the view runtimes have **no unit coverage at all**
+   and are only exercised by the hidden-Excel smoke, so sharing them earlier
+   would have moved untested WinForms and COM lifecycle code with no net under
+   it. A third traversal view should not become a third copy.
+2. Then WP-2-03: indirect traversal, cycles, caps, and trace navigation.
+3. Do not use Excel trace arrows or workbook annotations.
+4. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.
-4. Continue the normal per-package Release tests and use the short real-Excel
+5. Continue the normal per-package Release tests and use the short real-Excel
    smoke whenever a package changes the Excel adapter, host, or command wiring.
-5. Resume heavier release qualification only when distribution is approaching.
+6. Resume heavier release qualification only when distribution is approaching.
 
 ## Local-worktree caution
 
