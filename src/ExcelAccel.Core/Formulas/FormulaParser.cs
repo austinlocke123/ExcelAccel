@@ -241,53 +241,97 @@ public sealed class FormulaParser
             Array.AsReadOnly(tokens.ToArray()),
             Array.AsReadOnly(references.ToArray()),
             coverage.Disposition,
-            coverage.LimitationCode);
+            coverage.LimitationCode,
+            coverage.LimitationCodes);
         return FormulaParseResult.Success(document);
     }
 
+    /// <summary>
+    /// Collects every coverage limitation the formula carries, in a fixed
+    /// precedence order. The first is reported as the limitation code; the full
+    /// set matters because one cause never rules out the others, and a caller
+    /// deciding whether a construct could hide a reference needs all of them.
+    /// </summary>
     private static CoverageClassification ClassifyCoverage(
         string formula,
         FormulaNotation notation,
         IReadOnlyList<FormulaToken> tokens,
         IReadOnlyList<FormulaReference> references)
     {
+        var causes = new List<string>();
+
         if (notation == FormulaNotation.A1 && ContainsStructuredReference(tokens))
         {
-            return CoverageClassification.InspectOnly(FormulaRefusalCodes.StructuredReferenceInspectOnly);
+            causes.Add(FormulaRefusalCodes.StructuredReferenceInspectOnly);
         }
 
-        if (references.Any(reference =>
-                reference.HasImplicitIntersection || reference.HasSpillOperator))
+        if (references.Any(reference => reference.HasImplicitIntersection || reference.HasSpillOperator))
         {
-            return CoverageClassification.InspectOnly(FormulaRefusalCodes.DynamicArrayInspectOnly);
+            causes.Add(FormulaRefusalCodes.DynamicArrayInspectOnly);
         }
 
-        if (references.Any(reference =>
-                reference.Qualifier is not null && reference.Qualifier.IndexOf('[') >= 0))
+        if (references.Any(reference => reference.Qualifier is not null && reference.Qualifier.IndexOf('[') >= 0) ||
+            ContainsBareBracketedIdentifier(tokens))
         {
-            return CoverageClassification.InspectOnly(FormulaRefusalCodes.ExternalReferenceInspectOnly);
+            causes.Add(FormulaRefusalCodes.ExternalReferenceInspectOnly);
         }
 
+        if (ContainsIntersection(tokens))
+        {
+            causes.Add(FormulaRefusalCodes.IntersectionInspectOnly);
+        }
+
+        if (ContainsTopLevelUnion(tokens))
+        {
+            causes.Add(FormulaRefusalCodes.UnionInspectOnly);
+        }
+
+        if (ContainsDefinedName(tokens))
+        {
+            causes.Add(FormulaRefusalCodes.NameInspectOnly);
+        }
+
+        if (causes.Count != 0)
+        {
+            return CoverageClassification.InspectOnly(causes);
+        }
+
+        return references.Count == 0
+            ? CoverageClassification.RoundTrip()
+            : CoverageClassification.Transform();
+    }
+
+    private static bool ContainsBareBracketedIdentifier(IReadOnlyList<FormulaToken> tokens)
+    {
         for (var index = 0; index < tokens.Count; index++)
         {
             if (tokens[index].Kind == FormulaTokenKind.BracketedIdentifier &&
                 (index == 0 || tokens[index - 1].Kind != FormulaTokenKind.Identifier))
             {
-                return CoverageClassification.InspectOnly(FormulaRefusalCodes.ExternalReferenceInspectOnly);
+                return true;
             }
         }
 
+        return false;
+    }
+
+    private static bool ContainsIntersection(IReadOnlyList<FormulaToken> tokens)
+    {
         for (var index = 0; index + 2 < tokens.Count; index++)
         {
             if (tokens[index].Kind == FormulaTokenKind.Reference &&
                 tokens[index + 1].Kind == FormulaTokenKind.Whitespace &&
                 tokens[index + 2].Kind == FormulaTokenKind.Reference)
             {
-                return CoverageClassification.InspectOnly(FormulaRefusalCodes.IntersectionInspectOnly);
+                return true;
             }
         }
 
+        return false;
+    }
 
+    private static bool ContainsTopLevelUnion(IReadOnlyList<FormulaToken> tokens)
+    {
         var parenthesisDepth = 0;
         for (var index = 0; index < tokens.Count; index++)
         {
@@ -301,10 +345,15 @@ public sealed class FormulaParser
             }
             else if (tokens[index].Kind == FormulaTokenKind.Separator && parenthesisDepth == 0)
             {
-                return CoverageClassification.InspectOnly(FormulaRefusalCodes.UnionInspectOnly);
+                return true;
             }
         }
 
+        return false;
+    }
+
+    private static bool ContainsDefinedName(IReadOnlyList<FormulaToken> tokens)
+    {
         for (var index = 0; index < tokens.Count; index++)
         {
             if (tokens[index].Kind != FormulaTokenKind.Identifier)
@@ -325,12 +374,10 @@ public sealed class FormulaParser
                 continue;
             }
 
-            return CoverageClassification.InspectOnly(FormulaRefusalCodes.NameInspectOnly);
+            return true;
         }
 
-        return references.Count == 0
-            ? CoverageClassification.RoundTrip()
-            : CoverageClassification.Transform();
+        return false;
     }
 
     private static bool ContainsStructuredReference(IReadOnlyList<FormulaToken> tokens)
@@ -813,21 +860,25 @@ public sealed class FormulaParser
 
     private sealed class CoverageClassification
     {
-        private CoverageClassification(FormulaCoverageDisposition disposition, string? limitationCode)
+        private CoverageClassification(FormulaCoverageDisposition disposition, IReadOnlyList<string> limitationCodes)
         {
             Disposition = disposition;
-            LimitationCode = limitationCode;
+            LimitationCodes = limitationCodes;
         }
 
         public FormulaCoverageDisposition Disposition { get; }
 
-        public string? LimitationCode { get; }
+        public IReadOnlyList<string> LimitationCodes { get; }
 
-        public static CoverageClassification Transform() => new CoverageClassification(FormulaCoverageDisposition.Transform, null);
+        public string? LimitationCode => LimitationCodes.Count == 0 ? null : LimitationCodes[0];
 
-        public static CoverageClassification RoundTrip() => new CoverageClassification(FormulaCoverageDisposition.RoundTrip, null);
+        public static CoverageClassification Transform() =>
+            new CoverageClassification(FormulaCoverageDisposition.Transform, new string[0]);
 
-        public static CoverageClassification InspectOnly(string limitationCode) =>
-            new CoverageClassification(FormulaCoverageDisposition.InspectOnly, limitationCode);
+        public static CoverageClassification RoundTrip() =>
+            new CoverageClassification(FormulaCoverageDisposition.RoundTrip, new string[0]);
+
+        public static CoverageClassification InspectOnly(IReadOnlyList<string> limitationCodes) =>
+            new CoverageClassification(FormulaCoverageDisposition.InspectOnly, limitationCodes);
     }
 }

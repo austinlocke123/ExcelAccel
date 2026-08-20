@@ -311,14 +311,7 @@ public sealed class ReverseReferenceIndex
         var parse = parser.Parse(cell.Formula, new FormulaParseOptions(dialect));
         if (!parse.IsSuccess) return false;
         var document = parse.Document!;
-
-        // Any inspect-only disposition is treated as a coverage gap. Some causes
-        // (an external reference, a union) cannot hide an in-scope edge, but the
-        // parser surfaces only its first limitation, so a formula reported as
-        // one cause may also contain another. Refining this needs the parser to
-        // expose every coverage cause rather than the first; until then the
-        // conservative reading is the only one that cannot over-claim.
-        var complete = document.Disposition != FormulaCoverageDisposition.InspectOnly;
+        var complete = !document.LimitationCodes.Any(CanHideAnInScopeEdge);
 
         foreach (var reference in document.References)
         {
@@ -368,6 +361,28 @@ public sealed class ReverseReferenceIndex
 
         return complete;
     }
+
+    /// <summary>
+    /// Whether a coverage limitation could conceal a reference to an in-scope
+    /// cell, and therefore has to be counted as a gap.
+    ///
+    /// A structured reference resolves to real cells but produces no parsed
+    /// reference at all, so it is a genuine blind spot. A dynamic-array or
+    /// implicit-intersection reference has an extent that cannot be known
+    /// without evaluating. An intersection's operands are parsed, but the cells
+    /// actually read are only their overlap, so treating the operands as read
+    /// would over-report.
+    ///
+    /// The others cannot hide an in-scope edge. An external reference addresses
+    /// another workbook and can never name a cell in this scope. A union's
+    /// operands are each parsed and each genuinely read, so recording them is
+    /// exact. A defined name is resolved or counted as unresolved by this index
+    /// directly, so the parser's note about it adds nothing.
+    /// </summary>
+    private static bool CanHideAnInScopeEdge(string limitationCode) =>
+        limitationCode == FormulaRefusalCodes.StructuredReferenceInspectOnly ||
+        limitationCode == FormulaRefusalCodes.DynamicArrayInspectOnly ||
+        limitationCode == FormulaRefusalCodes.IntersectionInspectOnly;
 
     private static string? UnquoteQualifier(string? qualifier)
     {

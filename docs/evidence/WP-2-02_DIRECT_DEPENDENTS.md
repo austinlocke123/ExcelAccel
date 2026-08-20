@@ -168,14 +168,34 @@ counted as a gap, and any gap blocks a completeness claim. Resolvable edges from
 a partially covered formula are still retained, so a gap reduces the claim
 without discarding real edges.
 
-Gaps currently include every inspect-only disposition. Some causes — an external
-reference, a union — cannot hide an in-scope edge, so in principle they need not
-reduce confidence. The parser surfaces only its **first** coverage limitation in
-a fixed precedence order, so a formula reported as external may also contain
-another unqualified construct. Counting it as a gap is the only reading that
-cannot over-claim. Refining this requires the parser to expose every coverage
-cause rather than the first; that is a separate change to the qualified parser
-and is deliberately not attempted here.
+Gaps are counted per **cause**, not per inspect-only disposition. A limitation
+counts as a gap only when it could conceal a reference to an in-scope cell:
+
+| Cause | Gap? | Why |
+|---|---|---|
+| Structured reference | yes | Resolves to real cells but produces no parsed reference at all - a genuine blind spot. |
+| Dynamic array / implicit intersection | yes | The extent cannot be known without evaluating. |
+| Intersection | yes | Operands are parsed, but the cells actually read are only their overlap, so treating the operands as read would over-report. |
+| External reference | no | Addresses another workbook; it can never name a cell in this scope. |
+| Union | no | Each operand is parsed and each is genuinely read, so recording them is exact. |
+| Defined name | no | Resolved, or counted as unresolved, by this index directly. |
+
+This required a parser change, because `FormulaSyntaxDocument` previously exposed
+only the **first** limitation in a fixed precedence order - and external is
+checked before intersection, so "external" never ruled out an intersection also
+being present. `LimitationCodes` now carries every cause, added additively with
+`LimitationCode` still returning the same first-match value.
+
+The effect is not cosmetic. External workbook links are common in the models this
+add-in targets, and the previous reading made a worksheet containing any external
+link permanently unable to claim completeness. The live smoke worksheet moved
+from `Partial|B200,C200|16|1` to **`Complete|B200,C200|16|0`** on exactly this
+change.
+
+Precedent analysis deliberately keeps the stricter rule. For a precedent trace an
+external reference *is* a real edge whose contents cannot be classified, so it
+correctly forces a partial result; for a dependent scan the same reference is
+simply irrelevant.
 
 ## Defect found and fixed
 
@@ -201,7 +221,7 @@ analysis cannot drift apart.
 ## Verification
 
 - Release and Debug builds: **zero warnings, zero errors**.
-- Release tests: **389 passed**, zero failed.
+- Release tests: **417 passed**, zero failed.
 - New coverage includes cell and range dependents with retained evidence,
   partial range overlap, name-bound dependents, unbound names, inspect-only
   formulas that keep their resolvable edge, spill references, external
@@ -223,12 +243,13 @@ analysis cannot drift apart.
   classification, full precedent-view lifecycle, workbook closed, and Excel
   exited naturally with no surviving process.
 - **Real-Excel dependent scan:** against a live worksheet the scan returned
-  `Partial|B200,C200|16|1|Completed`. It found exactly the two direct dependents
+  `Complete|B200,C200|16|0|Completed`. It found exactly the two direct dependents
   of `A200` and correctly excluded `D200`, which depends on `B200` rather than on
-  the target. It scanned 16 formulas across the worksheet and reported one
-  coverage gap, which is the external-reference formula an earlier Phase 1B smoke
-  step leaves on the sheet, and it finished in the `Completed` progress phase.
-  The selection and every fixture formula were unchanged.
+  the target, scanned 16 formulas across the worksheet with no coverage gap, and
+  finished in the `Completed` progress phase. The selection and every fixture
+  formula were unchanged. Before per-cause gap accounting this same worksheet
+  reported `Partial|...|1`, because of the external-reference formula an earlier
+  Phase 1B smoke step leaves on the sheet.
 - **Real-Excel cancellation:** a pre-cancelled scan through the same adapter
   returned `Refused|AUDIT_SCAN_CANCELLED|0`, proving the wiring fails closed end
   to end rather than only in unit tests.
@@ -253,10 +274,9 @@ analysis cannot drift apart.
 - A worksheet whose used region exceeds 250,000 cells, or spans more than 10,000
   columns, is refused outright rather than partially scanned. Both are deliberate
   fail-closed bounds, not partial results.
-- Every inspect-only formula counts as a coverage gap, so a worksheet containing
-  an external reference cannot currently claim completeness even though an
-  external reference cannot hide an in-scope edge. Refining this needs the parser
-  to expose every coverage cause rather than the first.
+- Gaps are now counted per cause. Structured references, dynamic arrays, and
+  intersections remain gaps by design; refining the intersection case would need
+  the parser to model the overlap rather than the operands.
 - The scan has no performance corpus yet. AC-AUD-009 responsiveness and bounded
   resources are demonstrated by the ceilings, the band tiling, and the live smoke,
   not by a measured large-worksheet workload. A dependent-scan workload belongs in

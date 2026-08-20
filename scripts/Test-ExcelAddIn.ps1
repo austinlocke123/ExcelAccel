@@ -721,8 +721,11 @@ public static class ExcelAccelNativeMethods
         [Console]::WriteLine("direct_dependents_content_preserved=$dependentContentPreserved")
         [Console]::Out.Flush()
         $dependentParts = $dependentResult.Split('|')
-        if ($dependentParts[0] -eq 'Refused') {
-            throw "The bounded worksheet dependent scan was refused: $dependentResult"
+        if ($dependentParts[0] -ne 'Complete') {
+            throw "The bounded worksheet dependent scan did not claim completeness: $dependentResult"
+        }
+        if ($dependentParts[3] -ne '0') {
+            throw "The dependent scan reported an unexpected coverage gap: $dependentResult"
         }
         if ($dependentParts[1] -ne 'B200,C200') {
             throw "The dependent scan did not return the exact direct dependents: $dependentResult"
@@ -1038,6 +1041,7 @@ try {
         'direct_precedents_view_second_workbook=open|success',
         'direct_precedents_view_closed_workbook=discarded|closed',
         'direct_precedents_view_explicit_close=closed',
+        'direct_dependents=Complete|B200,C200|',
         'direct_dependents_selection_preserved=True',
         'direct_dependents_content_preserved=True',
         'direct_dependents_cancelled=Refused|AUDIT_SCAN_CANCELLED|0',
