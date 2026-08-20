@@ -22,11 +22,16 @@ internal sealed class TraceViewRuntime
     private readonly string _accessibleDescription;
     private TraceResultView? _view;
 
-    public TraceViewRuntime(string commandId, string accessibleDescription)
+    private readonly Action<AuditCellIdentity> _navigate;
+
+    public TraceViewRuntime(string commandId, string accessibleDescription, Action<AuditCellIdentity> navigate)
     {
         _session = new TraceViewSession(commandId);
         _accessibleDescription = accessibleDescription;
+        _navigate = navigate ?? throw new ArgumentNullException(nameof(navigate));
     }
+
+    private void Navigate(AuditCellIdentity target) => _navigate(target);
 
     public bool IsOpen => _view is not null && !_view.IsDisposed;
 
@@ -37,7 +42,7 @@ internal sealed class TraceViewRuntime
         _session.Present(presentation, workbookId, presence);
         if (!IsOpen)
         {
-            _view = new TraceResultView(_accessibleDescription, RevalidateSource);
+            _view = new TraceResultView(_accessibleDescription, RevalidateSource, Navigate);
             _view.FormClosed += (_, __) =>
             {
                 _view = null;
@@ -95,8 +100,11 @@ internal sealed class TraceResultView : Form
     private readonly ListView _results = new ListView();
     private readonly TextBox _summary = new TextBox();
 
-    public TraceResultView(string accessibleDescription, Func<bool> revalidate)
+    private readonly Action<AuditCellIdentity> _navigate;
+
+    public TraceResultView(string accessibleDescription, Func<bool> revalidate, Action<AuditCellIdentity> navigate)
     {
+        _navigate = navigate;
         StartPosition = FormStartPosition.CenterParent;
         Size = new Size(880, 520);
         MinimumSize = new Size(640, 380);
@@ -129,9 +137,18 @@ internal sealed class TraceResultView : Form
         _summary.ScrollBars = ScrollBars.Vertical;
         _summary.AccessibleName = "Scope, coverage, and completeness summary";
 
+        _results.DoubleClick += (_, __) => NavigateToSelected();
+        _results.KeyDown += (_, e) =>
+        {
+            if (e.KeyCode == Keys.Enter) { NavigateToSelected(); e.Handled = true; }
+        };
+
+        var goTo = new Button { Text = "Go To", AutoSize = true, AccessibleName = "Go to the selected result in the workbook" };
+        goTo.Click += (_, __) => NavigateToSelected();
         var close = new Button { Text = "Close", AutoSize = true, DialogResult = DialogResult.Cancel, AccessibleName = "Close the trace result view" };
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 42, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(4) };
         buttons.Controls.Add(close);
+        buttons.Controls.Add(goTo);
 
         Controls.Add(_results);
         Controls.Add(_summary);
@@ -157,8 +174,8 @@ internal sealed class TraceResultView : Form
             foreach (var column in presentation.Columns) _results.Columns.Add(column.Header, column.Width);
             foreach (var row in presentation.Rows)
             {
-                var item = new ListViewItem(row[0]);
-                for (var index = 1; index < row.Count; index++) item.SubItems.Add(row[index]);
+                var item = new ListViewItem(row.Values[0]) { Tag = row };
+                for (var index = 1; index < row.Values.Count; index++) item.SubItems.Add(row.Values[index]);
                 _results.Items.Add(item);
             }
         }
@@ -172,6 +189,19 @@ internal sealed class TraceResultView : Form
     {
         _notice.Text = notice ?? string.Empty;
         _notice.Visible = !string.IsNullOrEmpty(notice);
+    }
+
+    /// <summary>
+    /// Navigation is a separate action from analysis and only ever selects a
+    /// target. A row with no navigable target — external, unresolved, or a cycle
+    /// edge — does nothing.
+    /// </summary>
+    private void NavigateToSelected()
+    {
+        if (_results.SelectedItems.Count == 0) return;
+        var row = _results.SelectedItems[0].Tag as TraceRow;
+        if (row?.NavigationTarget is null) return;
+        _navigate(row.NavigationTarget);
     }
 
     public void FocusResults()

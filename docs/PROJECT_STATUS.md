@@ -2,7 +2,7 @@
 
 Snapshot date: **2026-08-19**
 
-Status: **Phase 2 is active; WP-2-01 and WP-2-02a are complete. WP-2-02b is gated; WP-2-03 is next.**
+Status: **Phase 2 is active; WP-2-01, WP-2-02a, and WP-2-03 are complete. WP-2-02b is gated; WP-2-04 is next and needs parser work.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
@@ -114,8 +114,35 @@ wrong for every exact multiple of 26 (Z rendered as AZ), which made precedent
 capture read and display the wrong cell. See
 `docs/evidence/WP-2-02_DIRECT_DEPENDENTS.md`.
 
+## WP-2-03 delivered behavior
+
+Bounded indirect traversal in both directions, with cycles, caps, and trace
+navigation.
+
+- `IndirectTraceEngine` is a deterministic breadth-first traversal, hard-ceilinged
+  at depth 16 and 5,000 nodes. A node is expanded at most once, so a circular
+  model terminates and the revisit is shown as a cycle edge. Reaching either cap
+  produces an explicit truncated result with an unexpanded frontier, never a
+  silent omission. Every node retains the direct evidence of the edge that reached
+  it and the node it came from. A cancelled traversal is refused, so no partial
+  traversal is reported as a trace.
+- Precedent traversal reads each node's formula and reuses the qualified
+  analyzer; a cell with no formula is a leaf, not a gap. Dependent traversal runs
+  against one prebuilt worksheet index, so it never rescans per step.
+- `audit.precedents.indirect` (`Alt, X, A, A, PI`) and `audit.dependents.indirect`
+  (`Alt, X, A, A, DI`) are registered, read-only, and render through the shared
+  trace view. The indirect dependent scan applies the same threshold preview as
+  the direct one.
+- Trace navigation revalidates the target, selects it, and records the prior
+  location so session Back returns there. External, unresolved, and cycle rows
+  are not navigable.
+
 ## Current verification
 
+- WP-2-03 traversal slice: **443/443 Release tests passed**; Release and Debug
+  builds warning-free; in real Excel both indirect routes opened their read-only
+  view over a live `A210 -> B210 -> C210` chain, trace navigation selected `C210`
+  and recorded return history, and workbook contents were unchanged.
 - Per-cause coverage slice: **417/417 Release tests passed**; the live worksheet
   scan moved from `Partial|B200,C200|16|1` to `Complete|B200,C200|16|0`.
 - WP-2-02a presentation/registration slice: **389/389 Release tests passed**;
@@ -179,11 +206,15 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. WP-2-03: indirect traversal, cycles, caps, and trace navigation. Every
-   auditing result now projects into `TraceResultPresentation` and is rendered by
-   one shared `TraceViewRuntime`, so a traversal view is a projection, not a new
-   window. Lifecycle decisions live in `TraceViewSession` in the Application
-   layer, which the test project can reference and which is unit-tested.
+1. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
+   dependency table understates it. `FormulaSyntaxDocument` exposes a token
+   stream and a flat reference list, with no syntax tree, while AC-AUD-016
+   requires an immutable tree of functions, operators, constants, references,
+   arrays, and nesting. It is parser work under ADR-0004, not view-layer work.
+   The shared trace view and `TraceResultPresentation` are already in place, so
+   only the tree itself is missing.
+2. Alternatively WP-2-05 onward (Model Check), which depends on WP-2-01/02 and
+   does not need the parse tree.
 3. Do not use Excel trace arrows or workbook annotations.
 4. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.

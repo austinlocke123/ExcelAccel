@@ -31,6 +31,18 @@ public sealed class NavigationService
         return Navigate(port, origin, port.ResolveTarget(kind));
     }
 
+    /// <summary>
+    /// Navigates to an explicit location, revalidating it through the port and
+    /// recording the prior location so session Back returns to it. Used by trace
+    /// navigation, which is a separate action from analysis.
+    /// </summary>
+    public bool GoTo(INavigationPort port, NavigationLocation target)
+    {
+        if (port is null) throw new ArgumentNullException(nameof(port));
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        return Navigate(port, port.CaptureLocation(), target);
+    }
+
     public void AddBookmark(INavigationPort port) => _session.AddBookmark(port.CaptureLocation());
     public void ClearBookmarks() => _session.ClearBookmarks();
     public bool Back(INavigationPort port) => NavigateFromSession(port, _session.TryBack);

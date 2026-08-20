@@ -47,6 +47,9 @@ public static class ExcelAccelNativeMethods
     $depDirect = $null
     $depRange = $null
     $depIndirect = $null
+    $chainA = $null
+    $chainB = $null
+    $chainC = $null
     $font = $null
     $interior = $null
     $multiArea = $null
@@ -670,6 +673,9 @@ public static class ExcelAccelNativeMethods
         if ($auditViewSecondResult -ne 'open|success') {
             throw 'The direct-precedent view did not present the second workbook result.'
         }
+        Release-ComObject $chainC
+        Release-ComObject $chainB
+        Release-ComObject $chainA
         Release-ComObject $depIndirect
         Release-ComObject $depRange
         Release-ComObject $depDirect
@@ -762,6 +768,49 @@ public static class ExcelAccelNativeMethods
         [Console]::Out.Flush()
         if ($dependentViewClose -ne 'closed') {
             throw 'The dependent view did not release on the explicit close path.'
+        }
+
+        $chainA = $worksheet.Range('A210')
+        $chainB = $worksheet.Range('B210')
+        $chainC = $worksheet.Range('C210')
+        $chainA.Value2 = 5
+        $chainB.Formula = '=A210'
+        $chainC.Formula = '=B210'
+        [void]$chainC.Select()
+        $indirectPrecedents = [string]$excel.Run('ExcelAccel.Smoke.IndirectTrace', 'precedents')
+        [Console]::WriteLine("indirect_precedents_view=$indirectPrecedents")
+        [Console]::Out.Flush()
+        if ($indirectPrecedents -ne 'open|success') {
+            throw "The registered indirect-precedent route did not open a read-only result: $indirectPrecedents"
+        }
+
+        [void]$chainA.Select()
+        $indirectDependents = [string]$excel.Run('ExcelAccel.Smoke.IndirectTrace', 'dependents')
+        [Console]::WriteLine("indirect_dependents_view=$indirectDependents")
+        [Console]::Out.Flush()
+        if ($indirectDependents -ne 'open|success') {
+            throw "The registered indirect-dependent route did not open a read-only result: $indirectDependents"
+        }
+
+        $traceNavigate = [string]$excel.Run('ExcelAccel.Smoke.TraceNavigate', [string]$worksheet.Name, 'C210')
+        [Console]::WriteLine("trace_navigate=$traceNavigate")
+        [Console]::Out.Flush()
+        if ($traceNavigate -ne 'C210|recorded') {
+            throw "Trace navigation did not select the target and record return history: $traceNavigate"
+        }
+        $chainContentPreserved =
+            ([double]$chainA.Value2 -eq 5) -and
+            ([string]$chainB.Formula -eq '=A210') -and
+            ([string]$chainC.Formula -eq '=B210')
+        [Console]::WriteLine("indirect_trace_content_preserved=$chainContentPreserved")
+        [Console]::Out.Flush()
+        if (-not $chainContentPreserved) { throw 'The indirect trace changed workbook contents.' }
+
+        $indirectClose = [string]$excel.Run('ExcelAccel.Smoke.CloseIndirectTrace')
+        [Console]::WriteLine("indirect_trace_explicit_close=$indirectClose")
+        [Console]::Out.Flush()
+        if ($indirectClose -ne 'closed') {
+            throw 'The indirect trace view did not release on the explicit close path.'
         }
 
         $excel.ScreenUpdating = $true
@@ -1048,6 +1097,11 @@ try {
         'direct_dependents_view=open|success',
         'direct_dependents_view_selection_preserved=True',
         'direct_dependents_view_explicit_close=closed',
+        'indirect_precedents_view=open|success',
+        'indirect_dependents_view=open|success',
+        'trace_navigate=C210|recorded',
+        'indirect_trace_content_preserved=True',
+        'indirect_trace_explicit_close=closed',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
         'typed_conversions_exact=True',

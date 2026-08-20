@@ -33,7 +33,7 @@ public interface IDependentScanPort
 /// </summary>
 public sealed class DependentScanPreview
 {
-    internal DependentScanPreview(string worksheetName, string targetDisplay, long cellCount, int blockCount)
+    public DependentScanPreview(string worksheetName, string targetDisplay, long cellCount, int blockCount)
     {
         WorksheetName = worksheetName;
         TargetDisplay = targetDisplay;

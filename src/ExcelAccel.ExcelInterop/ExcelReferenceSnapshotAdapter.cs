@@ -10,7 +10,7 @@ using ExcelAccel.Core.Commands;
 
 namespace ExcelAccel.ExcelInterop;
 
-public sealed class ExcelReferenceSnapshotAdapter : IDirectPrecedentSnapshotPort, IWorkbookPresencePort
+public sealed class ExcelReferenceSnapshotAdapter : IDirectPrecedentSnapshotPort, IWorkbookPresencePort, IFormulaLookupPort
 {
     public const int MaximumCapturedCells = 10_000;
     private readonly ExcelSelectionAdapter _selection;
@@ -83,6 +83,27 @@ public sealed class ExcelReferenceSnapshotAdapter : IDirectPrecedentSnapshotPort
             catch (CommandRefusedException) { }
         }
         return new ReferenceSnapshotIndex(cells, names);
+    }
+
+    /// <summary>
+    /// Reads one cell's formula for a precedent traversal step. A cell that is
+    /// not a formula returns null, which ends that branch of the chain; it is a
+    /// leaf, not a coverage gap.
+    /// </summary>
+    public string? TryReadFormula(AuditCellIdentity cell)
+    {
+        if (cell is null) throw new ArgumentNullException(nameof(cell));
+        try
+        {
+            var block = _selection.CaptureFormulaBlock(new SelectionContext(cell.WorkbookId, cell.WorksheetName, cell.Address));
+            if (block.Contents.CellCount != 1) return null;
+            var contents = block.Contents[0, 0];
+            return contents.IsFormula ? contents.InvariantValue : null;
+        }
+        catch (CommandRefusedException)
+        {
+            return null;
+        }
     }
 
     public bool SourceMatches(FormulaTargetCapture capture)

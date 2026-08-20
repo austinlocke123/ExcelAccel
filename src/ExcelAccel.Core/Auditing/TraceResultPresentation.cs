@@ -18,6 +18,26 @@ public sealed class TraceColumn
 }
 
 /// <summary>
+/// One display row, with the workbook target it can navigate to when it has one.
+/// A row with no target — an external or unresolved edge — is not navigable.
+/// </summary>
+public sealed class TraceRow
+{
+    public TraceRow(IReadOnlyList<string> values, AuditCellIdentity? navigationTarget = null)
+    {
+        Values = values ?? throw new ArgumentNullException(nameof(values));
+        if (Values.Count == 0) throw new ArgumentException("A row requires at least one value.", nameof(values));
+        NavigationTarget = navigationTarget;
+    }
+
+    public IReadOnlyList<string> Values { get; }
+
+    public AuditCellIdentity? NavigationTarget { get; }
+
+    public bool IsNavigable => NavigationTarget is not null;
+}
+
+/// <summary>
 /// The display-ready shape every auditing result projects into: a headline, a
 /// completeness statement, a table, and a summary. It carries no analysis and no
 /// host type, so one view can render every trace result and the views cannot
@@ -31,7 +51,7 @@ public sealed class TraceResultPresentation
         string headline,
         string completenessStatement,
         IReadOnlyList<TraceColumn> columns,
-        IEnumerable<IReadOnlyList<string>> rows,
+        IEnumerable<TraceRow> rows,
         IReadOnlyList<string> summaryLines,
         string? refusalCode)
     {
@@ -42,7 +62,7 @@ public sealed class TraceResultPresentation
         Columns = columns ?? throw new ArgumentNullException(nameof(columns));
         if (Columns.Count == 0) throw new ArgumentException("At least one column is required.", nameof(columns));
         Rows = Array.AsReadOnly((rows ?? throw new ArgumentNullException(nameof(rows))).ToArray());
-        if (Rows.Any(row => row is null || row.Count != Columns.Count))
+        if (Rows.Any(row => row is null || row.Values.Count != Columns.Count))
         {
             throw new ArgumentException("Every row must supply exactly one value per column.", nameof(rows));
         }
@@ -61,7 +81,7 @@ public sealed class TraceResultPresentation
 
     public IReadOnlyList<TraceColumn> Columns { get; }
 
-    public IReadOnlyList<IReadOnlyList<string>> Rows { get; }
+    public IReadOnlyList<TraceRow> Rows { get; }
 
     public IReadOnlyList<string> SummaryLines { get; }
 

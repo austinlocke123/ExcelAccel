@@ -10,6 +10,8 @@ public static class AuditingCommandCatalog
 {
     public const string DirectPrecedentsId = "audit.precedents.direct";
     public const string DirectDependentsId = "audit.dependents.direct";
+    public const string IndirectPrecedentsId = "audit.precedents.indirect";
+    public const string IndirectDependentsId = "audit.dependents.indirect";
 
     private static readonly IReadOnlyList<CommandDescriptor> Commands = new[]
     {
@@ -47,6 +49,40 @@ public static class AuditingCommandCatalog
             "Scan the active worksheet for formulas that read the selected cell or range, and show them in a read-only view. The scan is bounded, cancellable, confirmed before a large worksheet, and never widens beyond the declared worksheet scope.",
             new[] { "dependents", "trace dependents", "audit dependents", "precedents reverse" },
             "Alt, X, A, A, DD"),
+        new CommandDescriptor(
+            IndirectPrecedentsId,
+            1,
+            "Trace Indirect Precedents",
+            CommandImpact.ReadOnly,
+            Array.Empty<string>(),
+            false,
+            "Ribbon KeyTips: Alt, X, A, A, PI",
+            "CAP-AUD-001",
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
+            PreviewPolicy.None,
+            UndoPolicy.None,
+            new[] { "AC-AUD-010", "AC-AUD-011", "AC-AUD-012", "AC-AUD-013", "AC-AUD-014" },
+            "Auditing",
+            "Follow the precedent chain upstream from the selected formula cell, breadth-first within explicit depth and node caps. Cycles terminate and are shown as cycle edges; reaching a cap produces an explicit truncated result.",
+            new[] { "indirect precedents", "precedent chain", "trace upstream" },
+            "Alt, X, A, A, PI"),
+        new CommandDescriptor(
+            IndirectDependentsId,
+            1,
+            "Trace Indirect Dependents",
+            CommandImpact.ReadOnly,
+            Array.Empty<string>(),
+            false,
+            "Ribbon KeyTips: Alt, X, A, A, DI",
+            "CAP-AUD-001",
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
+            PreviewPolicy.Threshold,
+            UndoPolicy.None,
+            new[] { "AC-AUD-010", "AC-AUD-011", "AC-AUD-012", "AC-AUD-013", "AC-AUD-014" },
+            "Auditing",
+            "Follow the dependent chain downstream from the selection within this worksheet, breadth-first within explicit depth and node caps. The worksheet is scanned once, cycles terminate, and reaching a cap produces an explicit truncated result.",
+            new[] { "indirect dependents", "dependent chain", "trace downstream" },
+            "Alt, X, A, A, DI"),
     }.OrderBy(value => value.Id, StringComparer.Ordinal).ToArray();
 
     public static IReadOnlyList<CommandDescriptor> All => Commands;

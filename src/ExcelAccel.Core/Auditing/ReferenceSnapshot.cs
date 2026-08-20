@@ -278,4 +278,5 @@ public static class AuditRefusalCodes
     public const string ScanRegionUnsupported = "AUDIT_SCAN_REGION_UNSUPPORTED";
     public const string ScanCancelled = "AUDIT_SCAN_CANCELLED";
     public const string PreviewRequired = "AUDIT_PREVIEW_REQUIRED";
+    public const string DepthLimitReached = "AUDIT_DEPTH_LIMIT_REACHED";
 }

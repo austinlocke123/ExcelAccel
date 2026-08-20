@@ -53,6 +53,8 @@ internal static class CommandDispatcher
         if (SelectionCommandCatalog.All.Any(value => value.Id == commandId)) return ApplySelectionCommand(commandId);
         if (commandId == AuditingCommandCatalog.DirectPrecedentsId) return ShowDirectPrecedents();
         if (commandId == AuditingCommandCatalog.DirectDependentsId) return ShowDirectDependents();
+        if (commandId == AuditingCommandCatalog.IndirectPrecedentsId) return ShowIndirectTrace(TraceDirection.Precedents);
+        if (commandId == AuditingCommandCatalog.IndirectDependentsId) return ShowIndirectTrace(TraceDirection.Dependents);
         return CommandResult.Refused(commandId, "The registered command has no available host dispatcher.", RefusalCodes.CommandUnavailable);
     }
 
@@ -96,7 +98,12 @@ internal static class CommandDispatcher
                 (snapshot.Safety.AreaCount != 1 || snapshot.CellCount != 1))
                 return CanExecuteResult.Refuse(RefusalCodes.SelectionUnsupported,
                     "Direct precedents require exactly one selected formula cell.", "Select one formula cell and retry.");
-            if (descriptor.Id == AuditingCommandCatalog.DirectDependentsId && snapshot.Safety.AreaCount != 1)
+            if (descriptor.Id == AuditingCommandCatalog.IndirectPrecedentsId &&
+                (snapshot.Safety.AreaCount != 1 || snapshot.CellCount != 1))
+                return CanExecuteResult.Refuse(RefusalCodes.SelectionUnsupported,
+                    "Indirect precedents require exactly one selected formula cell.", "Select one formula cell and retry.");
+            if ((descriptor.Id == AuditingCommandCatalog.DirectDependentsId ||
+                descriptor.Id == AuditingCommandCatalog.IndirectDependentsId) && snapshot.Safety.AreaCount != 1)
                 return CanExecuteResult.Refuse(RefusalCodes.MultiAreaUnsupported,
                     "Direct dependents require one rectangular selection.", "Select one cell or one rectangular range and retry.");
             if (descriptor.Id == "navigate.history.back" && NavigationRuntime.Session.HistoryCount < 2)
@@ -579,6 +586,87 @@ internal static class CommandDispatcher
             ? MessageBox.Show(message, "ExcelAccel", MessageBoxButtons.OKCancel, MessageBoxIcon.Question)
             : MessageBox.Show(owner, message, "ExcelAccel", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
         return answer == DialogResult.OK;
+    }
+
+    public static CommandResult ShowIndirectTrace(TraceDirection direction)
+    {
+        var commandId = direction == TraceDirection.Precedents
+            ? AuditingCommandCatalog.IndirectPrecedentsId
+            : AuditingCommandCatalog.IndirectDependentsId;
+        var snapshot = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var tracker = new OperationProgressTracker();
+        AuditCellIdentity root;
+        ITraceExpansionPort expansion;
+
+        if (direction == TraceDirection.Precedents)
+        {
+            root = snapshot.CaptureTarget().Target;
+            expansion = new PrecedentTraceExpansion(snapshot);
+        }
+        else
+        {
+            var scanPort = new ExcelDependentScanAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            root = scanPort.CaptureTarget();
+            var scope = DependentScanScope.Worksheet(root.WorkbookId, root.WorksheetName);
+            if (!DependentScanRegion.TryCreate(scanPort.CaptureUsedRegion(scope), out var region, out var refusalCode, out var message))
+            {
+                return PresentIndirect(IndirectTraceResult.Refused(
+                    root, direction, IndirectTraceOptions.Default, refusalCode!, message!), snapshot, commandId, tracker);
+            }
+
+            if (region!.CellCount > DirectDependentCoordinator.PreviewThresholdCells &&
+                !ConfirmDependentScan(new DependentScanPreview(
+                    region.WorksheetName, AuditPresentationLabels.Location(root), region.CellCount, region.BlockCount)))
+            {
+                return PresentIndirect(IndirectTraceResult.Refused(
+                    root, direction, IndirectTraceOptions.Default, AuditRefusalCodes.PreviewRequired,
+                    "The worksheet scan was not confirmed, so nothing was read."), snapshot, commandId, tracker);
+            }
+
+            var formulas = new List<AuditFormulaCell>();
+            for (var index = 0; index < region.BlockCount; index++)
+            {
+                formulas.AddRange(scanPort.CaptureBlock(scope, region.Block(index)));
+            }
+
+            expansion = new DependentTraceExpansion(
+                ReverseReferenceIndex.Build(scope, formulas, scanPort.CaptureNames(scope)));
+        }
+
+        var result = new IndirectTraceCoordinator().Execute(root, expansion, direction, IndirectTraceOptions.Default, tracker);
+        return PresentIndirect(result, snapshot, commandId, tracker);
+    }
+
+    private static CommandResult PresentIndirect(
+        IndirectTraceResult result,
+        IWorkbookPresencePort presence,
+        string commandId,
+        OperationProgressTracker tracker)
+    {
+        DiagnosticLog.Info(
+            commandId,
+            $"status:{result.Status};nodes:{result.Nodes.Count};expanded:{result.ExpandedNodeCount};depth:{result.DeepestDepthReached};gaps:{result.CoverageGapCount};cycle:{result.ContainsCycle};phase:{tracker.Current.Phase}");
+        return TraceViewRuntimes.Present(IndirectTraceReport.Create(result), result.Root.WorkbookId, presence);
+    }
+
+    /// <summary>
+    /// Trace navigation: revalidate the target through the navigation port, select
+    /// it, and record the prior location so session Back returns there. It never
+    /// changes workbook content.
+    /// </summary>
+    public static void NavigateToTraceTarget(ExcelAccel.Core.Auditing.AuditCellIdentity target)
+    {
+        if (target is null) return;
+        CallbackBoundary.Run("audit.trace.navigate", () =>
+        {
+            var port = new ExcelNavigationAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var moved = new NavigationService(NavigationRuntime.Session)
+                .GoTo(port, new NavigationLocation(target.WorkbookId, target.WorksheetName, target.Address));
+            return moved
+                ? CommandResult.Success("audit.trace.navigate", $"Selected {target.WorksheetName}!{target.Address}.")
+                : CommandResult.Refused("audit.trace.navigate",
+                    "The trace target is no longer available in the active workbook.", RefusalCodes.StaleContext);
+        }, showResult: false);
     }
 
     private static ExcelSelectionAdapter CreateSelectionAdapter() =>

@@ -162,7 +162,7 @@ public sealed class TraceViewSessionTests
         "1 direct precedent for Model!D10.",
         "Completeness is claimed.",
         new[] { new TraceColumn("Target", 100) },
-        new[] { (IReadOnlyList<string>)new[] { "Model!A1" } },
+        new[] { new TraceRow(new[] { "Model!A1" }) },
         new[] { "Status: Complete" },
         null);
 
@@ -201,7 +201,7 @@ public sealed class TraceResultPresentationTests
         foreach (var presentation in new[] { precedent, dependent })
         {
             Assert.NotEmpty(presentation.Columns);
-            Assert.All(presentation.Rows, row => Assert.Equal(presentation.Columns.Count, row.Count));
+            Assert.All(presentation.Rows, row => Assert.Equal(presentation.Columns.Count, row.Values.Count));
             Assert.NotEmpty(presentation.SummaryLines);
         }
     }
@@ -228,7 +228,7 @@ public sealed class TraceResultPresentationTests
             "headline",
             "completeness",
             new[] { new TraceColumn("A", 10), new TraceColumn("B", 10) },
-            new[] { (IReadOnlyList<string>)new[] { "only one" } },
+            new[] { new TraceRow(new[] { "only one" }) },
             new[] { "summary" },
             null));
 

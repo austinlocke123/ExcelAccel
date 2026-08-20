@@ -7,7 +7,8 @@ The repository has **closed Phase 0 and Phase 1A/1B, and Phase 2 is active**.
 It contains a real 64-bit Excel-DNA `.xll`, a pure command core, reliability
 boundaries, profile-driven property-scoped formatting, read-only navigation,
 optimistic session undo, recovery/diagnostics, per-user installer source, the
-Phase 1B daily-speed feature core, and WP-2-01 direct precedents.
+Phase 1B daily-speed feature core, and Phase 2 formula auditing through
+indirect traversal.
 Core, Application, ExcelInterop, and the thin Excel-DNA host are separated by an
 enforced acyclic dependency graph.
 
@@ -53,7 +54,8 @@ numbers, and the restart point.
 33. [WP-1B qualification evidence](docs/evidence/WP-1B-12_QUALIFICATION.md)
 34. [WP-2-01 reference snapshot and direct precedents evidence](docs/evidence/WP-2-01_REFERENCE_SNAPSHOT.md)
 35. [WP-2-02 direct dependents evidence](docs/evidence/WP-2-02_DIRECT_DEPENDENTS.md)
-36. [Project status and restart guide](docs/PROJECT_STATUS.md)
+36. [WP-2-03 indirect traversal evidence](docs/evidence/WP-2-03_INDIRECT_TRAVERSAL.md)
+37. [Project status and restart guide](docs/PROJECT_STATUS.md)
 
 ## Build and test
 
