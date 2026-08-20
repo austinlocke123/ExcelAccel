@@ -53,7 +53,7 @@ public static class ModelCheckCommandCatalog
             CommandImpact.Low,
             new[] { "local_model_check_ignores" },
             false,
-            "Ribbon KeyTips: Alt, X, A, K, MI",
+            RibbonRoutes.For("model_check.finding.ignore_local"),
             "CAP-CHECK-001",
             CommandContextRequirement.Application,
             PreviewPolicy.Mandatory,
@@ -62,7 +62,7 @@ public static class ModelCheckCommandCatalog
             "Model Check",
             "Suppress the selected finding locally by its normalized fingerprint. No formula or value content is stored, and a rescan is required for it to take effect.",
             new[] { "ignore finding", "suppress finding" },
-            "Alt, X, A, K, MI"),
+            RibbonRoutes.For("model_check.finding.ignore_local")),
         new CommandDescriptor(
             UnignoreLocalId,
             1,
@@ -70,7 +70,7 @@ public static class ModelCheckCommandCatalog
             CommandImpact.Low,
             new[] { "local_model_check_ignores" },
             false,
-            "Ribbon KeyTips: Alt, X, A, K, MU",
+            RibbonRoutes.For("model_check.finding.unignore_local"),
             "CAP-CHECK-001",
             CommandContextRequirement.Application,
             PreviewPolicy.Mandatory,
@@ -79,7 +79,7 @@ public static class ModelCheckCommandCatalog
             "Model Check",
             "Show the active local ignores and remove selected entries. A rescan is required for a removal to take effect.",
             new[] { "unignore finding", "manage ignores" },
-            "Alt, X, A, K, MU"),
+            RibbonRoutes.For("model_check.finding.unignore_local")),
         new CommandDescriptor(
             ExportId,
             1,
@@ -87,7 +87,7 @@ public static class ModelCheckCommandCatalog
             CommandImpact.Medium,
             new[] { "local_export_file" },
             false,
-            "Ribbon KeyTips: Alt, X, A, K, ME",
+            RibbonRoutes.For("model_check.results.export"),
             "CAP-CHECK-001",
             CommandContextRequirement.Application,
             PreviewPolicy.Mandatory,
@@ -96,7 +96,7 @@ public static class ModelCheckCommandCatalog
             "Model Check",
             "Write the current findings to a local file after confirming a manifest. Formulas and values are excluded by default and nothing is transmitted.",
             new[] { "export findings", "export results" },
-            "Alt, X, A, K, ME"),
+            RibbonRoutes.For("model_check.results.export")),
     }.OrderBy(value => value.Id, StringComparer.Ordinal).ToArray();
 
     public static IReadOnlyList<CommandDescriptor> All => Commands;
@@ -115,7 +115,7 @@ public static class ModelCheckCommandCatalog
             CommandImpact.ReadOnly,
             Array.Empty<string>(),
             false,
-            "Ribbon KeyTips: Alt, X, A, K, " + keytip,
+            RibbonRoutes.For("model_check.results.export") + keytip,
             "CAP-CHECK-001",
             CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
             previewPolicy,
@@ -124,5 +124,5 @@ public static class ModelCheckCommandCatalog
             "Model Check",
             description,
             new[] { "model check", "check model", "review model" },
-            "Alt, X, A, K, " + keytip);
+            RibbonRoutes.For("model_check.results.export") + keytip);
 }

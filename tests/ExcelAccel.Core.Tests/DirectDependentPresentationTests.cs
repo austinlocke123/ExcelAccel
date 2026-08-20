@@ -127,7 +127,7 @@ public sealed class DirectDependentPresentationTests
         Assert.Equal(UndoPolicy.None, descriptor.UndoPolicy);
         Assert.Equal("CAP-AUD-001", descriptor.CapabilityId);
         Assert.Equal(new[] { "AC-AUD-006", "AC-AUD-007", "AC-AUD-008", "AC-AUD-009" }, descriptor.AcceptanceIds);
-        Assert.Equal("Alt, X, A, A, DD", descriptor.ShortcutLabel);
+        Assert.Equal("Alt, X, A, AD, D", descriptor.ShortcutLabel);
     }
 
     private static AuditCellIdentity Cell(string address) => new AuditCellIdentity(Workbook, Sheet, address);

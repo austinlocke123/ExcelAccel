@@ -253,7 +253,7 @@ public sealed class FormulaInspectorReportTests
         Assert.Equal(
             new[] { "AC-AUD-016", "AC-AUD-017", "AC-AUD-018", "AC-AUD-019" },
             descriptor.AcceptanceIds);
-        Assert.Equal("Alt, X, A, A, FI", descriptor.ShortcutLabel);
+        Assert.Equal("Alt, X, A, AF", descriptor.ShortcutLabel);
     }
 
     [Fact]

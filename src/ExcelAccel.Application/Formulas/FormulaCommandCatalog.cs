@@ -12,11 +12,11 @@ public static class FormulaCommandCatalog
     private static readonly IReadOnlyList<CommandDescriptor> Commands = new[]
     {
         new CommandDescriptor("formula.source.capture", 1, "Capture Formula Source", CommandImpact.ReadOnly,
-            Array.Empty<string>(), false, "Ribbon KeyTips: Alt, X, A, M, SC", "CAP-FORM-001",
+            Array.Empty<string>(), false, RibbonRoutes.For("formula.source.capture"), "CAP-FORM-001",
             CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
             PreviewPolicy.None, UndoPolicy.None, new[] { "AC-FORM-013", "AC-FORM-026" }, "Formula",
             "Capture a bounded internal source snapshot for transpose and later qualified paste commands.",
-            new[] { "copy source", "transpose source", "internal clipboard" }, "Alt, X, A, M, SC"),
+            new[] { "copy source", "transpose source", "internal clipboard" }, RibbonRoutes.For("formula.source.capture")),
         Descriptor("formula.transpose", "Transpose Captured Source Here", new[] { "formula", "value" }, false, "TP",
             "Transpose the captured source into the exact selected destination without copying formatting.",
             new[] { "transpose formulas", "transpose values" }, "AC-FORM-013", "AC-FORM-016", ChangedPropertyPolicy.DeclaredSubset, PreviewPolicy.Mandatory),
@@ -65,9 +65,9 @@ public static class FormulaCommandCatalog
         ChangedPropertyPolicy propertyPolicy = ChangedPropertyPolicy.Exact,
         PreviewPolicy previewPolicy = PreviewPolicy.Threshold) =>
         new CommandDescriptor(id, 1, name, CommandImpact.Medium, properties, fixedParameters,
-            "Ribbon KeyTips: Alt, X, A, M, " + keytip, "CAP-FORM-001",
+            RibbonRoutes.For(id), "CAP-FORM-001",
             CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
             previewPolicy, UndoPolicy.SessionPropertyReceipt,
             FormulaAcceptance.Concat(new[] { acceptance1, acceptance2 }), "Formula", description, aliases,
-            "Alt, X, A, M, " + keytip, changedPropertyPolicy: propertyPolicy);
+            RibbonRoutes.For(id), changedPropertyPolicy: propertyPolicy);
 }

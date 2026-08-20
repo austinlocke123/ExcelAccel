@@ -143,7 +143,7 @@ public sealed class DirectPrecedentPresentationTests
         Assert.Equal(
             new[] { "AC-AUD-001", "AC-AUD-002", "AC-AUD-003", "AC-AUD-004", "AC-AUD-005" },
             descriptor.AcceptanceIds);
-        Assert.Equal("Alt, X, A, A, PD", descriptor.ShortcutLabel);
+        Assert.Equal("Alt, X, A, AP, D", descriptor.ShortcutLabel);
     }
 
     private static DirectPrecedentResult Analyze(string formula, params string[] capturedValueAddresses)

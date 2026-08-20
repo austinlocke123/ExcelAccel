@@ -20,8 +20,8 @@ public static class SelectionCommandCatalog
     public static CommandDescriptor GetRequired(string id) => Commands.First(value => value.Id == id);
     private static CommandDescriptor Descriptor(string id, string name, string keytip, string description) =>
         new CommandDescriptor(id, 1, name, CommandImpact.ReadOnly, Array.Empty<string>(), false,
-            "Ribbon KeyTips: Alt, X, A, L, " + keytip, "CAP-SELECT-001",
+            RibbonRoutes.For(id), "CAP-SELECT-001",
             CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
             PreviewPolicy.None, UndoPolicy.None, new[] { "AC-SELECT-001", "AC-SELECT-002", "AC-SELECT-003", "AC-SELECT-004" },
-            "Selection", description, shortcutLabel: "Alt, X, A, L, " + keytip);
+            "Selection", description, shortcutLabel: RibbonRoutes.For(id));
 }

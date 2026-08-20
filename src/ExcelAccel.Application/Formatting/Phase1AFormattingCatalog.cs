@@ -92,9 +92,9 @@ public static class Phase1AFormattingCatalog
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && parsed > 0;
 
     private static CommandDescriptor Descriptor(string id, string name, string property, string keyboard, string acceptance, CommandImpact impact = CommandImpact.Low) =>
-        new CommandDescriptor(id, 1, name, impact, new[] { property }, true, $"Ribbon KeyTips: Alt, X, A, F, {keyboard}", "CAP-FMT-001",
+        new CommandDescriptor(id, 1, name, impact, new[] { property }, true, RibbonRoutes.For(id), "CAP-FMT-001",
             CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
             impact == CommandImpact.Medium ? PreviewPolicy.Mandatory : PreviewPolicy.None,
             UndoPolicy.SessionPropertyReceipt, new[] { acceptance, "AC-REL-005" }, "Formatting",
-            $"Apply {name.ToLowerInvariant()} using the active profile.", shortcutLabel: $"Alt, X, A, F, {keyboard}");
+            $"Apply {name.ToLowerInvariant()} using the active profile.", shortcutLabel: RibbonRoutes.For(id));
 }

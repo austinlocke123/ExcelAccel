@@ -9,11 +9,11 @@ public static class DiscoveryCommandCatalog
     private static readonly IReadOnlyList<CommandDescriptor> Commands = new[]
     {
         new CommandDescriptor("command.search.open", 1, "Search Commands", CommandImpact.ReadOnly,
-            new string[0], true, "Ribbon KeyTips: Alt, X, A, Q", "CAP-SEARCH-001",
+            new string[0], true, RibbonRoutes.For("command.search.open"), "CAP-SEARCH-001",
             CommandContextRequirement.Application, PreviewPolicy.None, UndoPolicy.None,
             new[] { "AC-SEARCH-001", "AC-SEARCH-002", "AC-SEARCH-003", "AC-SEARCH-004" },
             "Discovery", "Find and run a registered ExcelAccel command without scanning the workbook.",
-            new[] { "command palette", "find command" }, "Alt, X, A, Q"),
+            new[] { "command palette", "find command" }, RibbonRoutes.For("command.search.open")),
         new CommandDescriptor("favorite.add", 1, "Add Favorite", CommandImpact.Low,
             new[] { "user_profile_favorites" }, true, "Command Search: Ctrl+D", "CAP-FAV-001",
             CommandContextRequirement.Application, PreviewPolicy.None, UndoPolicy.None,

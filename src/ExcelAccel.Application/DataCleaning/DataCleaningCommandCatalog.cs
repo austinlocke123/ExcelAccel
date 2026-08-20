@@ -31,8 +31,8 @@ public static class DataCleaningCommandCatalog
 
     private static CommandDescriptor Descriptor(string id, string name, string keytip, PreviewPolicy preview, string description) =>
         new CommandDescriptor(id, 1, name, CommandImpact.Medium, new[] { "value" }, false,
-            "Ribbon KeyTips: Alt, X, A, D, " + keytip, "CAP-DATA-001",
+            RibbonRoutes.For(id), "CAP-DATA-001",
             CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
             preview, UndoPolicy.SessionPropertyReceipt, new[] { "AC-DATA-001", "AC-DATA-004", "AC-DATA-017", "AC-DATA-019" },
-            "Data Cleaning", description, shortcutLabel: "Alt, X, A, D, " + keytip);
+            "Data Cleaning", description, shortcutLabel: RibbonRoutes.For(id));
 }
