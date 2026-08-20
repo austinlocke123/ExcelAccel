@@ -2,16 +2,17 @@
 
 Date: 2026-08-19
 
-Status: **WP-2-02a pure-core reverse index implemented; the Excel scan boundary,
-progress/cancellation wiring, and result presentation remain in progress**
+Status: **WP-2-02a pure-core reverse index and bounded Excel worksheet scan
+boundary implemented, with progress and cancellation wired; read-only result
+presentation and command registration remain in progress**
 
 ## Contract
 
 - Capability: CAP-AUD-001
 - Governing decision: ADR-0004
 - Acceptance: AC-AUD-006 through AC-AUD-009
-- Allowed implementation: pure Core dependent model, reverse index, deterministic
-  tests, and engineering evidence
+- Allowed implementation: pure Core dependent model, reverse index, bounded
+  Excel worksheet scan boundary, deterministic tests, and engineering evidence
 - Excluded: workbook-scope scanning, indirect traversal, trace navigation, Model
   Check, workbook mutation, automatic external-workbook opening, parser
   expansion, and production command registration before the Excel scan boundary
@@ -46,6 +47,48 @@ the unresolved workbook-scale performance gate are settled.
   partial result with `AUDIT_SCAN_TRUNCATED` rather than running on.
 - No COM types, workbook writes, network access, persistence, formula
   evaluation, or automatic opening of external workbooks.
+
+## Bounded worksheet scan boundary
+
+`DependentScanRegion` is the read plan, and every ceiling is applied in pure code
+so the bound never depends on what Excel reports.
+
+- **The reported used range is untrusted input, never a resource bound.** Excel
+  routinely reports a used range far larger than the real content because of
+  stray formatting. `UsedRegionBounds` is deliberately named and documented as
+  untrusted, and the ceilings are applied to it before any read happens.
+- A region above 250,000 cells is refused with `AUDIT_SCAN_REGION_TOO_LARGE`
+  before a single block is read. A full-grid used range hits this immediately.
+- A region wider than the 10,000-cell block ceiling is refused rather than split
+  unsafely, because a single row band could not be read within the bounded
+  formula-block limit the adapter already enforces.
+- A region outside the addressable grid is refused with
+  `AUDIT_SCAN_REGION_UNSUPPORTED`.
+- An empty worksheet plans zero blocks and completes; it is not a refusal.
+- Otherwise the region is banded by rows so that no single read exceeds 10,000
+  cells. Bands are proven to tile the region exactly, with no overlap and no gap.
+
+`ExcelDependentScanAdapter` reports what the worksheet says and reads exactly the
+bands it is handed. It runs through the existing Excel-thread and COM-retry
+boundaries, writes nothing, selects nothing, and opens no external workbook.
+Defined names are enumerated up to 4,096 and only simple local single-target
+definitions are bound; anything else is omitted so the index reports it as an
+explicit coverage gap rather than guessing.
+
+## Progress and cancellation
+
+`OperationProgressTracker` is wired to a real operation for the first time. The
+coordinator owns the policy so it is testable without Excel:
+
+- progress advances monotonically through Snapshot, Analyze, and Completed, with
+  the snapshot phase counting completed bands against the planned band count;
+- cancellation is checked before every band read and once more before analysis;
+- a cancelled scan is **refused**, never reported as a partial result, so no
+  partial scan can be mistaken for a trace. It carries `AUDIT_SCAN_CANCELLED`
+  and no dependents;
+- because the scan never leaves the Snapshot or Analyze phase, it stays
+  cancellable for its whole duration; the tracker's own rule then correctly
+  refuses cancellation once the scan has completed.
 
 ## Coverage-gap accounting
 
@@ -87,7 +130,7 @@ analysis cannot drift apart.
 ## Verification
 
 - Release and Debug builds: **zero warnings, zero errors**.
-- Release tests: **361 passed**, zero failed.
+- Release tests: **376 passed**, zero failed.
 - New coverage includes cell and range dependents with retained evidence,
   partial range overlap, name-bound dependents, unbound names, inspect-only
   formulas that keep their resolvable edge, spill references, external
@@ -99,14 +142,52 @@ analysis cannot drift apart.
   intersection, deliberately avoiding the production rectangle arithmetic. The
   indexed results match the oracle across a twelve-formula corpus and eleven
   targets, including the previously broken multiple-of-26 columns.
-- The packed Debug XLL passed the hidden-Excel smoke unchanged after the shared
-  address refactor: exact precedent classification, full view lifecycle, workbook
-  closed, and Excel exited naturally with no surviving process.
+- Scan coverage adds exact band tiling with no overlap or gap, the block ceiling
+  holding for every band, inflated used-range refusal without reading a block,
+  over-wide region refusal, out-of-grid refusal, the region ceiling at its exact
+  boundary, empty-worksheet completion, monotonic progress through all three
+  phases, cancellation mid-scan and before any read, and scope that follows the
+  target worksheet and is never widened.
+- The packed Debug XLL passed the hidden-Excel smoke: exact precedent
+  classification, full precedent-view lifecycle, workbook closed, and Excel
+  exited naturally with no surviving process.
+- **Real-Excel dependent scan:** against a live worksheet the scan returned
+  `Partial|B200,C200|16|1|Completed`. It found exactly the two direct dependents
+  of `A200` and correctly excluded `D200`, which depends on `B200` rather than on
+  the target. It scanned 16 formulas across the worksheet and reported one
+  coverage gap, which is the external-reference formula an earlier Phase 1B smoke
+  step leaves on the sheet, and it finished in the `Completed` progress phase.
+  The selection and every fixture formula were unchanged.
+- **Real-Excel cancellation:** a pre-cancelled scan through the same adapter
+  returned `Refused|AUDIT_SCAN_CANCELLED|0`, proving the wiring fails closed end
+  to end rather than only in unit tests.
+
+## Retained limitations
+
+- Worksheet scope only. Workbook scope is representable so refusing it is
+  explicit and testable, and stays unqualified until WP-2-02b and the
+  workbook-scale performance gate are resolved.
+- A worksheet whose used region exceeds 250,000 cells, or spans more than 10,000
+  columns, is refused outright rather than partially scanned. Both are deliberate
+  fail-closed bounds, not partial results.
+- Every inspect-only formula counts as a coverage gap, so a worksheet containing
+  an external reference cannot currently claim completeness even though an
+  external reference cannot hide an in-scope edge. Refining this needs the parser
+  to expose every coverage cause rather than the first.
+- The scan has no performance corpus yet. AC-AUD-009 responsiveness and bounded
+  resources are demonstrated by the ceilings, the band tiling, and the live smoke,
+  not by a measured large-worksheet workload. A dependent-scan workload belongs in
+  WP-2-09 or alongside WP-2-02b.
 
 ## Next slice
 
-Add the bounded Excel worksheet scan boundary, wire `OperationProgressTracker`
-to it for progress and cancellation, and prove the used-range bound. An Excel
-worksheet's reported used range is routinely far larger than its real content
-because of stray formatting; it must not be trusted as a resource bound. Then
-add result presentation and registration.
+Add the read-only dependent result presentation and register
+`audit.dependents.direct` through the central dispatcher, Command Search, the
+Ribbon `Audit` menu, and a non-conflicting KeyTip. Generalizing the WP-2-01
+`DirectPrecedentReport` into a shared trace-result presentation is the natural
+move, since WP-2-03 and WP-2-04 need the same shape; that is a public-contract
+change to shipped code and should be a deliberate decision rather than a silent
+refactor. The AUDITING contract also requires a mandatory preview above a scan
+threshold, which is not implemented yet and belongs with registration.
+
+No Excel trace arrows or workbook annotations are permitted.
