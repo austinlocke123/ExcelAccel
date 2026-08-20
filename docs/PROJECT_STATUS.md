@@ -2,7 +2,7 @@
 
 Snapshot date: **2026-08-20**
 
-Status: **Phase 2 is active; WP-2-01, WP-2-02a, WP-2-03, WP-2-05 through WP-2-08 (Model Check), and WP-2-09 qualification are complete. WP-2-02b and workbook-scope scanning are gated; WP-2-04 remains and needs parser work.**
+Status: **Phase 2 is active; WP-2-01, WP-2-02a, WP-2-02b, WP-2-03, WP-2-05 through WP-2-08 (Model Check), and WP-2-09 qualification are complete. Only WP-2-04 remains, and it needs parser work.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
@@ -66,9 +66,9 @@ receipt-storage failure rolls the completed mutation back.
 The bounded reverse index and the Excel worksheet scan boundary are implemented
 for **worksheet scope only**, with progress and cancellation wired.
 
-- Scan scope is an explicitly declared value. Workbook scope, an out-of-scope
-  target, and unsupported target notation are each refused with a stable code,
-  and an out-of-scope formula is counted as a coverage gap rather than read.
+- Scan scope is an explicitly declared value. An out-of-scope target and
+  unsupported target notation are each refused with a stable code, and an
+  out-of-scope formula is counted as a coverage gap rather than read.
 - Each formula is parsed once at build time; queries intersect rectangles and
   never re-parse. The index is capped at 20,000 formulas and truncates
   explicitly. An independent brute-force oracle proves AC-AUD-007 equivalence.
@@ -103,11 +103,8 @@ for **worksheet scope only**, with progress and cancellation wired.
   `DirectPrecedentReport` kept its whole public surface and the ten WP-2-01
   presentation tests were never modified.
 
-Workbook scope stays unqualified pending the workbook-scale performance gate
-noted in the implementation plan. The scan has no performance corpus yet, so
-AC-AUD-009 rests on the ceilings, the band tiling, and the live smoke rather
-than a measured large-worksheet workload. The dependent view deliberately
-duplicates the precedent view; see the restart point below.
+Workbook scope was delivered later, in WP-2-02b, once the workbook-scale gate
+was resolved.
 
 A defect that shipped in WP-2-01 was found and fixed here: A1 column names were
 wrong for every exact multiple of 26 (Z rendered as AZ), which made precedent
@@ -149,9 +146,9 @@ navigation.
 - Findings carry rule, version, severity, target, evidence, coverage category, and
   a SHA-256 fingerprint containing no raw formula or value content. No finding
   declares correctness or carries a score, and a test asserts the vocabulary.
-- Selection and worksheet scopes. **Workbook scope is refused**, inheriting the
-  workbook-scale performance gate. A worksheet scan reuses the bounded region plan
-  and confirms anything above 25,000 cells before reading.
+- Selection, worksheet, and workbook scopes. A worksheet scan confirms anything
+  above 25,000 cells before reading; a workbook scan always confirms its sheet
+  inventory.
 - Navigation, local ignores by exact fingerprint, rescan against a fresh snapshot,
   and export behind a confirmed manifest that excludes formulas and values by
   default. Ignores live in their own atomic local file rather than the profile
@@ -191,8 +188,32 @@ ceilings whose value is regression detection. The numbers above are the referenc
 point. See `docs/evidence/WP-2-09_PHASE2_QUALIFICATION.md` for the retained
 limitations, which include single-machine measurement and a single corpus shape.
 
+## WP-2-02b workbook scope
+
+The workbook-scale performance gate was **resolved on 2026-08-20: opened,
+bounded**, on the strength of the WP-2-09 measurements. Read-only workbook-scope
+scanning is now delivered for both dependents and Model Check. Workbook-scale
+mutation remains out of scope.
+
+- `WorkbookScanPlan` bounds a workbook scan at 64 worksheets and 1,000,000
+  aggregate cells, applying every ceiling in pure code over each worksheet's
+  untrusted reported used region.
+- A worksheet that cannot be bounded is **excluded with a stated reason** rather
+  than failing the whole workbook, and an exclusion is a coverage gap that blocks
+  any completeness claim.
+- A plan with nothing left to read refuses with the first exclusion reason, so
+  one over-large worksheet can never read as "nothing found".
+- A workbook scan **always** confirms its sheet inventory before reading
+  anything, whatever its size, and stays cancellable throughout.
+- `audit.dependents.workbook` (`Alt, X, A, A, DW`) and `model_check.run.workbook`
+  (`Alt, X, A, K, MB`) are registered, read-only, and declare a mandatory preview.
+
 ## Current verification
 
+- WP-2-02b workbook scope: **505/505 Release tests passed**; in real Excel the
+  workbook scan returned `Complete|Sheet1!B200,Sheet1!C200,WorkbookScopeProbe!A1|workbook|0`,
+  reaching dependents on both worksheets with no coverage gap, and an unconfirmed
+  workbook scan failed closed with `AUDIT_PREVIEW_REQUIRED`.
 - WP-2-09 Phase 2 qualification: **3/3 iterations passed** on the qualification
   profile over a 16,000-cell corpus; cancellation refused in 1 ms; diagnostics
   privacy clean; no Excel process survived.
@@ -267,7 +288,8 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
+1. WP-2-04, the Formula Inspector, the last remaining Phase 2 package. Read the
+   implementation plan note first: the
    dependency table understates it. `FormulaSyntaxDocument` exposes a token
    stream and a flat reference list, with no syntax tree, while AC-AUD-016
    requires an immutable tree of functions, operators, constants, references,

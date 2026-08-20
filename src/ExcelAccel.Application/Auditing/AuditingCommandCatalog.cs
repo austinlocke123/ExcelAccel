@@ -10,6 +10,7 @@ public static class AuditingCommandCatalog
 {
     public const string DirectPrecedentsId = "audit.precedents.direct";
     public const string DirectDependentsId = "audit.dependents.direct";
+    public const string WorkbookDependentsId = "audit.dependents.workbook";
     public const string IndirectPrecedentsId = "audit.precedents.indirect";
     public const string IndirectDependentsId = "audit.dependents.indirect";
 
@@ -49,6 +50,23 @@ public static class AuditingCommandCatalog
             "Scan the active worksheet for formulas that read the selected cell or range, and show them in a read-only view. The scan is bounded, cancellable, confirmed before a large worksheet, and never widens beyond the declared worksheet scope.",
             new[] { "dependents", "trace dependents", "audit dependents", "precedents reverse" },
             "Alt, X, A, A, DD"),
+        new CommandDescriptor(
+            WorkbookDependentsId,
+            1,
+            "Trace Dependents Across Workbook",
+            CommandImpact.ReadOnly,
+            Array.Empty<string>(),
+            false,
+            "Ribbon KeyTips: Alt, X, A, A, DW",
+            "CAP-AUD-001",
+            CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
+            PreviewPolicy.Mandatory,
+            UndoPolicy.None,
+            new[] { "AC-AUD-006", "AC-AUD-007", "AC-AUD-008", "AC-AUD-009" },
+            "Auditing",
+            "Scan every worksheet in the workbook for formulas that read the selection. The sheet inventory is always confirmed before anything is read, a worksheet that cannot be bounded is excluded with a stated reason, and the scan is cancellable.",
+            new[] { "workbook dependents", "dependents everywhere" },
+            "Alt, X, A, A, DW"),
         new CommandDescriptor(
             IndirectPrecedentsId,
             1,

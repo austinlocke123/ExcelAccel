@@ -54,6 +54,8 @@ public static class ExcelAccelNativeMethods
     $checkB = $null
     $checkC = $null
     $checkD = $null
+    $secondSheet = $null
+    $secondSheetCell = $null
     $font = $null
     $interior = $null
     $multiArea = $null
@@ -677,6 +679,8 @@ public static class ExcelAccelNativeMethods
         if ($auditViewSecondResult -ne 'open|success') {
             throw 'The direct-precedent view did not present the second workbook result.'
         }
+        Release-ComObject $secondSheetCell
+        Release-ComObject $secondSheet
         Release-ComObject $checkD
         Release-ComObject $checkC
         Release-ComObject $checkB
@@ -857,6 +861,32 @@ public static class ExcelAccelNativeMethods
         [Console]::Out.Flush()
         if (-not $modelCheckRescan.StartsWith('success|')) {
             throw "Model Check rescan did not repeat the prior scope: $modelCheckRescan"
+        }
+
+
+        $secondSheet = $workbook.Worksheets.Add()
+        $secondSheet.Name = 'WorkbookScopeProbe'
+        $secondSheetCell = $secondSheet.Range('A1')
+        $secondSheetCell.Formula = "='$([string]$worksheet.Name)'!A200"
+        [void]$worksheet.Activate()
+        [void]$depSource.Select()
+        $workbookDependents = [string]$excel.Run('ExcelAccel.Smoke.WorkbookDependents')
+        [Console]::WriteLine("workbook_dependents=$workbookDependents")
+        [Console]::Out.Flush()
+        $workbookParts = $workbookDependents.Split('|')
+        if ($workbookParts[2] -ne 'workbook') {
+            throw "The workbook dependent scan did not declare workbook scope: $workbookDependents"
+        }
+        if ($workbookParts[1] -notlike '*WorkbookScopeProbe!A1*') {
+            throw "The workbook scan did not reach the second worksheet: $workbookDependents"
+        }
+
+        [void]$depSource.Select()
+        $workbookUnconfirmed = [string]$excel.Run('ExcelAccel.Smoke.WorkbookDependentsUnconfirmed')
+        [Console]::WriteLine("workbook_dependents_unconfirmed=$workbookUnconfirmed")
+        [Console]::Out.Flush()
+        if ($workbookUnconfirmed -ne 'Refused|AUDIT_PREVIEW_REQUIRED|0') {
+            throw "An unconfirmed workbook scan did not fail closed: $workbookUnconfirmed"
         }
 
         $modelCheckClose = [string]$excel.Run('ExcelAccel.Smoke.CloseModelCheck')
@@ -1159,6 +1189,7 @@ try {
         'model_check_content_preserved=True',
         'model_check_rescan=success|',
         'model_check_explicit_close=closed',
+        'workbook_dependents_unconfirmed=Refused|AUDIT_PREVIEW_REQUIRED|0',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
         'typed_conversions_exact=True',

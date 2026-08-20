@@ -77,9 +77,14 @@ public sealed class ModelCheckSnapshot
 
     private readonly IReadOnlyDictionary<AuditCellIdentity, ModelCheckCell> _byIdentity;
 
-    public ModelCheckSnapshot(ModelCheckScopeKind scope, string workbookId, IEnumerable<ModelCheckCell> cells)
+    public ModelCheckSnapshot(
+        ModelCheckScopeKind scope,
+        string workbookId,
+        IEnumerable<ModelCheckCell> cells,
+        int excludedWorksheetCount = 0)
     {
         Scope = scope;
+        ExcludedWorksheetCount = excludedWorksheetCount;
         WorkbookId = !string.IsNullOrWhiteSpace(workbookId)
             ? workbookId
             : throw new ArgumentException("A workbook identity is required.", nameof(workbookId));
@@ -111,6 +116,12 @@ public sealed class ModelCheckSnapshot
     public IReadOnlyList<ModelCheckCell> Cells { get; }
 
     public string ScopeLabel => Scope.ToString().ToLowerInvariant();
+
+    /// <summary>
+    /// Worksheets the plan could not include. Their cells were never read, so
+    /// any scan over this snapshot is incomplete.
+    /// </summary>
+    public int ExcludedWorksheetCount { get; }
 
     public ModelCheckCell? Find(AuditCellIdentity identity) =>
         _byIdentity.TryGetValue(identity ?? throw new ArgumentNullException(nameof(identity)), out var cell) ? cell : null;

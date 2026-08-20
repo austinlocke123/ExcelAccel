@@ -54,11 +54,13 @@ internal static class CommandDispatcher
         if (DataCleaningCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyDataCleaningCommand(commandId);
         if (SelectionCommandCatalog.All.Any(value => value.Id == commandId)) return ApplySelectionCommand(commandId);
         if (commandId == AuditingCommandCatalog.DirectPrecedentsId) return ShowDirectPrecedents();
-        if (commandId == AuditingCommandCatalog.DirectDependentsId) return ShowDirectDependents();
+        if (commandId == AuditingCommandCatalog.DirectDependentsId) return ShowDirectDependents(DependentScanScopeKind.Worksheet);
+        if (commandId == AuditingCommandCatalog.WorkbookDependentsId) return ShowDirectDependents(DependentScanScopeKind.Workbook);
         if (commandId == AuditingCommandCatalog.IndirectPrecedentsId) return ShowIndirectTrace(TraceDirection.Precedents);
         if (commandId == AuditingCommandCatalog.IndirectDependentsId) return ShowIndirectTrace(TraceDirection.Dependents);
         if (commandId == ModelCheckCommandCatalog.RunSelectionId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Selection);
         if (commandId == ModelCheckCommandCatalog.RunWorksheetId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Worksheet);
+        if (commandId == ModelCheckCommandCatalog.RunWorkbookId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Workbook);
         if (commandId == ModelCheckCommandCatalog.RescanId) return ModelCheckRuntime.Rescan();
         if (commandId == ModelCheckCommandCatalog.IgnoreLocalId) return ModelCheckRuntime.IgnoreSelected();
         if (commandId == ModelCheckCommandCatalog.UnignoreLocalId) return ModelCheckRuntime.ManageIgnores();
@@ -111,6 +113,7 @@ internal static class CommandDispatcher
                 return CanExecuteResult.Refuse(RefusalCodes.SelectionUnsupported,
                     "Indirect precedents require exactly one selected formula cell.", "Select one formula cell and retry.");
             if ((descriptor.Id == AuditingCommandCatalog.DirectDependentsId ||
+                descriptor.Id == AuditingCommandCatalog.WorkbookDependentsId ||
                 descriptor.Id == AuditingCommandCatalog.IndirectDependentsId) && snapshot.Safety.AreaCount != 1)
                 return CanExecuteResult.Refuse(RefusalCodes.MultiAreaUnsupported,
                     "Direct dependents require one rectangular selection.", "Select one cell or one rectangular range and retry.");
@@ -571,12 +574,12 @@ internal static class CommandDispatcher
         return PrecedentViewRuntime.Present(DirectPrecedentReport.Create(result), result.Source.WorkbookId, port);
     }
 
-    public static CommandResult ShowDirectDependents()
+    public static CommandResult ShowDirectDependents(DependentScanScopeKind scopeKind = DependentScanScopeKind.Worksheet)
     {
         var port = new ExcelDependentScanAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
         var presence = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
         var tracker = new OperationProgressTracker();
-        var result = new DirectDependentCoordinator().Execute(port, tracker, ConfirmDependentScan);
+        var result = new DirectDependentCoordinator().Execute(port, tracker, ConfirmDependentScan, scopeKind);
         DiagnosticLog.Info(
             AuditingCommandCatalog.DirectDependentsId,
             $"status:{result.Status};dependents:{result.Dependents.Count};scanned:{result.ScannedFormulaCount};gaps:{result.CoverageGapCount};truncated:{result.Truncated};phase:{tracker.Current.Phase}");
@@ -585,10 +588,14 @@ internal static class CommandDispatcher
 
     private static bool ConfirmDependentScan(DependentScanPreview preview)
     {
+        var inventory = preview.InventoryLines.Count == 0
+            ? string.Empty
+            : Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine, preview.InventoryLines);
         var message =
-            $"Scan worksheet '{preview.WorksheetName}' for formulas that read {preview.TargetDisplay}?" +
+            "Scan the " + preview.ScopeLabel + " for formulas that read " + preview.TargetDisplay + "?" +
             Environment.NewLine + Environment.NewLine +
-            $"The scan reads {preview.CellCount:N0} cells in {preview.BlockCount:N0} bounded blocks. It is read-only and changes nothing.";
+            $"The scan reads {preview.CellCount:N0} cells in {preview.BlockCount:N0} bounded blocks. It is read-only and changes nothing." +
+            inventory;
         var owner = ExcelWindowOwner.TryCreate();
         var answer = owner is null
             ? MessageBox.Show(message, "ExcelAccel", MessageBoxButtons.OKCancel, MessageBoxIcon.Question)
@@ -616,7 +623,7 @@ internal static class CommandDispatcher
             var scanPort = new ExcelDependentScanAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
             root = scanPort.CaptureTarget();
             var scope = DependentScanScope.Worksheet(root.WorkbookId, root.WorksheetName);
-            if (!DependentScanRegion.TryCreate(scanPort.CaptureUsedRegion(scope), out var region, out var refusalCode, out var message))
+            if (!DependentScanRegion.TryCreate(scanPort.CaptureUsedRegion(root.WorksheetName), out var region, out var refusalCode, out var message))
             {
                 return PresentIndirect(IndirectTraceResult.Refused(
                     root, direction, IndirectTraceOptions.Default, refusalCode!, message!), snapshot, commandId, tracker);
@@ -624,7 +631,7 @@ internal static class CommandDispatcher
 
             if (region!.CellCount > DirectDependentCoordinator.PreviewThresholdCells &&
                 !ConfirmDependentScan(new DependentScanPreview(
-                    region.WorksheetName, AuditPresentationLabels.Location(root), region.CellCount, region.BlockCount)))
+                    scope.Label, AuditPresentationLabels.Location(root), region.CellCount, region.BlockCount)))
             {
                 return PresentIndirect(IndirectTraceResult.Refused(
                     root, direction, IndirectTraceOptions.Default, AuditRefusalCodes.PreviewRequired,
@@ -634,7 +641,7 @@ internal static class CommandDispatcher
             var formulas = new List<AuditFormulaCell>();
             for (var index = 0; index < region.BlockCount; index++)
             {
-                formulas.AddRange(scanPort.CaptureBlock(scope, region.Block(index)));
+                formulas.AddRange(scanPort.CaptureBlock(root.WorksheetName, region.Block(index)));
             }
 
             expansion = new DependentTraceExpansion(

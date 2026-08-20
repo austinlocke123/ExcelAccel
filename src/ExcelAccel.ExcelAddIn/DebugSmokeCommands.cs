@@ -9,6 +9,7 @@ using ExcelAccel.ExcelInterop;
 using ExcelAccel.Application.Formulas;
 using ExcelAccel.Application.DataCleaning;
 using ExcelAccel.Application.Auditing;
+using ExcelAccel.Core.Auditing;
 using ExcelAccel.Application.Operations;
 using System.Linq;
 using System.Windows.Forms;
@@ -64,6 +65,38 @@ public static class DebugSmokeCommands
             return summary;
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.cancelled", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.WorkbookDependents", Description = "Debug-only registered workbook dependent-scan hook.")]
+    public static string WorkbookDependents()
+    {
+        try
+        {
+            var port = new ExcelDependentScanAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var result = new DirectDependentCoordinator().Execute(
+                port, new OperationProgressTracker(), _ => true, DependentScanScopeKind.Workbook);
+            var summary = result.Status + "|" +
+                string.Join(",", result.Dependents.Select(value => value.Dependent.WorksheetName + "!" + value.Dependent.Address)) + "|" +
+                result.ScanScope + "|" + result.CoverageGapCount;
+            DiagnosticLog.Info("smoke.audit.dependents.workbook", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.workbook", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.WorkbookDependentsUnconfirmed", Description = "Debug-only unconfirmed workbook scan hook.")]
+    public static string WorkbookDependentsUnconfirmed()
+    {
+        try
+        {
+            var port = new ExcelDependentScanAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var result = new DirectDependentCoordinator().Execute(
+                port, new OperationProgressTracker(), _ => false, DependentScanScopeKind.Workbook);
+            var summary = result.Status + "|" + result.RefusalCode + "|" + result.Dependents.Count;
+            DiagnosticLog.Info("smoke.audit.dependents.workbook.unconfirmed", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.workbook.unconfirmed", exception); throw; }
     }
 
     [ExcelCommand(Name = "ExcelAccel.Smoke.ModelCheck", Description = "Debug-only registered Model Check route hook.")]

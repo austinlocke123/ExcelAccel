@@ -17,6 +17,9 @@ public interface IModelCheckSnapshotPort
     /// <summary>The workbook and worksheet the active selection sits in.</summary>
     AuditCellIdentity CaptureTarget();
 
+    /// <summary>Every worksheet in the workbook, for a workbook-scope plan.</summary>
+    IReadOnlyList<string> CaptureWorksheetNames();
+
     /// <summary>The region the worksheet reports as used. Untrusted.</summary>
     UsedRegionBounds CaptureUsedRegion(string worksheetName);
 
@@ -71,16 +74,9 @@ public sealed class ModelCheckCoordinator
         var progress = tracker ?? new OperationProgressTracker();
         var rules = ModelCheckRuleCatalog.Select(request.RuleIds);
 
-        if (request.Scope == ModelCheckScopeKind.Workbook)
-        {
-            return Refused(
-                request,
-                ModelCheckRefusalCodes.ScopeTooLarge,
-                "Workbook-scope scanning is not qualified yet; scan a selection or a worksheet.");
-        }
-
         var worksheetName = request.Target.WorksheetName;
         IReadOnlyList<ModelCheckCell> cells;
+        var excludedWorksheets = 0;
 
         if (request.Scope == ModelCheckScopeKind.Selection)
         {
@@ -93,42 +89,67 @@ public sealed class ModelCheckCoordinator
         }
         else
         {
-            if (!DependentScanRegion.TryCreate(port.CaptureUsedRegion(worksheetName), out var region, out var code, out var message))
+            var worksheets = request.Scope == ModelCheckScopeKind.Workbook
+                ? port.CaptureWorksheetNames()
+                : new[] { worksheetName };
+
+            if (!WorkbookScanPlan.TryCreate(
+                    request.Target.WorkbookId,
+                    worksheets.Select(port.CaptureUsedRegion),
+                    out var plan,
+                    out var code,
+                    out var message))
             {
                 return Refused(request, code!, message!);
             }
 
-            if (region!.CellCount > PreviewThresholdCells)
+            excludedWorksheets = plan!.Excluded.Count;
+
+            // A workbook scan always confirms and always shows its sheet
+            // inventory; a worksheet scan confirms only above the threshold.
+            if (request.Scope == ModelCheckScopeKind.Workbook || plan.TotalCellCount > PreviewThresholdCells)
             {
-                var preview = new ModelCheckScanPreview(worksheetName, region.CellCount, region.BlockCount, rules.Count);
+                var preview = new ModelCheckScanPreview(
+                    request.Scope == ModelCheckScopeKind.Workbook ? request.Target.WorkbookId : worksheetName,
+                    plan.TotalCellCount,
+                    plan.TotalBlockCount,
+                    rules.Count,
+                    plan.InventoryLines());
                 if (confirmScan is null || !confirmScan(preview))
                 {
                     return Refused(
                         request,
                         ModelCheckRefusalCodes.PreviewRequired,
-                        $"Scanning {region.CellCount:N0} cells of worksheet '{worksheetName}' was not confirmed, so nothing was read.");
+                        "Scanning " + plan.TotalCellCount.ToString("N0") + " cells across " +
+                            plan.Included.Count.ToString("N0") + " worksheets was not confirmed, so nothing was read.");
                 }
             }
 
             var collected = new List<ModelCheckCell>();
-            progress.Report(new OperationProgress(OperationPhase.Snapshot, 0, region.BlockCount, "Reading worksheet cells."));
-            for (var index = 0; index < region.BlockCount; index++)
+            var totalBlocks = Math.Max(plan.TotalBlockCount, 1);
+            var readBlocks = 0;
+            progress.Report(new OperationProgress(OperationPhase.Snapshot, 0, totalBlocks, "Reading cells."));
+            foreach (var entry in plan.Included)
             {
-                if (progress.CancellationRequested)
+                for (var index = 0; index < entry.BlockCount; index++)
                 {
-                    progress.Report(new OperationProgress(OperationPhase.Cancelled, index, region.BlockCount, "Scan cancelled."));
-                    return Refused(request, ModelCheckRefusalCodes.ScanCancelled,
-                        "The scan was cancelled; prior results remain and no partial scan is reported as complete.");
-                }
+                    if (progress.CancellationRequested)
+                    {
+                        progress.Report(new OperationProgress(OperationPhase.Cancelled, readBlocks, totalBlocks, "Scan cancelled."));
+                        return Refused(request, ModelCheckRefusalCodes.ScanCancelled,
+                            "The scan was cancelled; prior results remain and no partial scan is reported as complete.");
+                    }
 
-                collected.AddRange(port.CaptureBlock(worksheetName, region.Block(index)));
-                progress.Report(new OperationProgress(OperationPhase.Snapshot, index + 1, region.BlockCount, "Reading worksheet cells."));
+                    collected.AddRange(port.CaptureBlock(entry.WorksheetName, entry.Region!.Block(index)));
+                    readBlocks++;
+                    progress.Report(new OperationProgress(OperationPhase.Snapshot, readBlocks, totalBlocks, "Reading cells."));
+                }
             }
 
             cells = collected;
         }
 
-        var snapshot = new ModelCheckSnapshot(request.Scope, request.Target.WorkbookId, cells);
+        var snapshot = new ModelCheckSnapshot(request.Scope, request.Target.WorkbookId, cells, excludedWorksheets);
         progress.Report(new OperationProgress(OperationPhase.Analyze, 0, Math.Max(rules.Count, 1), "Running rules."));
         var completedRules = 0;
         var result = new ModelCheckEngine().Run(
@@ -157,13 +178,22 @@ public sealed class ModelCheckCoordinator
 
 public sealed class ModelCheckScanPreview
 {
-    public ModelCheckScanPreview(string worksheetName, long cellCount, int blockCount, int ruleCount)
+    public ModelCheckScanPreview(
+        string scopeName,
+        long cellCount,
+        int blockCount,
+        int ruleCount,
+        IReadOnlyList<string>? inventoryLines = null)
     {
-        WorksheetName = worksheetName;
+        WorksheetName = scopeName;
         CellCount = cellCount;
         BlockCount = blockCount;
         RuleCount = ruleCount;
+        InventoryLines = inventoryLines ?? Array.Empty<string>();
     }
+
+    /// <summary>The per-worksheet inventory a workbook scan must show.</summary>
+    public IReadOnlyList<string> InventoryLines { get; }
 
     public string WorksheetName { get; }
 

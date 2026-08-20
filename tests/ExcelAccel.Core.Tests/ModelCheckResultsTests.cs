@@ -48,26 +48,51 @@ public sealed class ModelCheckCoordinatorTests
         Assert.Equal(OperationPhase.Completed, observed[observed.Count - 1].Phase);
     }
 
+    /// <summary>A workbook scan always confirms, whatever its size.</summary>
     [Fact]
-    public void WorkbookScopeIsRefusedWithoutReadingAnything()
+    public void AWorkbookScanIsRefusedWhenItsInventoryIsNotConfirmed()
     {
         var port = new FakePort(Bounds(1, 1, 10, 2));
 
-        var result = new ModelCheckCoordinator().Execute(port, Request(ModelCheckScopeKind.Workbook, "A1"));
+        var result = new ModelCheckCoordinator().Execute(port, Request(ModelCheckScopeKind.Workbook, "A1"), null, _ => false);
 
         Assert.Equal(AuditTraceStatus.Refused, result.Status);
-        Assert.Equal(ModelCheckRefusalCodes.ScopeTooLarge, result.RefusalCode);
+        Assert.Equal(ModelCheckRefusalCodes.PreviewRequired, result.RefusalCode);
         Assert.Empty(port.RequestedBands);
     }
 
+    [Fact]
+    public void AConfirmedWorkbookScanReadsEveryWorksheetAndShowsItsInventory()
+    {
+        var port = new FakePort(Bounds(1, 1, 10, 2)) { WorksheetNames = new[] { "Model", "Other" } };
+        ModelCheckScanPreview? observed = null;
+
+        var result = new ModelCheckCoordinator().Execute(port, Request(ModelCheckScopeKind.Workbook, "A1"), null, preview =>
+        {
+            observed = preview;
+            return true;
+        });
+
+        Assert.NotEqual(AuditTraceStatus.Refused, result.Status);
+        Assert.NotNull(observed);
+        Assert.NotEmpty(observed!.InventoryLines);
+        Assert.Contains(observed.InventoryLines, line => line.Contains("Worksheets included: 2"));
+        Assert.Equal(new[] { "Model", "Other" }, port.RequestedWorksheets.Distinct());
+    }
+
+    /// <summary>
+    /// One over-large worksheet must refuse with its reason, not return an empty
+    /// plan that would read as "nothing found".
+    /// </summary>
     [Fact]
     public void AnInflatedUsedRegionIsRefusedWithoutReadingAnything()
     {
         var port = new FakePort(Bounds(1, 1, AuditAddress.MaximumRow, AuditAddress.MaximumColumn));
 
-        var result = new ModelCheckCoordinator().Execute(port, Request(ModelCheckScopeKind.Worksheet, "A1"));
+        var result = new ModelCheckCoordinator().Execute(port, Request(ModelCheckScopeKind.Worksheet, "A1"), null, _ => true);
 
         Assert.Equal(AuditTraceStatus.Refused, result.Status);
+        Assert.Equal(AuditRefusalCodes.ScanRegionTooLarge, result.RefusalCode);
         Assert.Empty(port.RequestedBands);
     }
 
@@ -199,15 +224,23 @@ public sealed class ModelCheckCoordinatorTests
 
         public List<AuditRectangle> RequestedBands { get; } = new List<AuditRectangle>();
 
+        public List<string> RequestedWorksheets { get; } = new List<string>();
+
+        public IReadOnlyList<string> WorksheetNames { get; set; } = new[] { Sheet };
+
         public Action<int>? OnBlock { get; set; }
 
         public AuditCellIdentity CaptureTarget() => Identity("A1");
 
-        public UsedRegionBounds CaptureUsedRegion(string worksheetName) => _bounds;
+        public IReadOnlyList<string> CaptureWorksheetNames() => WorksheetNames;
+
+        public UsedRegionBounds CaptureUsedRegion(string worksheetName) =>
+            new UsedRegionBounds(worksheetName, _bounds.FirstRow, _bounds.FirstColumn, _bounds.RowCount, _bounds.ColumnCount);
 
         public IReadOnlyList<ModelCheckCell> CaptureBlock(string worksheetName, AuditRectangle band)
         {
             OnBlock?.Invoke(RequestedBands.Count);
+            RequestedWorksheets.Add(worksheetName);
             RequestedBands.Add(band);
             return _cells
                 .Where(cell => AuditAddress.TryParse(cell.Identity.Address, out var rectangle) && band.Intersects(rectangle))

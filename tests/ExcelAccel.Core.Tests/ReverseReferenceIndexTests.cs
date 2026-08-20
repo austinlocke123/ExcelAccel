@@ -190,16 +190,52 @@ public sealed class ReverseReferenceIndexTests
         Assert.False(result.CanClaimCompleteness);
     }
 
+    /// <summary>
+    /// Workbook scope reaches every worksheet of the workbook, which is exactly
+    /// what worksheet scope must not do.
+    /// </summary>
     [Fact]
-    public void WorkbookScopeIsRefusedWithAStableCodeRatherThanSilentlyWidened()
+    public void WorkbookScopeMatchesDependentsOnEveryWorksheet()
     {
-        var index = ReverseReferenceIndex.Build(DependentScanScope.Workbook(Workbook), Formulas(("B1", "=A1")));
+        var onOtherSheet = new AuditFormulaCell(new AuditCellIdentity(Workbook, "Other", "B1"), "=Model!A1");
+        var index = ReverseReferenceIndex.Build(
+            DependentScanScope.Workbook(Workbook),
+            Formulas(("B2", "=A1")).Concat(new[] { onOtherSheet }));
 
         var result = index.FindDirectDependents(Cell("A1"));
 
+        Assert.Equal(
+            new[] { "Book.xlsx|Model|B2", "Book.xlsx|Other|B1" },
+            result.Dependents.Select(value => value.Dependent.ToString()));
+        Assert.Equal("workbook", result.ScanScope);
+        Assert.Equal(0, result.CoverageGapCount);
+    }
+
+    [Fact]
+    public void AWorksheetScopeStillRefusesATargetOnAnotherWorksheet()
+    {
+        var index = Build(("B1", "=A1"));
+
+        var result = index.FindDirectDependents(new AuditCellIdentity(Workbook, "Other", "A1"));
+
         Assert.Equal(AuditTraceStatus.Refused, result.Status);
-        Assert.Equal(AuditRefusalCodes.ScopeUnsupported, result.RefusalCode);
-        Assert.Empty(result.Dependents);
+        Assert.Equal(AuditRefusalCodes.TargetOutsideScope, result.RefusalCode);
+    }
+
+    [Fact]
+    public void AnExcludedWorksheetIsCountedAsACoverageGap()
+    {
+        var index = ReverseReferenceIndex.Build(
+            DependentScanScope.Workbook(Workbook),
+            Formulas(("B1", "=A1")),
+            null,
+            null,
+            externalGapCount: 2);
+
+        var result = index.FindDirectDependents(Cell("A1"));
+
+        Assert.Equal(2, result.CoverageGapCount);
+        Assert.False(result.CanClaimCompleteness);
     }
 
     [Fact]

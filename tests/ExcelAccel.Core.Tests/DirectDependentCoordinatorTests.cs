@@ -183,7 +183,7 @@ public sealed class DirectDependentCoordinatorTests
     {
         var port = new FakePort(Target("A1"), Bounds(1, 1, AuditAddress.MaximumRow, AuditAddress.MaximumColumn));
 
-        var result = new DirectDependentCoordinator().Execute(port);
+        var result = new DirectDependentCoordinator().Execute(port, null, _ => true);
 
         Assert.Equal(AuditTraceStatus.Refused, result.Status);
         Assert.Equal(AuditRefusalCodes.ScanRegionTooLarge, result.RefusalCode);
@@ -251,13 +251,11 @@ public sealed class DirectDependentCoordinatorTests
 
         public AuditCellIdentity CaptureTarget() => _target;
 
-        public UsedRegionBounds CaptureUsedRegion(DependentScanScope scope)
-        {
-            ObservedScope = scope;
-            return _bounds;
-        }
+        public IReadOnlyList<string> CaptureWorksheetNames() => new[] { Sheet };
 
-        public IReadOnlyList<AuditFormulaCell> CaptureBlock(DependentScanScope scope, AuditRectangle band)
+        public UsedRegionBounds CaptureUsedRegion(string worksheetName) => _bounds;
+
+        public IReadOnlyList<AuditFormulaCell> CaptureBlock(string worksheetName, AuditRectangle band)
         {
             OnBlockRead?.Invoke(RequestedBands.Count);
             RequestedBands.Add(band);
@@ -267,7 +265,11 @@ public sealed class DirectDependentCoordinatorTests
                 .ToArray();
         }
 
-        public IReadOnlyList<AuditNameBinding> CaptureNames(DependentScanScope scope) => Array.Empty<AuditNameBinding>();
+        public IReadOnlyList<AuditNameBinding> CaptureNames(DependentScanScope scope)
+        {
+            ObservedScope = scope;
+            return Array.Empty<AuditNameBinding>();
+        }
 
         private static bool Within(AuditRectangle band, string address)
         {

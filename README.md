@@ -56,8 +56,9 @@ numbers, and the restart point.
 35. [WP-2-02 direct dependents evidence](docs/evidence/WP-2-02_DIRECT_DEPENDENTS.md)
 36. [WP-2-03 indirect traversal evidence](docs/evidence/WP-2-03_INDIRECT_TRAVERSAL.md)
 37. [WP-2-05 to WP-2-08 Model Check evidence](docs/evidence/WP-2-05_08_MODEL_CHECK.md)
-38. [WP-2-09 Phase 2 qualification evidence](docs/evidence/WP-2-09_PHASE2_QUALIFICATION.md)
-39. [Project status and restart guide](docs/PROJECT_STATUS.md)
+38. [WP-2-02b workbook scope evidence](docs/evidence/WP-2-02B_WORKBOOK_SCOPE.md)
+39. [WP-2-09 Phase 2 qualification evidence](docs/evidence/WP-2-09_PHASE2_QUALIFICATION.md)
+40. [Project status and restart guide](docs/PROJECT_STATUS.md)
 
 ## Build and test
 

@@ -266,9 +266,7 @@ analysis cannot drift apart.
 
 ## Retained limitations
 
-- Worksheet scope only. Workbook scope is representable so refusing it is
-  explicit and testable, and stays unqualified until WP-2-02b and the
-  workbook-scale performance gate are resolved.
+- Worksheet scope in this package. Workbook scope followed in WP-2-02b.
 - The trace view lifecycle is now shared and unit-tested, but the WinForms
   rendering itself is still covered only by the hidden-Excel smoke.
 - A worksheet whose used region exceeds 250,000 cells, or spans more than 10,000

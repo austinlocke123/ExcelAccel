@@ -125,10 +125,14 @@ internal static class ModelCheckRuntime
 
     private static bool ConfirmScan(ModelCheckScanPreview preview)
     {
+        var inventory = preview.InventoryLines.Count == 0
+            ? string.Empty
+            : Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine, preview.InventoryLines);
         var message =
-            $"Run {preview.RuleCount:N0} Model Check rules over worksheet '{preview.WorksheetName}'?" +
+            $"Run {preview.RuleCount:N0} Model Check rules over '{preview.WorksheetName}'?" +
             Environment.NewLine + Environment.NewLine +
-            $"The scan reads {preview.CellCount:N0} cells in {preview.BlockCount:N0} bounded blocks. It is read-only and changes nothing.";
+            $"The scan reads {preview.CellCount:N0} cells in {preview.BlockCount:N0} bounded blocks. It is read-only and changes nothing." +
+            inventory;
         var owner = ExcelWindowOwner.TryCreate();
         var answer = owner is null
             ? MessageBox.Show(message, "ExcelAccel", MessageBoxButtons.OKCancel, MessageBoxIcon.Question)
