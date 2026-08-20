@@ -56,7 +56,8 @@ numbers, and the restart point.
 35. [WP-2-02 direct dependents evidence](docs/evidence/WP-2-02_DIRECT_DEPENDENTS.md)
 36. [WP-2-03 indirect traversal evidence](docs/evidence/WP-2-03_INDIRECT_TRAVERSAL.md)
 37. [WP-2-05 to WP-2-08 Model Check evidence](docs/evidence/WP-2-05_08_MODEL_CHECK.md)
-38. [Project status and restart guide](docs/PROJECT_STATUS.md)
+38. [WP-2-09 Phase 2 qualification evidence](docs/evidence/WP-2-09_PHASE2_QUALIFICATION.md)
+39. [Project status and restart guide](docs/PROJECT_STATUS.md)
 
 ## Build and test
 
@@ -72,6 +73,7 @@ dotnet test ExcelAccel.sln --configuration Debug --no-build --no-restore
 ./scripts/Test-ExcelFormulaOracle.ps1
 ./scripts/Test-ExcelCollaborationSignals.ps1
 ./scripts/Test-ExcelPerformance.ps1 -Profile Quick
+./scripts/Test-ExcelPhase2Qualification.ps1 -Profile Quick
 ./scripts/Test-ExcelReliabilitySoak.ps1 -Iterations 10
 ./scripts/New-ExcelAccelPackage.ps1 -Version 0.0.0-local
 ./scripts/Test-ExcelAccelPackage.ps1 -PackageDirectory ./.tools/packages/ExcelAccel-0.0.0-local-x64 -LoadInExcel

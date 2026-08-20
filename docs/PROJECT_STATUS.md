@@ -1,8 +1,8 @@
 # Project status and restart guide
 
-Snapshot date: **2026-08-19**
+Snapshot date: **2026-08-20**
 
-Status: **Phase 2 is active; WP-2-01, WP-2-02a, WP-2-03, and WP-2-05 through WP-2-08 (Model Check) are complete. WP-2-02b and workbook-scope scanning are gated; WP-2-09 qualification and WP-2-04 remain.**
+Status: **Phase 2 is active; WP-2-01, WP-2-02a, WP-2-03, WP-2-05 through WP-2-08 (Model Check), and WP-2-09 qualification are complete. WP-2-02b and workbook-scope scanning are gated; WP-2-04 remains and needs parser work.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
@@ -158,8 +158,44 @@ navigation.
   schema; see the evidence for why and what remains open.
 - Six commands registered on the Ribbon Model Check menu, KeyTip `Alt, X, A, K`.
 
+## WP-2-09 qualification
+
+Phase 2 now has a measured workload where it previously had only ceilings. A
+2,000-row by 5-column corpus produces 16,000 scanned cells and 10,040 formulas,
+with rule violations and a 40-deep precedent chain seeded at known rows.
+
+Measured P95 across three fresh processes, qualification profile, against the
+Debug packed XLL (so a conservative upper bound):
+
+| Workload | P95 | Provisional budget |
+|---|---:|---:|
+| Direct precedents | 1.5 ms | 750 ms |
+| Worksheet dependent scan | 200.3 ms | 20,000 ms |
+| Indirect precedents | 8.0 ms | 12,000 ms |
+| Worksheet Model Check | 950.9 ms | 30,000 ms |
+
+Cancellation refuses in 1 ms with `CHECK_SCAN_CANCELLED` and no findings. Handle
+count P95 1,946; working set P95 318,914,150 bytes. Every iteration exited Excel
+naturally with no surviving process.
+
+The run also fired two bounded behaviours for the first time against a real
+workbook: the Model Check finding cap truncated at 5,000 explicitly, and the
+traversal depth cap stopped the 40-deep chain at depth 8 with an unexpanded
+frontier.
+
+Privacy: a marker seeded into a formula, a value, a defined name, and the
+worksheet name survived into **none** of the exported diagnostics.
+
+Measured values sit far below the provisional budgets, so those budgets are loose
+ceilings whose value is regression detection. The numbers above are the reference
+point. See `docs/evidence/WP-2-09_PHASE2_QUALIFICATION.md` for the retained
+limitations, which include single-machine measurement and a single corpus shape.
+
 ## Current verification
 
+- WP-2-09 Phase 2 qualification: **3/3 iterations passed** on the qualification
+  profile over a 16,000-cell corpus; cancellation refused in 1 ms; diagnostics
+  privacy clean; no Excel process survived.
 - Model Check slice: **502/502 Release tests passed**; Release and Debug builds
   warning-free; in real Excel the registered selection route returned
   `open|success|2|0` against a seeded inconsistent formula with no rule failure,
@@ -231,19 +267,18 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. WP-2-09: Phase 2 large-corpus, cancellation, privacy, performance, and soak
-   qualification. **This is where the missing performance corpus belongs.** No
-   scan or traversal in Phase 2 has a measured workload yet; every budget claim
-   currently rests on explicit ceilings and the live smoke.
-2. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
+1. WP-2-04, the Formula Inspector. Read the implementation plan note first: the
    dependency table understates it. `FormulaSyntaxDocument` exposes a token
    stream and a flat reference list, with no syntax tree, while AC-AUD-016
    requires an immutable tree of functions, operators, constants, references,
    arrays, and nesting. It is parser work under ADR-0004, not view-layer work.
    The shared trace view and `TraceResultPresentation` are already in place, so
    only the tree itself is missing.
-3. Folding Model Check ignores into the profile schema, if the separate atomic
+2. Folding Model Check ignores into the profile schema, if the separate atomic
    ignore file is not acceptable long term.
+3. Extending the Phase 2 corpus beyond one dense rectangular shape, and running
+   a long-duration soak of the Phase 2 operations. Three iterations cannot show
+   slow leakage, and the existing ten-iteration soak covers Phase 1B only.
 3. Do not use Excel trace arrows or workbook annotations.
 4. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "fixture_id": "excelaccel-phase2-qualification-v1",
+  "notes": [
+    "Budgets are provisional Phase 2 ceilings, not frozen release budgets.",
+    "They are measured against the Debug packed XLL, because the measured operations run through Debug-only hooks. Debug is slower than Release, so a passing measurement is a conservative upper bound.",
+    "Every operation under test is read-only. The corpus workbook is never saved."
+  ],
+  "corpus": {
+    "sheet_name": "Phase2Corpus",
+    "formula_rows": 2000,
+    "formula_columns": 5,
+    "input_columns": 1,
+    "seeded_pattern_exceptions": 4,
+    "seeded_errors": 2,
+    "seeded_external_references": 2,
+    "seeded_cycle_cells": 2,
+    "description": "One input column of constants plus five columns of copied formulas, with a small number of deliberate rule violations seeded at known rows."
+  },
+  "profiles": {
+    "quick": { "warmup_iterations": 1, "measured_iterations": 3 },
+    "qualification": { "warmup_iterations": 2, "measured_iterations": 10 }
+  },
+  "workloads": [
+    {
+      "id": "audit_precedents_direct",
+      "operation": "direct_precedents",
+      "governing_requirement": "PERF-002",
+      "acceptance": "AC-AUD-001",
+      "provisional_p95_ms": 750
+    },
+    {
+      "id": "audit_dependents_worksheet",
+      "operation": "dependent_scan",
+      "governing_requirement": "PERF-004",
+      "acceptance": "AC-AUD-009",
+      "provisional_p95_ms": 20000
+    },
+    {
+      "id": "audit_precedents_indirect",
+      "operation": "indirect_precedents",
+      "governing_requirement": "PERF-004",
+      "acceptance": "AC-AUD-010",
+      "provisional_p95_ms": 12000
+    },
+    {
+      "id": "model_check_worksheet",
+      "operation": "model_check_worksheet",
+      "governing_requirement": "PERF-004",
+      "acceptance": "AC-CHECK-007",
+      "provisional_p95_ms": 30000
+    }
+  ],
+  "cancellation": {
+    "operation": "model_check_cancelled",
+    "acceptance": "AC-CHECK-006",
+    "maximum_ms": 2000,
+    "expected_refusal_code": "CHECK_SCAN_CANCELLED"
+  },
+  "privacy": {
+    "acceptance": "AC-SEC-002",
+    "seeded_needle_prefix": "EXCELACCELSEED",
+    "description": "A unique marker is written into a formula, a cell value, a defined name, and the worksheet name. After running every Phase 2 operation, the exported diagnostics must contain none of it."
+  }
+}
