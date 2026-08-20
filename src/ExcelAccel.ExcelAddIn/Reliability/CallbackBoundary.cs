@@ -47,8 +47,17 @@ internal static class CallbackBoundary
                     // so keyboard-driven work is never blocked by a dialog.
                     ReportSuccess(result.Message);
                 }
+                else if (result.RefusalCode == RefusalCodes.NoChangeRequired)
+                {
+                    // Nothing needed doing. Say so quietly rather than raising a
+                    // dialog the user must dismiss.
+                    ReportStatus(result.Message);
+                }
                 else if (showResult)
                 {
+                    // Never leave a previous success on the status bar while
+                    // reporting a failure; the two would contradict each other.
+                    ReportStatus(result.Message);
                     Show(
                         $"Command: {result.CommandId}\n\nReason: {result.Message}\n\nRemediation: Review the current workbook context and retry. If the refusal persists, export diagnostics.\nCode: {result.RefusalCode}\nDiagnostic ID: {result.DiagnosticId}",
                         result.Status == CommandResultStatus.Failed || result.Status == CommandResultStatus.Partial
@@ -97,7 +106,9 @@ internal static class CallbackBoundary
     /// if Excel will not accept it, the command still succeeded and nothing is
     /// surfaced to the user.
     /// </summary>
-    private static void ReportSuccess(string message)
+    private static void ReportSuccess(string message) => ReportStatus(message);
+
+    private static void ReportStatus(string message)
     {
         if (string.IsNullOrWhiteSpace(message)) return;
         try

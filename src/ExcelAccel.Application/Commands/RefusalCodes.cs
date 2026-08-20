@@ -15,4 +15,11 @@ public static class RefusalCodes
     public const string PreviewRequired = "PREVIEW_REQUIRED";
     public const string EditMode = "EDIT_MODE";
     public const string CommandUnavailable = "COMMAND_UNAVAILABLE";
+
+    /// <summary>
+    /// The command understood the request and correctly did nothing, because
+    /// there was nothing to change. Not a fault, and not worth interrupting the
+    /// user over.
+    /// </summary>
+    public const string NoChangeRequired = "NO_CHANGE_REQUIRED";
 }

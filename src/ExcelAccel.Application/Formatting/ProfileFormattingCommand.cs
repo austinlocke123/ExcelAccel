@@ -20,12 +20,15 @@ public sealed class ProfileFormattingCommand
     private readonly CommandDescriptor _descriptor;
     private readonly Func<ProfileDefinition, string, string> _resolveValue;
     private readonly Func<string, string, bool> _verifyPostcondition;
+    private readonly string? _noChangeMessage;
 
     public ProfileFormattingCommand(
         CommandDescriptor descriptor,
         Func<ProfileDefinition, string, string> resolveValue,
-        Func<string, string, bool>? verifyPostcondition = null)
+        Func<string, string, bool>? verifyPostcondition = null,
+        string? noChangeMessage = null)
     {
+        _noChangeMessage = noChangeMessage;
         _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
         _resolveValue = resolveValue ?? throw new ArgumentNullException(nameof(resolveValue));
         _verifyPostcondition = verifyPostcondition ?? ((desired, observed) =>
@@ -53,6 +56,17 @@ public sealed class ProfileFormattingCommand
         var propertyId = _descriptor.ChangedProperties[0];
         var current = port.ReadFormattingProperty(propertyId);
         var desired = _resolveValue(profile, current);
+        if (string.IsNullOrWhiteSpace(desired) && _noChangeMessage is not null)
+        {
+            // The resolver derives its value from the cell's current format
+            // rather than from the profile, so an empty result means there was
+            // nothing to change, not that the profile is broken.
+            throw new CommandRefusedException(
+                RefusalCodes.NoChangeRequired,
+                _noChangeMessage,
+                "No change was needed, so nothing was written.");
+        }
+
         if (string.IsNullOrWhiteSpace(desired))
         {
             throw new CommandRefusedException(

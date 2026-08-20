@@ -48,6 +48,9 @@ public static class Phase1AFormattingCatalog
             ?? throw new KeyNotFoundException($"Formatting command '{commandId}' is not implemented.");
         Func<ProfileDefinition, string, string> resolver;
         Func<string, string, bool>? verifier = null;
+        // Set where an empty resolver result means "nothing to change" rather
+        // than a broken profile, so the user is told the truth.
+        string? noChange = null;
         switch (commandId)
         {
             case "format.font_color.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.FontColorCycle, c); break;
@@ -58,10 +61,22 @@ public static class Phase1AFormattingCatalog
             case "format.alignment.horizontal.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.HorizontalAlignmentCycle, c); break;
             case "format.alignment.vertical.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.VerticalAlignmentCycle, c); break;
             case "format.underline.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.UnderlineCycle, c); break;
-            case "format.indent.increase": resolver = (_, c) => ChangeInteger(c, 1); break;
-            case "format.indent.decrease": resolver = (_, c) => ChangeInteger(c, -1); break;
-            case "format.number.decimals.increase": resolver = (_, c) => NumberFormatDecimals.Change(c, 1); break;
-            case "format.number.decimals.decrease": resolver = (_, c) => NumberFormatDecimals.Change(c, -1); break;
+            case "format.indent.increase":
+                resolver = (_, c) => ChangeInteger(c, 1);
+                noChange = "This cell is already at the maximum indent level.";
+                break;
+            case "format.indent.decrease":
+                resolver = (_, c) => ChangeInteger(c, -1);
+                noChange = "This cell has no indent left to remove.";
+                break;
+            case "format.number.decimals.increase":
+                resolver = (_, c) => NumberFormatDecimals.Change(c, 1);
+                noChange = "This number format cannot take another decimal place.";
+                break;
+            case "format.number.decimals.decrease":
+                resolver = (_, c) => NumberFormatDecimals.Change(c, -1);
+                noChange = "This number format has no decimal places left to remove.";
+                break;
             case "format.center_across.apply": resolver = (_, __) => "center_across"; break;
             case "format.border.sum_bar.apply": resolver = (_, __) => "sum_bar"; break;
             case "format.border.remove": resolver = (_, __) => "none"; break;
@@ -77,7 +92,7 @@ public static class Phase1AFormattingCatalog
                 break;
         }
 
-        return new ProfileFormattingCommand(descriptor, resolver, verifier);
+        return new ProfileFormattingCommand(descriptor, resolver, verifier, noChange);
     }
 
     private static string NextNumber(IReadOnlyList<double> values, string current) =>
