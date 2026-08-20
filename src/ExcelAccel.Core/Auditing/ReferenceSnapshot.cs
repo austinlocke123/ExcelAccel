@@ -274,4 +274,7 @@ public static class AuditRefusalCodes
     public const string ScopeUnsupported = "AUDIT_SCOPE_UNSUPPORTED";
     public const string TargetOutsideScope = "AUDIT_TARGET_OUTSIDE_SCOPE";
     public const string ScanTruncated = "AUDIT_SCAN_TRUNCATED";
+    public const string ScanRegionTooLarge = "AUDIT_SCAN_REGION_TOO_LARGE";
+    public const string ScanRegionUnsupported = "AUDIT_SCAN_REGION_UNSUPPORTED";
+    public const string ScanCancelled = "AUDIT_SCAN_CANCELLED";
 }

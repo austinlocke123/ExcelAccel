@@ -63,17 +63,31 @@ receipt-storage failure rolls the completed mutation back.
 
 ## WP-2-02a in progress
 
-The pure-core bounded reverse index is implemented for **worksheet scope only**.
-Scan scope is an explicitly declared value; workbook scope, an out-of-scope
-target, and unsupported target notation are each refused with a stable code, and
-an out-of-scope formula is counted as a coverage gap rather than read. Each
-formula is parsed once at build time; queries intersect rectangles and never
-re-parse. The scan is capped at 20,000 formulas and truncates explicitly. An
-independent brute-force oracle in the test suite proves AC-AUD-007 equivalence.
+The bounded reverse index and the Excel worksheet scan boundary are implemented
+for **worksheet scope only**, with progress and cancellation wired.
 
-The Excel scan boundary, progress/cancellation wiring, and result presentation
-remain. Workbook scope stays unqualified pending the workbook-scale performance
-gate noted in the implementation plan.
+- Scan scope is an explicitly declared value. Workbook scope, an out-of-scope
+  target, and unsupported target notation are each refused with a stable code,
+  and an out-of-scope formula is counted as a coverage gap rather than read.
+- Each formula is parsed once at build time; queries intersect rectangles and
+  never re-parse. The index is capped at 20,000 formulas and truncates
+  explicitly. An independent brute-force oracle proves AC-AUD-007 equivalence.
+- **Excel's reported used range is untrusted and is never a resource bound.** A
+  region above 250,000 cells, or wider than the 10,000-cell band ceiling, is
+  refused before any block is read. Otherwise the region is banded by rows so no
+  single read exceeds 10,000 cells, and the bands provably tile the region with
+  no overlap or gap.
+- `OperationProgressTracker` is wired to a real operation for the first time.
+  Progress advances monotonically through Snapshot, Analyze, and Completed;
+  cancellation is checked before every band; and a cancelled scan is refused
+  rather than reported as a partial result.
+
+Read-only result presentation and command registration remain, including the
+mandatory preview above a scan threshold that the AUDITING contract requires.
+Workbook scope stays unqualified pending the workbook-scale performance gate
+noted in the implementation plan. The scan has no performance corpus yet, so
+AC-AUD-009 rests on the ceilings and the live smoke rather than a measured
+large-worksheet workload.
 
 A defect that shipped in WP-2-01 was found and fixed here: A1 column names were
 wrong for every exact multiple of 26 (Z rendered as AZ), which made precedent
@@ -82,9 +96,14 @@ capture read and display the wrong cell. See
 
 ## Current verification
 
-- WP-2-02a pure-core slice: **361/361 Release tests passed**; Release and Debug
-  builds warning-free; the hidden-Excel smoke passed unchanged after the shared
-  address refactor.
+- WP-2-02a scan-boundary slice: **376/376 Release tests passed**; Release and
+  Debug builds warning-free; the live hidden-Excel dependent scan returned
+  `Partial|B200,C200|16|1|Completed`, finding exactly the two direct dependents
+  of `A200` and correctly excluding `D200`, which depends on `B200` rather than
+  the target. A pre-cancelled scan through the same adapter returned
+  `Refused|AUDIT_SCAN_CANCELLED|0`. The selection and workbook contents were
+  unchanged and Excel exited naturally.
+- WP-2-02a pure-core slice: **361/361 Release tests passed**.
 - WP-2-01 presentation/registration slice: **315/315 Release tests passed**;
   Release and Debug builds are warning-free; the packed-XLL hidden-Excel smoke
   passed exact cell/name precedent classification, view open/retain/discard/close
@@ -134,9 +153,11 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. Continue WP-2-02a with the bounded Excel worksheet scan boundary, progress
-   and cancellation wiring, and result presentation. Do not trust an Excel
-   worksheet's reported used range as a resource bound.
+1. Finish WP-2-02a with the read-only dependent result view and registration of
+   `audit.dependents.direct`, including the mandatory preview above a scan
+   threshold. Consider generalizing the WP-2-01 `DirectPrecedentReport` into a
+   shared trace-result presentation first, since WP-2-03 and WP-2-04 need the
+   same shape; that changes a shipped public contract, so decide it deliberately.
 2. Do not use Excel trace arrows or workbook annotations.
 3. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.

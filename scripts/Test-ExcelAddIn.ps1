@@ -43,6 +43,10 @@ public static class ExcelAccelNativeMethods
     $auditViewSheet = $null
     $auditViewSource = $null
     $auditViewFormula = $null
+    $depSource = $null
+    $depDirect = $null
+    $depRange = $null
+    $depIndirect = $null
     $font = $null
     $interior = $null
     $multiArea = $null
@@ -666,6 +670,10 @@ public static class ExcelAccelNativeMethods
         if ($auditViewSecondResult -ne 'open|success') {
             throw 'The direct-precedent view did not present the second workbook result.'
         }
+        Release-ComObject $depIndirect
+        Release-ComObject $depRange
+        Release-ComObject $depDirect
+        Release-ComObject $depSource
         Release-ComObject $auditViewFormula
         $auditViewFormula = $null
         Release-ComObject $auditViewSource
@@ -690,6 +698,51 @@ public static class ExcelAccelNativeMethods
         [Console]::Out.Flush()
         if ($auditViewExplicitClose -ne 'closed') {
             throw 'The direct-precedent view did not release on the explicit close path.'
+        }
+
+        $depSource = $worksheet.Range('A200')
+        $depDirect = $worksheet.Range('B200')
+        $depRange = $worksheet.Range('C200')
+        $depIndirect = $worksheet.Range('D200')
+        $depSource.Value2 = 42
+        $depDirect.Formula = '=A200'
+        $depRange.Formula = '=SUM(A200:A210)'
+        $depIndirect.Formula = '=B200'
+        [void]$depSource.Select()
+        $dependentResult = [string]$excel.Run('ExcelAccel.Smoke.DirectDependents')
+        $dependentSelectionPreserved = ([string]$excel.Selection.Address($false, $false) -eq 'A200')
+        $dependentContentPreserved =
+            ([double]$depSource.Value2 -eq 42) -and
+            ([string]$depDirect.Formula -eq '=A200') -and
+            ([string]$depRange.Formula -eq '=SUM(A200:A210)') -and
+            ([string]$depIndirect.Formula -eq '=B200')
+        [Console]::WriteLine("direct_dependents=$dependentResult")
+        [Console]::WriteLine("direct_dependents_selection_preserved=$dependentSelectionPreserved")
+        [Console]::WriteLine("direct_dependents_content_preserved=$dependentContentPreserved")
+        [Console]::Out.Flush()
+        $dependentParts = $dependentResult.Split('|')
+        if ($dependentParts[0] -eq 'Refused') {
+            throw "The bounded worksheet dependent scan was refused: $dependentResult"
+        }
+        if ($dependentParts[1] -ne 'B200,C200') {
+            throw "The dependent scan did not return the exact direct dependents: $dependentResult"
+        }
+        if ([int]$dependentParts[2] -le 0) {
+            throw 'The dependent scan reported no scanned formulas.'
+        }
+        if ($dependentParts[4] -ne 'Completed') {
+            throw "The dependent scan did not finish in the Completed progress phase: $dependentResult"
+        }
+        if (-not $dependentSelectionPreserved -or -not $dependentContentPreserved) {
+            throw 'The dependent scan changed the selection or workbook contents.'
+        }
+
+        [void]$depSource.Select()
+        $dependentCancelled = [string]$excel.Run('ExcelAccel.Smoke.DirectDependentsCancelled')
+        [Console]::WriteLine("direct_dependents_cancelled=$dependentCancelled")
+        [Console]::Out.Flush()
+        if ($dependentCancelled -ne 'Refused|AUDIT_SCAN_CANCELLED|0') {
+            throw 'A cancelled dependent scan did not fail closed.'
         }
 
         $excel.ScreenUpdating = $true
@@ -969,6 +1022,9 @@ try {
         'direct_precedents_view_second_workbook=open|success',
         'direct_precedents_view_closed_workbook=discarded|closed',
         'direct_precedents_view_explicit_close=closed',
+        'direct_dependents_selection_preserved=True',
+        'direct_dependents_content_preserved=True',
+        'direct_dependents_cancelled=Refused|AUDIT_SCAN_CANCELLED|0',
         'numeric_hardcode_selection=A40,C40,B41,D42',
         'selection_content_preserved=True',
         'typed_conversions_exact=True',

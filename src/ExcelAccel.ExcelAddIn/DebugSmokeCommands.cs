@@ -9,6 +9,8 @@ using ExcelAccel.ExcelInterop;
 using ExcelAccel.Application.Formulas;
 using ExcelAccel.Application.DataCleaning;
 using ExcelAccel.Application.Auditing;
+using ExcelAccel.Application.Operations;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace ExcelAccel.ExcelAddIn;
@@ -29,6 +31,39 @@ public static class DebugSmokeCommands
             return summary;
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.precedents.direct", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DirectDependents", Description = "Debug-only bounded worksheet dependent-scan hook.")]
+    public static string DirectDependents()
+    {
+        try
+        {
+            var port = new ExcelDependentScanAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var tracker = new OperationProgressTracker();
+            var result = new DirectDependentCoordinator().Execute(port, tracker);
+            var summary = result.Status + "|" +
+                string.Join(",", result.Dependents.Select(value => value.Dependent.Address)) + "|" +
+                result.ScannedFormulaCount + "|" + result.CoverageGapCount + "|" + tracker.Current.Phase;
+            DiagnosticLog.Info("smoke.audit.dependents.direct", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.direct", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DirectDependentsCancelled", Description = "Debug-only dependent-scan cancellation hook.")]
+    public static string DirectDependentsCancelled()
+    {
+        try
+        {
+            var port = new ExcelDependentScanAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var tracker = new OperationProgressTracker();
+            tracker.RequestCancellation();
+            var result = new DirectDependentCoordinator().Execute(port, tracker);
+            var summary = result.Status + "|" + result.RefusalCode + "|" + result.Dependents.Count;
+            DiagnosticLog.Info("smoke.audit.dependents.cancelled", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.cancelled", exception); throw; }
     }
 
     [ExcelCommand(Name = "ExcelAccel.Smoke.DirectPrecedentsView", Description = "Debug-only direct-precedent view lifecycle hook.")]
