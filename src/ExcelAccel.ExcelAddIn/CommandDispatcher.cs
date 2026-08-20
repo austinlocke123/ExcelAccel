@@ -3,6 +3,7 @@ using ExcelAccel.Application.Auditing;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
+using ExcelAccel.Application.Operations;
 using ExcelAccel.Core.Auditing;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Application.Undo;
@@ -51,6 +52,7 @@ internal static class CommandDispatcher
         if (DataCleaningCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyDataCleaningCommand(commandId);
         if (SelectionCommandCatalog.All.Any(value => value.Id == commandId)) return ApplySelectionCommand(commandId);
         if (commandId == AuditingCommandCatalog.DirectPrecedentsId) return ShowDirectPrecedents();
+        if (commandId == AuditingCommandCatalog.DirectDependentsId) return ShowDirectDependents();
         return CommandResult.Refused(commandId, "The registered command has no available host dispatcher.", RefusalCodes.CommandUnavailable);
     }
 
@@ -94,6 +96,9 @@ internal static class CommandDispatcher
                 (snapshot.Safety.AreaCount != 1 || snapshot.CellCount != 1))
                 return CanExecuteResult.Refuse(RefusalCodes.SelectionUnsupported,
                     "Direct precedents require exactly one selected formula cell.", "Select one formula cell and retry.");
+            if (descriptor.Id == AuditingCommandCatalog.DirectDependentsId && snapshot.Safety.AreaCount != 1)
+                return CanExecuteResult.Refuse(RefusalCodes.MultiAreaUnsupported,
+                    "Direct dependents require one rectangular selection.", "Select one cell or one rectangular range and retry.");
             if (descriptor.Id == "navigate.history.back" && NavigationRuntime.Session.HistoryCount < 2)
                 return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, "No prior navigation location is available.", "Navigate first, then retry.");
             if ((descriptor.Id == "navigate.bookmark.next_session" || descriptor.Id == "navigate.bookmark.previous_session") && NavigationRuntime.Session.BookmarkCount == 0)
@@ -549,6 +554,31 @@ internal static class CommandDispatcher
             AuditingCommandCatalog.DirectPrecedentsId,
             $"status:{result.Status};precedents:{result.Precedents.Count};unresolved:{result.UnresolvedEdgeCount};external:{result.ExternalEdgeCount};coverage:{result.Coverage}");
         return PrecedentViewRuntime.Present(DirectPrecedentReport.Create(result), result.Source.WorkbookId, port);
+    }
+
+    public static CommandResult ShowDirectDependents()
+    {
+        var port = new ExcelDependentScanAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var presence = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var tracker = new OperationProgressTracker();
+        var result = new DirectDependentCoordinator().Execute(port, tracker, ConfirmDependentScan);
+        DiagnosticLog.Info(
+            AuditingCommandCatalog.DirectDependentsId,
+            $"status:{result.Status};dependents:{result.Dependents.Count};scanned:{result.ScannedFormulaCount};gaps:{result.CoverageGapCount};truncated:{result.Truncated};phase:{tracker.Current.Phase}");
+        return DependentViewRuntime.Present(DirectDependentReport.Create(result), result.Target.WorkbookId, presence);
+    }
+
+    private static bool ConfirmDependentScan(DependentScanPreview preview)
+    {
+        var message =
+            $"Scan worksheet '{preview.WorksheetName}' for formulas that read {preview.TargetDisplay}?" +
+            Environment.NewLine + Environment.NewLine +
+            $"The scan reads {preview.CellCount:N0} cells in {preview.BlockCount:N0} bounded blocks. It is read-only and changes nothing.";
+        var owner = ExcelWindowOwner.TryCreate();
+        var answer = owner is null
+            ? MessageBox.Show(message, "ExcelAccel", MessageBoxButtons.OKCancel, MessageBoxIcon.Question)
+            : MessageBox.Show(owner, message, "ExcelAccel", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+        return answer == DialogResult.OK;
     }
 
     private static ExcelSelectionAdapter CreateSelectionAdapter() =>

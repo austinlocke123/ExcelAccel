@@ -129,6 +129,9 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.DirectPrecedents' label='Trace Direct Precedents' keytip='PD' tag='audit.precedents.direct' onAction='OnAuditCommand'
                               screentip='Show direct precedents of one formula cell'
                               supertip='Opens a read-only view of the direct precedents of the selected formula cell. Closed external workbooks are listed but never opened, and no Excel trace arrow or workbook annotation is used.'/>
+                      <button id='ExcelAccel.DirectDependents' label='Trace Direct Dependents' keytip='DD' tag='audit.dependents.direct' onAction='OnAuditCommand'
+                              screentip='Scan this worksheet for formulas that read the selection'
+                              supertip='Opens a read-only view of the formulas on the active worksheet that read the selected cell or range. The scan is bounded, cancellable, confirmed before a large worksheet, and never widens beyond this worksheet. No Excel trace arrow or workbook annotation is used.'/>
                     </menu>
                     <menu id='ExcelAccel.Navigation' label='Navigate' keytip='V' imageMso='GoTo'>
                       <button id='ExcelAccel.PreviousSheet' label='Previous Sheet' keytip='P' tag='navigate.sheet.previous' onAction='OnNavigate'/>
@@ -180,7 +183,8 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
 
     public void OnAuditCommand(IRibbonControl control)
     {
-        CallbackBoundary.Run(control.Tag, CommandDispatcher.ShowDirectPrecedents, showResult: false);
+        var commandId = control.Tag;
+        CallbackBoundary.Run(commandId, () => CommandDispatcher.InvokeRegistered(commandId, null, InvocationSource.Ribbon), showResult: false);
     }
 
     public void OnNavigate(IRibbonControl control)

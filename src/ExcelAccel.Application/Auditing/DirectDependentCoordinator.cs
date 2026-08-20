@@ -27,9 +27,42 @@ public interface IDependentScanPort
     IReadOnlyList<AuditNameBinding> CaptureNames(DependentScanScope scope);
 }
 
+/// <summary>
+/// What the user is asked to confirm before a scan large enough to be worth
+/// noticing. It describes the planned read; nothing has been read yet.
+/// </summary>
+public sealed class DependentScanPreview
+{
+    internal DependentScanPreview(string worksheetName, string targetDisplay, long cellCount, int blockCount)
+    {
+        WorksheetName = worksheetName;
+        TargetDisplay = targetDisplay;
+        CellCount = cellCount;
+        BlockCount = blockCount;
+    }
+
+    public string WorksheetName { get; }
+
+    public string TargetDisplay { get; }
+
+    public long CellCount { get; }
+
+    public int BlockCount { get; }
+}
+
 public sealed class DirectDependentCoordinator
 {
-    public DirectDependentResult Execute(IDependentScanPort port, OperationProgressTracker? tracker = null)
+    /// <summary>
+    /// Planned region size above which the scan must be confirmed before any
+    /// block is read. The AUDITING contract requires a preview before a scan
+    /// above the scan threshold.
+    /// </summary>
+    public const long PreviewThresholdCells = 25_000;
+
+    public DirectDependentResult Execute(
+        IDependentScanPort port,
+        OperationProgressTracker? tracker = null,
+        Func<DependentScanPreview, bool>? confirmScan = null)
     {
         if (port is null) throw new ArgumentNullException(nameof(port));
         var progress = tracker ?? new OperationProgressTracker();
@@ -41,9 +74,26 @@ public sealed class DirectDependentCoordinator
             return DirectDependentResult.Refused(target, scope, refusalCode!, message!);
         }
 
+        if (region!.CellCount > PreviewThresholdCells)
+        {
+            var preview = new DependentScanPreview(
+                region.WorksheetName, AuditPresentationLabels.Location(target), region.CellCount, region.BlockCount);
+            // The confirmation gate runs before any work, so it reports no
+            // progress: OperationPhase.AwaitingConfirmation sorts after Snapshot
+            // for a mutation flow, and the tracker requires monotonic phases.
+            if (confirmScan is null || !confirmScan(preview))
+            {
+                return DirectDependentResult.Refused(
+                    target,
+                    scope,
+                    AuditRefusalCodes.PreviewRequired,
+                    $"Scanning {AuditPresentationLabels.Count(region.CellCount)} cells of worksheet '{region.WorksheetName}' was not confirmed, so nothing was read.");
+            }
+        }
+
         var names = port.CaptureNames(scope);
         var formulas = new List<AuditFormulaCell>();
-        progress.Report(new OperationProgress(OperationPhase.Snapshot, 0, region!.BlockCount, "Reading worksheet formulas."));
+        progress.Report(new OperationProgress(OperationPhase.Snapshot, 0, region.BlockCount, "Reading worksheet formulas."));
 
         for (var index = 0; index < region.BlockCount; index++)
         {
