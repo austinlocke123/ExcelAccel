@@ -125,6 +125,11 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.SelectNumericHardcodes' label='Numeric Hardcodes' keytip='NH' tag='selection.select.numeric_hardcodes' onAction='OnSelectionCommand'/>
                       <button id='ExcelAccel.SelectExternalFormulas' label='External Formulas' keytip='EX' tag='selection.select.external_formulas' onAction='OnSelectionCommand'/>
                     </menu>
+                    <menu id='ExcelAccel.Auditing' label='Audit' keytip='A' imageMso='TracePrecedents'>
+                      <button id='ExcelAccel.DirectPrecedents' label='Trace Direct Precedents' keytip='PD' tag='audit.precedents.direct' onAction='OnAuditCommand'
+                              screentip='Show direct precedents of one formula cell'
+                              supertip='Opens a read-only view of the direct precedents of the selected formula cell. Closed external workbooks are listed but never opened, and no Excel trace arrow or workbook annotation is used.'/>
+                    </menu>
                     <menu id='ExcelAccel.Navigation' label='Navigate' keytip='V' imageMso='GoTo'>
                       <button id='ExcelAccel.PreviousSheet' label='Previous Sheet' keytip='P' tag='navigate.sheet.previous' onAction='OnNavigate'/>
                       <button id='ExcelAccel.NextSheet' label='Next Sheet' keytip='N' tag='navigate.sheet.next' onAction='OnNavigate'/>
@@ -171,6 +176,11 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         var commandId = control.Tag;
         CallbackBoundary.Run(commandId, () => CommandDispatcher.ApplyProfileFormatting(commandId));
+    }
+
+    public void OnAuditCommand(IRibbonControl control)
+    {
+        CallbackBoundary.Run(control.Tag, CommandDispatcher.ShowDirectPrecedents, showResult: false);
     }
 
     public void OnNavigate(IRibbonControl control)

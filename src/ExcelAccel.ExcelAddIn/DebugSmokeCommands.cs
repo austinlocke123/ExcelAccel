@@ -8,12 +8,72 @@ using ExcelAccel.ExcelAddIn.Reliability;
 using ExcelAccel.ExcelInterop;
 using ExcelAccel.Application.Formulas;
 using ExcelAccel.Application.DataCleaning;
+using ExcelAccel.Application.Auditing;
 using System.Windows.Forms;
 
 namespace ExcelAccel.ExcelAddIn;
 
 public static class DebugSmokeCommands
 {
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DirectPrecedents", Description = "Debug-only direct-precedent capture hook.")]
+    public static string DirectPrecedents()
+    {
+        try
+        {
+            var port = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var result = new DirectPrecedentCoordinator().Execute(port);
+            var summary = result.Status + "|" + result.Precedents.Count + "|" +
+                result.UnresolvedEdgeCount + "|" + result.ExternalEdgeCount + "|" +
+                (result.Precedents.Count == 0 ? "none" : result.Precedents[0].Classification.ToString());
+            DiagnosticLog.Info("smoke.audit.precedents.direct", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.precedents.direct", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DirectPrecedentsView", Description = "Debug-only direct-precedent view lifecycle hook.")]
+    public static string DirectPrecedentsView()
+    {
+        try
+        {
+            var result = CommandDispatcher.ShowDirectPrecedents();
+            System.Windows.Forms.Application.DoEvents();
+            var summary = (PrecedentViewRuntime.IsOpen ? "open" : "closed") + "|" +
+                (result.Succeeded ? "success" : result.RefusalCode);
+            DiagnosticLog.Info("smoke.audit.precedents.view", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.precedents.view", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.DirectPrecedentsViewRevalidate", Description = "Debug-only direct-precedent source-revalidation hook.")]
+    public static string DirectPrecedentsViewRevalidate()
+    {
+        try
+        {
+            var retained = PrecedentViewRuntime.RevalidateSource();
+            System.Windows.Forms.Application.DoEvents();
+            var summary = (retained ? "retained" : "discarded") + "|" + (PrecedentViewRuntime.IsOpen ? "open" : "closed");
+            DiagnosticLog.Info("smoke.audit.precedents.view.revalidate", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.precedents.view.revalidate", exception); throw; }
+    }
+
+    [ExcelCommand(Name = "ExcelAccel.Smoke.CloseDirectPrecedentsView", Description = "Debug-only direct-precedent view close hook.")]
+    public static string CloseDirectPrecedentsView()
+    {
+        try
+        {
+            PrecedentViewRuntime.Reset();
+            System.Windows.Forms.Application.DoEvents();
+            var summary = PrecedentViewRuntime.IsOpen ? "open" : "closed";
+            DiagnosticLog.Info("smoke.audit.precedents.view.close", summary);
+            return summary;
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.audit.precedents.view.close", exception); throw; }
+    }
+
     [ExcelCommand(Name = "ExcelAccel.Smoke.OpenAndCloseCommandSearch", Description = "Debug-only command-search UI lifecycle hook.")]
     public static void OpenAndCloseCommandSearch()
     {

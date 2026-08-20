@@ -2,8 +2,7 @@
 
 Snapshot date: **2026-08-19**
 
-Status: **Phase 2 is active; the pure-core WP-2-01 reference snapshot and direct-
-precedent foundation is implemented and its Excel capture slice is next.**
+Status: **Phase 2 is active; WP-2-01 is complete and WP-2-02 is next.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
@@ -44,8 +43,33 @@ fingerprints; execution revalidates, writes under a state guard, verifies the
 post-state, compensates on failure, and records optimistic session undo. A
 receipt-storage failure rolls the completed mutation back.
 
+## WP-2-01 delivered behavior
+
+- A1-only direct precedents for one selected formula cell, captured through a
+  bounded plan, revalidated against the exact source formula, and refused as
+  stale if it changed during capture.
+- A read-only result view stating status, scan scope, parser coverage,
+  limitation/refusal code, unresolved and external edge counts, and whether
+  completeness can be claimed. Deduplicated nodes retain every source-edge span.
+- Closed external references are listed and never opened. No Excel trace arrow
+  or workbook annotation is used, and nothing is written to the workbook.
+- `audit.precedents.direct` is registered through the central dispatcher,
+  Command Search, and a new Ribbon `Audit` menu on KeyTip route
+  `Alt, X, A, A, PD`. It is unavailable, with a stated reason, unless the
+  selection is exactly one single-area cell.
+- The view is discarded on explicit close, on add-in unload, and when its source
+  workbook is no longer open. The workbook probe is read-only and subscribes to
+  no Excel event.
+
 ## Current verification
 
+- WP-2-01 presentation/registration slice: **315/315 Release tests passed**;
+  Release and Debug builds are warning-free; the packed-XLL hidden-Excel smoke
+  passed exact cell/name precedent classification, view open/retain/discard/close
+  lifecycle, selection and content preservation, workbook close, and natural
+  Excel exit with no surviving process. The bounded Phase 1B feature suite
+  measured **1,895 ms**.
+- WP-2-01 capture slice: **305/305 Release tests passed**.
 - WP-2-01 pure-core slice: **302/302 Release tests passed**.
 - Post-merge Release build: **zero warnings, zero errors**.
 - Post-merge Release tests: **288/288 passed**.
@@ -88,11 +112,8 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. Continue WP-2-01 with the bounded Excel main-thread reference capture adapter
-   and Application coordinator described in
-   `docs/evidence/WP-2-01_REFERENCE_SNAPSHOT.md`.
-2. Keep the production direct-precedents command unregistered until its read-only
-   result view and cleanup path exist.
+1. Start WP-2-02: direct dependents and the bounded reverse index.
+2. Do not use Excel trace arrows or workbook annotations.
 3. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.
 4. Continue the normal per-package Release tests and use the short real-Excel

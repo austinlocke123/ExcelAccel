@@ -1,7 +1,9 @@
 using ExcelDna.Integration;
+using ExcelAccel.Application.Auditing;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
+using ExcelAccel.Core.Auditing;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Application.Undo;
 using System;
@@ -48,6 +50,7 @@ internal static class CommandDispatcher
         if (FormulaCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyFormulaCommand(commandId);
         if (DataCleaningCommandCatalog.All.Any(value => value.Id == commandId)) return ApplyDataCleaningCommand(commandId);
         if (SelectionCommandCatalog.All.Any(value => value.Id == commandId)) return ApplySelectionCommand(commandId);
+        if (commandId == AuditingCommandCatalog.DirectPrecedentsId) return ShowDirectPrecedents();
         return CommandResult.Refused(commandId, "The registered command has no available host dispatcher.", RefusalCodes.CommandUnavailable);
     }
 
@@ -87,6 +90,10 @@ internal static class CommandDispatcher
                 if (snapshot.CellCount > ProfileFormattingCommand.MaximumCellCount)
                     return CanExecuteResult.Refuse(RefusalCodes.ResourceLimit, "The selection exceeds the immediate command limit.", "Select a smaller range.");
             }
+            if (descriptor.Id == AuditingCommandCatalog.DirectPrecedentsId &&
+                (snapshot.Safety.AreaCount != 1 || snapshot.CellCount != 1))
+                return CanExecuteResult.Refuse(RefusalCodes.SelectionUnsupported,
+                    "Direct precedents require exactly one selected formula cell.", "Select one formula cell and retry.");
             if (descriptor.Id == "navigate.history.back" && NavigationRuntime.Session.HistoryCount < 2)
                 return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, "No prior navigation location is available.", "Navigate first, then retry.");
             if ((descriptor.Id == "navigate.bookmark.next_session" || descriptor.Id == "navigate.bookmark.previous_session") && NavigationRuntime.Session.BookmarkCount == 0)
@@ -532,6 +539,16 @@ internal static class CommandDispatcher
         var command = new SelectionMatchCommand(descriptor);
         var plan = command.Plan(port.CaptureFormulaBlock(), predicate);
         return command.Execute(plan, port);
+    }
+
+    public static CommandResult ShowDirectPrecedents()
+    {
+        var port = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var result = new DirectPrecedentCoordinator().Execute(port);
+        DiagnosticLog.Info(
+            AuditingCommandCatalog.DirectPrecedentsId,
+            $"status:{result.Status};precedents:{result.Precedents.Count};unresolved:{result.UnresolvedEdgeCount};external:{result.ExternalEdgeCount};coverage:{result.Coverage}");
+        return PrecedentViewRuntime.Present(DirectPrecedentReport.Create(result), result.Source.WorkbookId, port);
     }
 
     private static ExcelSelectionAdapter CreateSelectionAdapter() =>

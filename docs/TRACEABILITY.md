@@ -1,6 +1,6 @@
 # Specification traceability
 
-Status: **Phase 1B implementation/evidence linked; later capabilities remain draft/gated**
+Status: **Phase 1B and WP-2-01 implementation/evidence linked; later capabilities remain draft/gated**
 
 This matrix is the routing index. Detailed authority remains in the linked
 documents.
@@ -45,7 +45,8 @@ documents.
 
 | Capability | Command source | Work package | Acceptance |
 |---|---|---|---|
-| CAP-AUD-001, CAP-AUD-002 | commands/AUDITING | WP-2-01..04 | AC-AUD-001..021 |
+| CAP-AUD-001 (direct precedents) | commands/AUDITING | WP-2-01 (evidence: `evidence/WP-2-01_REFERENCE_SNAPSHOT.md`) | AC-AUD-001..005 |
+| CAP-AUD-001, CAP-AUD-002 (remaining) | commands/AUDITING | WP-2-02..04 | AC-AUD-006..021 |
 | CAP-CHECK-001, CAP-CHECK-002 | commands/MODEL_CHECK | WP-2-05..08 | AC-CHECK-001..037 |
 
 ## 5. Individually gated capabilities

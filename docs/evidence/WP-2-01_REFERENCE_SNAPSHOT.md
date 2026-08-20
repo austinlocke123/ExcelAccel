@@ -2,8 +2,9 @@
 
 Date: 2026-08-19
 
-Status: **Pure-core foundation implemented; Excel capture and presentation slice
-remain in progress**
+Status: **Complete. The pure-core foundation, bounded Excel capture, read-only
+result presentation, and central command registration are implemented and
+verified.**
 
 ## Contract
 
@@ -13,8 +14,7 @@ remain in progress**
 - Allowed implementation: pure Core auditing models/analyzer, deterministic
   tests, and engineering evidence
 - Excluded: dependents, indirect traversal, trace navigation, Model Check,
-  workbook mutation, automatic external-workbook opening, parser expansion, and
-  production command registration before the Excel capture boundary exists
+  workbook mutation, automatic external-workbook opening, and parser expansion
 
 ## Implemented foundation
 
@@ -38,20 +38,107 @@ The snapshot index is capped at 4,096 cell/range classifications and 4,096 name
 bindings. Existing FormulaParser token, length, and nesting ceilings remain the
 formula-side resource boundary.
 
+## Read-only result presentation
+
+- `DirectPrecedentReport` is a pure Core projection of an existing
+  `DirectPrecedentResult`. It formats only what the analyzer already
+  established: it resolves nothing, evaluates nothing, reorders nothing, and
+  reclassifies nothing.
+- Every report states the source, workbook, status, scan scope, parser coverage,
+  limitation/refusal code, precedent count, unresolved and external edge counts,
+  and whether completeness is claimed. A missing captured classification renders
+  as `Not captured` with an `Unresolved` state and can never read as resolved.
+- A closed external edge renders as `External (closed; never opened)`. The view
+  never opens, contacts, or resolves an external workbook.
+- Deduplicated nodes show their edge count and every retained source-edge span,
+  so equivalent references remain one row without losing evidence.
+- A refusal is presented in the same view with its categorized code and no
+  precedent rows, so a refusal can never read as a complete trace.
+- `DirectPrecedentView` is a modeless read-only WinForms view with accessible
+  names on every control. It writes nothing to the workbook, uses no Excel trace
+  arrow or workbook annotation, and holds the analysis in memory only. Nothing
+  beyond status and counts reaches the diagnostic log.
+
+## Cleanup path
+
+The view is discarded on three explicit paths:
+
+- the user closes it (Close button or Esc);
+- `AddInLifecycle.AutoClose` calls `PrecedentViewRuntime.Reset()` on unload;
+- the source workbook is no longer open.
+
+Workbook-close cleanup is a read-only probe rather than a COM event handler. No
+Excel event is subscribed anywhere in the add-in, and this package did not
+introduce the first one. `ExcelReferenceSnapshotAdapter.Probe` enumerates only
+already-open workbooks through the existing Excel-thread and COM-retry
+boundaries and never opens one. The view re-probes on activation and on the
+explicit revalidation path. A `Closed` result discards the analysis and closes
+the view; a transient COM failure reports `Unknown`, which keeps the view open
+under an explicit "state could not be verified" notice rather than claiming the
+source is live. The limitation is deliberate: a closed source workbook is
+detected when the view is next activated or revalidated, not at the instant of
+closing.
+
+## Registration
+
+- `audit.precedents.direct` is registered in `AuditingCommandCatalog`, joined
+  into `BuiltInCommandRegistry`, and routed through the central
+  `CommandDispatcher`. It is read-only, declares no changed property, and has no
+  undo or preview policy.
+- Command Search reports it as unavailable, with a reason, unless the selection
+  is exactly one single-area cell.
+- The Ribbon exposes it under a new `Audit` menu with KeyTip route
+  `Alt, X, A, A, PD`. The route does not collide with any existing control:
+  `A` was unused among the group's KeyTips, and registry-wide keyboard-route
+  uniqueness is asserted by `RegistryEntriesContainCompleteReleaseMetadata`.
+
 ## Verification
 
-- Release tests: **302 passed**, zero failed.
+- Release tests: **315 passed**, zero failed.
 - New golden coverage includes local and quoted-sheet cells/ranges,
   formula/value/error/mixed classification, equivalent-reference deduplication,
   source spans and edge kinds, worksheet-name precedence, unresolved names,
   closed external references, structured-reference partial results, non-formula
   and invalid-formula refusal, R1C1 refusal, defensive copying, missing capture
   classification, and repeat determinism.
+- Presentation coverage adds complete/partial/refused projection, claimed and
+  withheld completeness, retained deduplicated edge spans, closed-external
+  labelling, unresolved names, missing capture classification, named parser
+  coverage gaps, repeat determinism, and the registered descriptor's read-only
+  contract and acceptance IDs.
+- The packed Debug XLL passed the hidden-Excel smoke with exact local-cell and
+  workbook-name precedent classification. The adapter preserved the selection
+  and workbook contents, closed the workbook, released the XLL, and Excel exited
+  naturally with no surviving process.
+- The smoke also proved the view lifecycle end to end: it opened on the
+  registered dispatcher route without touching the selection or workbook
+  contents (`open|success`), retained a result whose workbook is still open
+  (`retained|open`), discarded the analysis and closed the view after its source
+  workbook was closed (`discarded|closed`), and released on the explicit close
+  path (`closed`). The bounded Phase 1B feature suite measured **1,895 ms**.
+
+## Excel capture boundary
+
+- `DirectPrecedentCoordinator` captures one source formula, creates the bounded
+  pure-Core capture plan, requests only declared local targets/names, revalidates
+  the exact source formula, and publishes no analysis if it changed.
+- `ExcelReferenceSnapshotAdapter` runs through the existing Excel-thread and COM
+  retry boundaries. It reads exact target ranges without selecting them and has
+  a 10,000-cell aggregate capture ceiling.
+- Simple worksheet/workbook names are resolved from their local `RefersTo`
+  definition without opening external workbooks. Unsupported, missing,
+  multi-target, external, or oversized definitions remain explicit unresolved
+  edges and therefore cannot produce a completeness claim.
+
+## Retained limitations
+
+- Results are a point-in-time capture. Nothing refreshes them automatically, and
+  a stale source is discarded rather than silently re-analyzed.
+- A closed source workbook is detected on view activation or explicit
+  revalidation, not at the instant of closing.
+- Trace navigation from a result row is deliberately absent; it belongs to
+  WP-2-03 and requires its own target revalidation.
 
 ## Next slice
 
-Add a bounded Excel main-thread capture adapter and Application coordinator that
-capture exactly one formula cell plus the reference classifications/name
-bindings requested by this model, revalidate the source formula, and hand the
-immutable snapshot to the analyzer. Keep the production Ribbon/search command
-unregistered until its read-only result view and cleanup path are available.
+WP-2-02: direct dependents and the bounded reverse index.
