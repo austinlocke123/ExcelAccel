@@ -43,10 +43,7 @@ public sealed class DependentScanScope
                 ? worksheetName
                 : throw new ArgumentException("A worksheet name is required.", nameof(worksheetName)));
 
-    /// <summary>
-    /// Workbook scope is representable so that refusing it is explicit and
-    /// testable. It stays unqualified until WP-2-02b.
-    /// </summary>
+    /// <summary>Every worksheet of one workbook.</summary>
     public static DependentScanScope Workbook(string workbookId) =>
         new DependentScanScope(DependentScanScopeKind.Workbook, workbookId, null);
 }
@@ -188,7 +185,8 @@ public sealed class ReverseReferenceIndex
         DependentScanScope scope,
         IEnumerable<AuditFormulaCell> formulas,
         IEnumerable<AuditNameBinding>? names = null,
-        FormulaDialect? dialect = null)
+        FormulaDialect? dialect = null,
+        int externalGapCount = 0)
     {
         if (scope is null) throw new ArgumentNullException(nameof(scope));
         if (formulas is null) throw new ArgumentNullException(nameof(formulas));
@@ -197,7 +195,9 @@ public sealed class ReverseReferenceIndex
         var parser = new FormulaParser();
         var entries = new List<DependentEntry>();
         var scanned = 0;
-        var gaps = 0;
+        // A worksheet the plan could not include is a coverage gap in its own
+        // right: its formulas were never read.
+        var gaps = externalGapCount;
         var truncated = false;
 
         foreach (var cell in formulas)
@@ -229,15 +229,6 @@ public sealed class ReverseReferenceIndex
     public DirectDependentResult FindDirectDependents(AuditCellIdentity target)
     {
         if (target is null) throw new ArgumentNullException(nameof(target));
-        if (_scope.Kind != DependentScanScopeKind.Worksheet)
-        {
-            return DirectDependentResult.Refused(
-                target,
-                _scope,
-                AuditRefusalCodes.ScopeUnsupported,
-                "Workbook-scope dependent scanning is not qualified yet; declare a worksheet scope.");
-        }
-
         if (!InScope(_scope, target))
         {
             return DirectDependentResult.Refused(

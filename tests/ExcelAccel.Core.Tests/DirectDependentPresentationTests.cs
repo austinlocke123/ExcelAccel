@@ -192,7 +192,7 @@ public sealed class DependentScanPreviewTests
         var result = new DirectDependentCoordinator().Execute(port, null, preview => { observed = preview; return true; });
 
         Assert.NotNull(observed);
-        Assert.Equal(Sheet, observed!.WorksheetName);
+        Assert.Equal("worksheet", observed!.ScopeLabel);
         Assert.Equal("Model!A1", observed.TargetDisplay);
         Assert.Equal(30_000, observed.CellCount);
         Assert.Equal(port.RequestedBands.Count, observed.BlockCount);
@@ -225,9 +225,11 @@ public sealed class DependentScanPreviewTests
 
         public AuditCellIdentity CaptureTarget() => new AuditCellIdentity(Workbook, Sheet, "A1");
 
-        public UsedRegionBounds CaptureUsedRegion(DependentScanScope scope) => _bounds;
+        public IReadOnlyList<string> CaptureWorksheetNames() => new[] { Sheet };
 
-        public IReadOnlyList<AuditFormulaCell> CaptureBlock(DependentScanScope scope, AuditRectangle band)
+        public UsedRegionBounds CaptureUsedRegion(string worksheetName) => _bounds;
+
+        public IReadOnlyList<AuditFormulaCell> CaptureBlock(string worksheetName, AuditRectangle band)
         {
             RequestedBands.Add(band);
             return Array.Empty<AuditFormulaCell>();

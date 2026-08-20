@@ -54,19 +54,25 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
         return new AuditCellIdentity(context.WorkbookId, context.WorksheetName, context.Address);
     }
 
-    public UsedRegionBounds CaptureUsedRegion(DependentScanScope scope)
+    /// <summary>Every visible worksheet, in workbook order.</summary>
+    public IReadOnlyList<string> CaptureWorksheetNames()
     {
-        if (scope is null) throw new ArgumentNullException(nameof(scope));
         _verifyExcelThread();
-        return ExcelComRetry.Execute(() => CaptureUsedRegionOnce(scope));
+        return ExcelComRetry.Execute(CaptureWorksheetNamesOnce);
     }
 
-    public IReadOnlyList<AuditFormulaCell> CaptureBlock(DependentScanScope scope, AuditRectangle band)
+    public UsedRegionBounds CaptureUsedRegion(string worksheetName)
     {
-        if (scope is null) throw new ArgumentNullException(nameof(scope));
-        var worksheetName = scope.WorksheetName
-            ?? throw new ArgumentException("A worksheet scope is required.", nameof(scope));
-        var block = _selection.CaptureFormulaBlock(new SelectionContext(scope.WorkbookId, worksheetName, band.ToString()));
+        if (string.IsNullOrWhiteSpace(worksheetName)) throw new ArgumentException("A worksheet name is required.", nameof(worksheetName));
+        _verifyExcelThread();
+        return ExcelComRetry.Execute(() => CaptureUsedRegionOnce(worksheetName));
+    }
+
+    public IReadOnlyList<AuditFormulaCell> CaptureBlock(string worksheetName, AuditRectangle band)
+    {
+        if (string.IsNullOrWhiteSpace(worksheetName)) throw new ArgumentException("A worksheet name is required.", nameof(worksheetName));
+        var workbookId = CaptureTarget().WorkbookId;
+        var block = _selection.CaptureFormulaBlock(new SelectionContext(workbookId, worksheetName, band.ToString()));
         var formulas = new List<AuditFormulaCell>();
         for (var row = 0; row < block.Contents.RowCount; row++)
         {
@@ -76,7 +82,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
                 if (!cell.IsFormula) continue;
                 formulas.Add(new AuditFormulaCell(
                     new AuditCellIdentity(
-                        scope.WorkbookId,
+                        workbookId,
                         worksheetName,
                         AuditAddress.Cell(block.FirstRow + row, block.FirstColumn + column)),
                     cell.InvariantValue));
@@ -100,7 +106,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
         }
     }
 
-    private UsedRegionBounds CaptureUsedRegionOnce(DependentScanScope scope)
+    private UsedRegionBounds CaptureUsedRegionOnce(string worksheetName)
     {
         object? applicationObject = null;
         object? workbookObject = null;
@@ -116,13 +122,13 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
             workbookObject = ((dynamic)applicationObject).ActiveWorkbook;
             if (workbookObject is null) throw MissingWorkbook();
             worksheetsObject = ((dynamic)workbookObject).Worksheets;
-            worksheetObject = ((dynamic)worksheetsObject)[scope.WorksheetName!];
+            worksheetObject = ((dynamic)worksheetsObject)[worksheetName];
             usedObject = ((dynamic)worksheetObject).UsedRange;
-            if (usedObject is null) return new UsedRegionBounds(scope.WorksheetName!, 1, 1, 0, 0);
+            if (usedObject is null) return new UsedRegionBounds(worksheetName, 1, 1, 0, 0);
             rowsObject = ((dynamic)usedObject).Rows;
             columnsObject = ((dynamic)usedObject).Columns;
             return new UsedRegionBounds(
-                scope.WorksheetName!,
+                worksheetName,
                 Convert.ToInt32(((dynamic)usedObject).Row, CultureInfo.InvariantCulture),
                 Convert.ToInt32(((dynamic)usedObject).Column, CultureInfo.InvariantCulture),
                 Convert.ToInt32(((dynamic)rowsObject).Count, CultureInfo.InvariantCulture),
@@ -134,6 +140,44 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
             ComRelease.Owned(rowsObject);
             ComRelease.Owned(usedObject);
             ComRelease.Owned(worksheetObject);
+            ComRelease.Owned(worksheetsObject);
+            ComRelease.Owned(workbookObject);
+        }
+    }
+
+    private IReadOnlyList<string> CaptureWorksheetNamesOnce()
+    {
+        var names = new List<string>();
+        object? applicationObject = null;
+        object? workbookObject = null;
+        object? worksheetsObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            workbookObject = ((dynamic)applicationObject).ActiveWorkbook;
+            if (workbookObject is null) throw MissingWorkbook();
+            worksheetsObject = ((dynamic)workbookObject).Worksheets;
+            var count = Convert.ToInt32(((dynamic)worksheetsObject).Count, CultureInfo.InvariantCulture);
+            for (var index = 1; index <= count; index++)
+            {
+                object? worksheetObject = null;
+                try
+                {
+                    worksheetObject = ((dynamic)worksheetsObject)[index];
+                    var name = Convert.ToString(((dynamic)worksheetObject).Name, CultureInfo.InvariantCulture);
+                    if (!string.IsNullOrWhiteSpace(name)) names.Add(name!);
+                }
+                finally
+                {
+                    ComRelease.Owned(worksheetObject);
+                }
+            }
+
+            return names;
+        }
+        finally
+        {
             ComRelease.Owned(worksheetsObject);
             ComRelease.Owned(workbookObject);
         }
@@ -152,10 +196,11 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
             ExcelCommandReadiness.RequireReady(applicationObject);
             workbookObject = ((dynamic)applicationObject).ActiveWorkbook;
             if (workbookObject is null) throw MissingWorkbook();
-            Collect(((dynamic)workbookObject).Names, AuditNameScope.Workbook, scope, bindings);
+            var anchorWorksheet = scope.WorksheetName ?? CaptureTarget().WorksheetName;
+            Collect(((dynamic)workbookObject).Names, AuditNameScope.Workbook, scope, anchorWorksheet, bindings);
             worksheetsObject = ((dynamic)workbookObject).Worksheets;
-            worksheetObject = ((dynamic)worksheetsObject)[scope.WorksheetName!];
-            Collect(((dynamic)worksheetObject).Names, AuditNameScope.Worksheet, scope, bindings);
+            worksheetObject = ((dynamic)worksheetsObject)[scope.WorksheetName ?? CaptureTarget().WorksheetName];
+            Collect(((dynamic)worksheetObject).Names, AuditNameScope.Worksheet, scope, anchorWorksheet, bindings);
             return bindings;
         }
         finally
@@ -170,6 +215,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
         object? namesObject,
         AuditNameScope nameScope,
         DependentScanScope scope,
+        string anchorWorksheet,
         ICollection<AuditNameBinding> bindings)
     {
         if (namesObject is null) return;
@@ -182,7 +228,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
                 try
                 {
                     nameObject = ((dynamic)namesObject).Item(index);
-                    var binding = TryBind(nameObject, nameScope, scope);
+                    var binding = TryBind(nameObject, nameScope, scope, anchorWorksheet);
                     if (binding is not null) bindings.Add(binding);
                 }
                 catch (COMException)
@@ -207,7 +253,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
     /// omitted so the reverse index reports it as a coverage gap rather than
     /// guessing. External definitions are never followed.
     /// </summary>
-    private static AuditNameBinding? TryBind(object nameObject, AuditNameScope nameScope, DependentScanScope scope)
+    private static AuditNameBinding? TryBind(object nameObject, AuditNameScope nameScope, DependentScanScope scope, string anchorWorksheet)
     {
         var name = Convert.ToString(((dynamic)nameObject).Name, CultureInfo.InvariantCulture);
         if (string.IsNullOrWhiteSpace(name)) return null;
@@ -220,14 +266,14 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
 
         var refersTo = Convert.ToString(((dynamic)nameObject).RefersTo, CultureInfo.InvariantCulture);
         if (string.IsNullOrWhiteSpace(refersTo)) return null;
-        var anchor = new AuditCellIdentity(scope.WorkbookId, scope.WorksheetName!, "A1");
+        var anchor = new AuditCellIdentity(scope.WorkbookId, anchorWorksheet, "A1");
         var plan = new DirectPrecedentAnalyzer().CreateCapturePlan(anchor, refersTo!);
         if (plan.LocalTargets.Count != 1 || plan.NameCandidates.Count != 0) return null;
         return new AuditNameBinding(
             name!,
             nameScope,
             plan.LocalTargets[0],
-            nameScope == AuditNameScope.Worksheet ? scope.WorksheetName : null);
+            nameScope == AuditNameScope.Worksheet ? anchorWorksheet : null);
     }
 
     private static CommandRefusedException MissingWorkbook() => new CommandRefusedException(

@@ -133,6 +133,9 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.DirectDependents' label='Trace Direct Dependents' keytip='DD' tag='audit.dependents.direct' onAction='OnAuditCommand'
                               screentip='Scan this worksheet for formulas that read the selection'
                               supertip='Opens a read-only view of the formulas on the active worksheet that read the selected cell or range. The scan is bounded, cancellable, confirmed before a large worksheet, and never widens beyond this worksheet. No Excel trace arrow or workbook annotation is used.'/>
+                      <button id='ExcelAccel.WorkbookDependents' label='Trace Dependents Across Workbook' keytip='DW' tag='audit.dependents.workbook' onAction='OnAuditCommand'
+                              screentip='Scan every worksheet for formulas that read the selection'
+                              supertip='Opens a read-only view of the formulas anywhere in this workbook that read the selected cell or range. The sheet inventory is always confirmed before anything is read, a worksheet that cannot be bounded is excluded with a stated reason, and the scan is cancellable.'/>
                       <button id='ExcelAccel.IndirectPrecedents' label='Trace Indirect Precedents' keytip='PI' tag='audit.precedents.indirect' onAction='OnAuditCommand'
                               screentip='Follow the precedent chain upstream'
                               supertip='Opens a read-only view of the precedent chain above the selected formula cell, breadth-first within explicit depth and node caps. Cycles terminate and are shown as cycle edges. No Excel trace arrow or workbook annotation is used.'/>
@@ -147,6 +150,9 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.ModelCheckWorksheet' label='Check Worksheet' keytip='MW' tag='model_check.run.worksheet' onAction='OnModelCheckCommand'
                               screentip='Run Model Check rules over this worksheet'
                               supertip='Runs the enabled deterministic rules over the active worksheet used region. A large worksheet is confirmed before anything is read.'/>
+                      <button id='ExcelAccel.ModelCheckWorkbook' label='Check Workbook' keytip='MB' tag='model_check.run.workbook' onAction='OnModelCheckCommand'
+                              screentip='Run Model Check rules over every worksheet'
+                              supertip='Runs the enabled deterministic rules over every worksheet in the workbook. The sheet inventory is always confirmed before anything is read, and a worksheet that cannot be bounded is excluded with a stated reason.'/>
                       <button id='ExcelAccel.ModelCheckRescan' label='Rescan' keytip='MR' tag='model_check.rescan' onAction='OnModelCheckCommand'
                               screentip='Repeat the prior scan against a fresh snapshot'
                               supertip='Repeats the exact prior scope and rule configuration against a newly captured snapshot. Prior findings are never relabelled as current.'/>
@@ -212,7 +218,7 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         var commandId = control.Tag;
         CallbackBoundary.Run(commandId, () => CommandDispatcher.InvokeRegistered(commandId, null, InvocationSource.Ribbon),
-            showResult: commandId != ModelCheckCommandCatalog.RunSelectionId && commandId != ModelCheckCommandCatalog.RunWorksheetId && commandId != ModelCheckCommandCatalog.RescanId);
+            showResult: commandId != ModelCheckCommandCatalog.RunSelectionId && commandId != ModelCheckCommandCatalog.RunWorksheetId && commandId != ModelCheckCommandCatalog.RunWorkbookId && commandId != ModelCheckCommandCatalog.RescanId);
     }
 
     public void OnAuditCommand(IRibbonControl control)

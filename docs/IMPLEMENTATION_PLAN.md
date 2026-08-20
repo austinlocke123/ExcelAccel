@@ -163,22 +163,41 @@ expand silently, so WP-2-02 is delivered in two scope slices:
   it establishes the reverse-index design, the brute-force equivalence oracle
   required by AC-AUD-007, the coverage-gap accounting required by AC-AUD-008,
   and the bounded-resource behavior required by AC-AUD-009.
-- **WP-2-02b, workbook scope.** Deferred until the workbook-scale performance
-  gate below is resolved and a dependent-scan performance corpus exists.
+- **WP-2-02b, workbook scope.** Delivered. The workbook-scale gate was resolved
+  in favour of a bounded opening once WP-2-09 supplied the measured corpus; see
+  the resolution below.
 
 An Excel worksheet's reported used range is routinely far larger than its real
 content because of stray formatting. A dependent scan MUST NOT trust it as a
 resource bound; an oversized scan region returns an explicit bounded partial
 result rather than a hang.
 
-### Unresolved: workbook-scale performance gate
+### Resolved: workbook-scale performance gate
 
-Section 4 states that workbook-scale performance remains disabled until its
-retained gate passes. The retained-gate list in
-[`PROJECT_STATUS.md`](PROJECT_STATUS.md) no longer names it. WP-2-02 is the
-first package that needs workbook-scale reads, so the two documents disagree on
-a point that changes scope. This is a stop sign for WP-2-02b and requires a
-human decision; WP-2-02a is deliberately outside it.
+Section 4 previously stated that workbook-scale performance remained disabled
+until its retained gate passed, while the retained-gate list in
+[`PROJECT_STATUS.md`](PROJECT_STATUS.md) no longer named it. The two documents
+disagreed on a point that changed scope, and WP-2-02b was held for a human
+decision.
+
+**Resolved on 2026-08-20: opened, bounded.** WP-2-09 measured a worksheet
+dependent scan at 200 ms P95 over 10,040 formulas and a Model Check scan at
+951 ms over 16,000 cells, both far under budget and both on the slower Debug
+build. Workbook scope is therefore permitted under explicit bounds rather than
+left indefinitely deferred:
+
+- at most 64 worksheets and 1,000,000 aggregate cells per workbook scan;
+- a worksheet that cannot be bounded is excluded with a stated reason rather
+  than failing the whole workbook, and an exclusion is a coverage gap that
+  blocks any completeness claim;
+- a plan with nothing left to read refuses with the first exclusion reason,
+  rather than returning an empty result that would read as "nothing found";
+- the sheet inventory is **always** confirmed before a workbook scan reads
+  anything, whatever its size;
+- the scan remains cancellable throughout.
+
+Section 4's blanket statement is superseded for this capability. Workbook-scale
+*mutation* remains out of scope; only read-only scanning is opened.
 
 ### WP-2-04 depends on parser work the table does not show
 

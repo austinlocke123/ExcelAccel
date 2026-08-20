@@ -45,11 +45,9 @@ public sealed class ExcelModelCheckSnapshotAdapter : IModelCheckSnapshotPort
         return new AuditCellIdentity(context.WorkbookId, context.WorksheetName, context.Address);
     }
 
-    public UsedRegionBounds CaptureUsedRegion(string worksheetName)
-    {
-        var target = CaptureTarget();
-        return _scan.CaptureUsedRegion(DependentScanScope.Worksheet(target.WorkbookId, worksheetName));
-    }
+    public IReadOnlyList<string> CaptureWorksheetNames() => _scan.CaptureWorksheetNames();
+
+    public UsedRegionBounds CaptureUsedRegion(string worksheetName) => _scan.CaptureUsedRegion(worksheetName);
 
     public IReadOnlyList<ModelCheckCell> CaptureBlock(string worksheetName, AuditRectangle band)
     {

@@ -10,6 +10,7 @@ public static class ModelCheckCommandCatalog
 {
     public const string RunSelectionId = "model_check.run.selection";
     public const string RunWorksheetId = "model_check.run.worksheet";
+    public const string RunWorkbookId = "model_check.run.workbook";
     public const string RescanId = "model_check.rescan";
     public const string IgnoreLocalId = "model_check.finding.ignore_local";
     public const string UnignoreLocalId = "model_check.finding.unignore_local";
@@ -31,6 +32,13 @@ public static class ModelCheckCommandCatalog
             "Run the enabled Model Check rules over the active worksheet's used region. A large worksheet is confirmed before anything is read.",
             PreviewPolicy.Threshold,
             new[] { "AC-CHECK-001", "AC-CHECK-002", "AC-CHECK-006", "AC-CHECK-007" }),
+        ReadOnly(
+            RunWorkbookId,
+            "Model Check Workbook",
+            "MB",
+            "Run the enabled Model Check rules over every worksheet in the workbook. The sheet inventory is always confirmed before anything is read, and a worksheet that cannot be bounded is excluded with a stated reason.",
+            PreviewPolicy.Mandatory,
+            new[] { "AC-CHECK-001", "AC-CHECK-002", "AC-CHECK-006", "AC-CHECK-008" }),
         ReadOnly(
             RescanId,
             "Model Check Rescan",
