@@ -3,14 +3,18 @@
 ExcelAccel is a native Windows Excel add-in for fast, deterministic,
 keyboard-first financial-modeling workflows.
 
-The repository has **closed Phase 0 for the Phase 1A production foundation**.
+The repository has **closed Phase 0 and Phase 1A/1B, and Phase 2 is active**.
 It contains a real 64-bit Excel-DNA `.xll`, a pure command core, reliability
 boundaries, profile-driven property-scoped formatting, read-only navigation,
-optimistic session undo, recovery/diagnostics, and per-user installer source.
+optimistic session undo, recovery/diagnostics, per-user installer source, the
+Phase 1B daily-speed feature core, and WP-2-01 direct precedents.
+Core, Application, ExcelInterop, and the thin Excel-DNA host are separated by an
+enforced acyclic dependency graph.
+
 It is not yet qualified for distribution; retained formula, performance,
-collaboration, and clean-machine gates remain fail-closed.
-WP-1A-01 now separates Core, Application, ExcelInterop, and the thin Excel-DNA
-host with an enforced acyclic dependency graph.
+collaboration, and clean-machine gates remain fail-closed. See
+[Project status](docs/PROJECT_STATUS.md) for the current snapshot, verification
+numbers, and the restart point.
 
 ## Start here
 
@@ -38,6 +42,18 @@ host with an enforced acyclic dependency graph.
 22. [WP-1A-04/05 profiles and Quick Keys evidence](docs/evidence/WP-1A-04_05_PROFILES_QUICK_KEYS.md)
 23. [WP-1A-06/08 formatting and navigation evidence](docs/evidence/WP-1A-06_08_FORMATTING_NAVIGATION.md)
 24. [WP-1A safety runtime and distribution-source evidence](docs/evidence/WP-1A-07_09_10_11_12_SAFETY_RUNTIME.md)
+25. [WP-1B command search and favorites evidence](docs/evidence/WP-1B-01_COMMAND_SEARCH_FAVORITES.md)
+26. [WP-1B style recipe evidence](docs/evidence/WP-1B-02_STYLE_RECIPES.md)
+27. [WP-1B profile exchange evidence](docs/evidence/WP-1B-03_PROFILE_EXCHANGE.md)
+28. [WP-1B formula foundation evidence](docs/evidence/WP-1B-FORMULA_FOUNDATION.md)
+29. [WP-1B formula command evidence](docs/evidence/WP-1B-05_07_FORMULA_COMMANDS.md)
+30. [WP-1B advanced formula planner evidence](docs/evidence/WP-1B-06_08_ADVANCED_FORMULA_PLANNERS.md)
+31. [WP-1B data cleaning evidence](docs/evidence/WP-1B-09_10_DATA_CLEANING.md)
+32. [WP-1B selection tools evidence](docs/evidence/WP-1B-11_SELECTION_TOOLS.md)
+33. [WP-1B qualification evidence](docs/evidence/WP-1B-12_QUALIFICATION.md)
+34. [WP-2-01 reference snapshot and direct precedents evidence](docs/evidence/WP-2-01_REFERENCE_SNAPSHOT.md)
+35. [WP-2-02 direct dependents evidence](docs/evidence/WP-2-02_DIRECT_DEPENDENTS.md)
+36. [Project status and restart guide](docs/PROJECT_STATUS.md)
 
 ## Build and test
 

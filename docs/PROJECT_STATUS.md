@@ -2,7 +2,7 @@
 
 Snapshot date: **2026-08-19**
 
-Status: **Phase 2 is active; WP-2-01 is complete and WP-2-02 is next.**
+Status: **Phase 2 is active; WP-2-01 is complete and WP-2-02a is in progress.**
 
 ExcelAccel is a native Windows desktop Excel-DNA add-in. The repository now
 contains the Phase 0 safety foundation, Phase 1A command/format/navigation
@@ -61,8 +61,30 @@ receipt-storage failure rolls the completed mutation back.
   workbook is no longer open. The workbook probe is read-only and subscribes to
   no Excel event.
 
+## WP-2-02a in progress
+
+The pure-core bounded reverse index is implemented for **worksheet scope only**.
+Scan scope is an explicitly declared value; workbook scope, an out-of-scope
+target, and unsupported target notation are each refused with a stable code, and
+an out-of-scope formula is counted as a coverage gap rather than read. Each
+formula is parsed once at build time; queries intersect rectangles and never
+re-parse. The scan is capped at 20,000 formulas and truncates explicitly. An
+independent brute-force oracle in the test suite proves AC-AUD-007 equivalence.
+
+The Excel scan boundary, progress/cancellation wiring, and result presentation
+remain. Workbook scope stays unqualified pending the workbook-scale performance
+gate noted in the implementation plan.
+
+A defect that shipped in WP-2-01 was found and fixed here: A1 column names were
+wrong for every exact multiple of 26 (Z rendered as AZ), which made precedent
+capture read and display the wrong cell. See
+`docs/evidence/WP-2-02_DIRECT_DEPENDENTS.md`.
+
 ## Current verification
 
+- WP-2-02a pure-core slice: **361/361 Release tests passed**; Release and Debug
+  builds warning-free; the hidden-Excel smoke passed unchanged after the shared
+  address refactor.
 - WP-2-01 presentation/registration slice: **315/315 Release tests passed**;
   Release and Debug builds are warning-free; the packed-XLL hidden-Excel smoke
   passed exact cell/name precedent classification, view open/retain/discard/close
@@ -112,7 +134,9 @@ broad distribution approaches, not before ordinary feature development.
 
 ## Recommended restart point
 
-1. Start WP-2-02: direct dependents and the bounded reverse index.
+1. Continue WP-2-02a with the bounded Excel worksheet scan boundary, progress
+   and cancellation wiring, and result presentation. Do not trust an Excel
+   worksheet's reported used range as a resource bound.
 2. Do not use Excel trace arrows or workbook annotations.
 3. Keep all retained gates above closed unless a dedicated work package supplies
    their missing evidence.

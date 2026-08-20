@@ -153,6 +153,43 @@ ADR-0004 is accepted for formula work.
 | WP-2-08 | Finding navigation, local ignores, rescan, and export | WP-2-05/06/07 | AC-CHECK-029..037 |
 | WP-2-09 | Phase 2 large-corpus, cancellation, privacy, performance, and soak qualification | all Phase 2 packages | Applicable GA gates |
 
+### WP-2-02 scope slicing
+
+AC-AUD-006 makes scan scope an explicitly declared parameter that may never
+expand silently, so WP-2-02 is delivered in two scope slices:
+
+- **WP-2-02a, worksheet scope.** The declared scope is one worksheet. This is
+  the first package to wire `OperationProgressTracker` to a real operation, and
+  it establishes the reverse-index design, the brute-force equivalence oracle
+  required by AC-AUD-007, the coverage-gap accounting required by AC-AUD-008,
+  and the bounded-resource behavior required by AC-AUD-009.
+- **WP-2-02b, workbook scope.** Deferred until the workbook-scale performance
+  gate below is resolved and a dependent-scan performance corpus exists.
+
+An Excel worksheet's reported used range is routinely far larger than its real
+content because of stray formatting. A dependent scan MUST NOT trust it as a
+resource bound; an oversized scan region returns an explicit bounded partial
+result rather than a hang.
+
+### Unresolved: workbook-scale performance gate
+
+Section 4 states that workbook-scale performance remains disabled until its
+retained gate passes. The retained-gate list in
+[`PROJECT_STATUS.md`](PROJECT_STATUS.md) no longer names it. WP-2-02 is the
+first package that needs workbook-scale reads, so the two documents disagree on
+a point that changes scope. This is a stop sign for WP-2-02b and requires a
+human decision; WP-2-02a is deliberately outside it.
+
+### WP-2-04 depends on parser work the table does not show
+
+The dependency table lists WP-2-04 against WP-2-01 alone, which understates it.
+`FormulaSyntaxDocument` exposes a token stream and a flat reference list; there
+is no syntax tree, and every shipped formula transform rewrites at token level.
+AC-AUD-016 requires an immutable tree of functions, operators, constants,
+references, arrays, and nesting. WP-2-04 therefore requires building a real
+parse tree inside the qualified parser and is ADR-0004 work, not view-layer
+work. It must not be picked up as a cheap package.
+
 ## 7. Individually gated feature work packages
 
 These packages are not one combined phase. Each requires explicit approval after

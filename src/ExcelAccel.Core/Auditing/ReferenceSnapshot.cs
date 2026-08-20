@@ -271,4 +271,7 @@ public static class AuditRefusalCodes
     public const string NotationUnsupported = "AUDIT_NOTATION_UNSUPPORTED";
     public const string NameUnresolved = "AUDIT_NAME_UNRESOLVED";
     public const string StaleTarget = "AUDIT_STALE_TARGET";
+    public const string ScopeUnsupported = "AUDIT_SCOPE_UNSUPPORTED";
+    public const string TargetOutsideScope = "AUDIT_TARGET_OUTSIDE_SCOPE";
+    public const string ScanTruncated = "AUDIT_SCAN_TRUNCATED";
 }
