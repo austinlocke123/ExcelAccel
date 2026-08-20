@@ -4,6 +4,8 @@ using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
 using ExcelAccel.Application.Operations;
+using ExcelAccel.Application.ModelCheck;
+using ExcelAccel.Core.ModelCheck;
 using ExcelAccel.Core.Auditing;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Application.Undo;
@@ -55,6 +57,12 @@ internal static class CommandDispatcher
         if (commandId == AuditingCommandCatalog.DirectDependentsId) return ShowDirectDependents();
         if (commandId == AuditingCommandCatalog.IndirectPrecedentsId) return ShowIndirectTrace(TraceDirection.Precedents);
         if (commandId == AuditingCommandCatalog.IndirectDependentsId) return ShowIndirectTrace(TraceDirection.Dependents);
+        if (commandId == ModelCheckCommandCatalog.RunSelectionId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Selection);
+        if (commandId == ModelCheckCommandCatalog.RunWorksheetId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Worksheet);
+        if (commandId == ModelCheckCommandCatalog.RescanId) return ModelCheckRuntime.Rescan();
+        if (commandId == ModelCheckCommandCatalog.IgnoreLocalId) return ModelCheckRuntime.IgnoreSelected();
+        if (commandId == ModelCheckCommandCatalog.UnignoreLocalId) return ModelCheckRuntime.ManageIgnores();
+        if (commandId == ModelCheckCommandCatalog.ExportId) return ModelCheckRuntime.Export();
         return CommandResult.Refused(commandId, "The registered command has no available host dispatcher.", RefusalCodes.CommandUnavailable);
     }
 

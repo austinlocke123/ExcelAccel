@@ -1,5 +1,6 @@
 using ExcelDna.Integration.CustomUI;
 using ExcelAccel.Application.Commands;
+using ExcelAccel.Application.ModelCheck;
 using ExcelAccel.ExcelAddIn.Reliability;
 
 namespace ExcelAccel.ExcelAddIn;
@@ -139,6 +140,26 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                               screentip='Follow the dependent chain downstream in this worksheet'
                               supertip='Opens a read-only view of the dependent chain below the selection within the active worksheet, breadth-first within explicit depth and node caps. The worksheet is scanned once and cycles terminate. No Excel trace arrow or workbook annotation is used.'/>
                     </menu>
+                    <menu id='ExcelAccel.ModelCheck' label='Model Check' keytip='K' imageMso='ReviewShowMarkupMenu'>
+                      <button id='ExcelAccel.ModelCheckSelection' label='Check Selection' keytip='MS' tag='model_check.run.selection' onAction='OnModelCheckCommand'
+                              screentip='Run Model Check rules over the selection'
+                              supertip='Runs the enabled deterministic rules over the current selection and shows findings in a read-only view. It never changes the workbook and never scores it.'/>
+                      <button id='ExcelAccel.ModelCheckWorksheet' label='Check Worksheet' keytip='MW' tag='model_check.run.worksheet' onAction='OnModelCheckCommand'
+                              screentip='Run Model Check rules over this worksheet'
+                              supertip='Runs the enabled deterministic rules over the active worksheet used region. A large worksheet is confirmed before anything is read.'/>
+                      <button id='ExcelAccel.ModelCheckRescan' label='Rescan' keytip='MR' tag='model_check.rescan' onAction='OnModelCheckCommand'
+                              screentip='Repeat the prior scan against a fresh snapshot'
+                              supertip='Repeats the exact prior scope and rule configuration against a newly captured snapshot. Prior findings are never relabelled as current.'/>
+                      <button id='ExcelAccel.ModelCheckIgnore' label='Ignore Finding...' keytip='MI' tag='model_check.finding.ignore_local' onAction='OnModelCheckCommand'
+                              screentip='Suppress a finding locally'
+                              supertip='Stores the rule identity and a normalized fingerprint locally. No formula or value content is stored, and a rescan is required to apply it.'/>
+                      <button id='ExcelAccel.ModelCheckUnignore' label='Manage Ignores...' keytip='MU' tag='model_check.finding.unignore_local' onAction='OnModelCheckCommand'
+                              screentip='Show and remove local ignores'
+                              supertip='Lists the active local ignores and removes selected entries. A rescan is required for a removal to take effect.'/>
+                      <button id='ExcelAccel.ModelCheckExport' label='Export Findings...' keytip='ME' tag='model_check.results.export' onAction='OnModelCheckCommand'
+                              screentip='Write findings to a local file'
+                              supertip='Writes the current findings to a local file after confirming a manifest. Formulas and values are excluded by default and nothing is transmitted.'/>
+                    </menu>
                     <menu id='ExcelAccel.Navigation' label='Navigate' keytip='V' imageMso='GoTo'>
                       <button id='ExcelAccel.PreviousSheet' label='Previous Sheet' keytip='P' tag='navigate.sheet.previous' onAction='OnNavigate'/>
                       <button id='ExcelAccel.NextSheet' label='Next Sheet' keytip='N' tag='navigate.sheet.next' onAction='OnNavigate'/>
@@ -185,6 +206,13 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     {
         var commandId = control.Tag;
         CallbackBoundary.Run(commandId, () => CommandDispatcher.ApplyProfileFormatting(commandId));
+    }
+
+    public void OnModelCheckCommand(IRibbonControl control)
+    {
+        var commandId = control.Tag;
+        CallbackBoundary.Run(commandId, () => CommandDispatcher.InvokeRegistered(commandId, null, InvocationSource.Ribbon),
+            showResult: commandId != ModelCheckCommandCatalog.RunSelectionId && commandId != ModelCheckCommandCatalog.RunWorksheetId && commandId != ModelCheckCommandCatalog.RescanId);
     }
 
     public void OnAuditCommand(IRibbonControl control)
