@@ -43,7 +43,12 @@ function Write-State {
     $temporary = Join-Path $installPath ('.install-state.' + [Guid]::NewGuid().ToString('N') + '.tmp')
     $State | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $temporary -Encoding UTF8
     if (Test-Path -LiteralPath $statePath) {
-        [IO.File]::Replace($temporary, $statePath, $null, $true)
+        # PowerShell binds $null to an empty string for a string parameter, and
+        # File.Replace rejects that as an illegal path. Use a real backup file
+        # and remove it once the replace has succeeded.
+        $backup = $statePath + '.backup'
+        [IO.File]::Replace($temporary, $statePath, $backup, $true)
+        Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
     }
     else { [IO.File]::Move($temporary, $statePath) }
 }
@@ -125,7 +130,22 @@ if ($Action -in @('Install', 'Upgrade')) {
             $state.active_version = $version
         }
         Set-OwnedRegistration -State $state -XllPath $xll
-        Write-State -State $state
+        try {
+            Write-State -State $state
+        }
+        catch {
+            # The registry and the state file cannot be written atomically
+            # together. If the state write fails, put the registration back so
+            # the two can never disagree; an inconsistent pair would make every
+            # later installer action refuse.
+            if ($null -ne $existingState -and $existingState.previous_version -ne $null) {
+                $previousXll = Join-Path $installPath "versions\$($state.previous_version)\ExcelAccel-AddIn64-packed.xll"
+                if (Test-Path -LiteralPath $previousXll) {
+                    Set-OwnedRegistration -State $existingState -XllPath $previousXll
+                }
+            }
+            throw
+        }
         [pscustomobject]@{ Action = $Action; Version = $version; RegisteredValue = $state.registry_value_name; Signature = $verification.SignatureStatus }
     }
     return
