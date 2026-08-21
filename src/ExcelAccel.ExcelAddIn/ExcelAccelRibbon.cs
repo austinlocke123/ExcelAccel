@@ -84,6 +84,7 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.FormulaFromThousands' label='From Thousands (times 1,000)' keytip='F' tag='formula.units.from_thousands' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaToMillions' label='To Millions (divide by 1,000,000)' keytip='M' tag='formula.units.to_millions' onAction='OnFormulaCommand'/>
                       <button id='ExcelAccel.FormulaFromMillions' label='From Millions (times 1,000,000)' keytip='N' tag='formula.units.from_millions' onAction='OnFormulaCommand'/>
+                      <button id='ExcelAccel.FormulaToBasisPoints' label='To Basis Points (times 10,000)' keytip='B' tag='formula.units.to_basis_points' onAction='OnFormulaCommand'/>
                     </menu>
                     <menu id='ExcelAccel.SmartCopy' label='Smart Copy' keytip='RC' imageMso='Copy'>
                       <button id='ExcelAccel.FormulaCopyDown' label='Smart Copy Down' keytip='D' tag='formula.copy.down' onAction='OnFormulaCommand'/>

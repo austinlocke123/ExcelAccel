@@ -81,6 +81,7 @@ public static class RibbonRoutes
         { "formula.spacing.rows", "Alt, X, A, RS, R" },
         { "formula.transpose", "Alt, X, A, RP, R" },
         { "formula.units.from_millions", "Alt, X, A, RU, N" },
+        { "formula.units.to_basis_points", "Alt, X, A, RU, B" },
         { "formula.units.from_thousands", "Alt, X, A, RU, F" },
         { "formula.units.to_millions", "Alt, X, A, RU, M" },
         { "formula.units.to_thousands", "Alt, X, A, RU, T" },

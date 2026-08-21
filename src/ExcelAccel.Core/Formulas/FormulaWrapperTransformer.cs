@@ -76,9 +76,12 @@ public sealed class FormulaWrapperTransformer
             return admission;
         }
 
-        if (scale != 1000 && scale != 1000000)
+        // An allowlist rather than a range: every accepted scale is one a
+        // reviewer has reasoned about. 10,000 carries basis points, where a rate
+        // held as 0.0125 becomes 125.
+        if (scale != 1000 && scale != 10000 && scale != 1000000)
         {
-            return InvalidArgument("The qualified unit scale must be 1,000 or 1,000,000.");
+            return InvalidArgument("The qualified unit scale must be 1,000, 10,000, or 1,000,000.");
         }
 
         return FormulaTransformResult.Success(

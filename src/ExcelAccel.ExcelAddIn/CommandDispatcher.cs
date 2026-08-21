@@ -431,6 +431,13 @@ internal static class CommandDispatcher
             case "formula.units.from_millions":
                 plan = command.PlanScale(snapshot, 1000000, divide: false, includeNumericConstants: false, previewLimit);
                 break;
+            case "formula.units.to_basis_points":
+                // A rate stored as 0.0125 becomes 125. Excel cannot express a
+                // scaling basis-point display format, which is why this is a
+                // value transform rather than a number format; see
+                // docs/commands/FORMAT_CYCLES.md.
+                plan = command.PlanScale(snapshot, 10000, divide: false, includeNumericConstants: false, previewLimit);
+                break;
             default:
                 return CommandResult.Refused(commandId, "The formula command has no qualified host route.", RefusalCodes.CommandUnavailable);
         }
