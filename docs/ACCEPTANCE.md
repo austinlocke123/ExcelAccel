@@ -115,7 +115,7 @@ only from the recorded Phase 0 closure commit.
 | ID | Criterion |
 |---|---|
 | AC-FMT-001 | Each cycle changes only its named property and advances according to the validated active profile and approved mixed-selection rule. |
-| AC-FMT-002 | Named number-format commands apply the exact profile format without changing the underlying value/formula or another format property. |
+| AC-FMT-002 | Named number-format commands change only the number format, never the underlying value/formula or another format property. **Superseded in part by AC-FMT-021..031: these commands now cycle a profile-defined list rather than applying one fixed format.** See `commands/FORMAT_CYCLES.md`. |
 | AC-FMT-003 | Decimal increase/decrease preserves the qualified number-format family and never changes the value. |
 | AC-FMT-004 | Row-height and column-width cycles affect only the resolved selected rows/columns and refuse ambiguous unsupported contexts. |
 | AC-FMT-005 | Center Across Selection never merges cells or changes values/formulas. |
@@ -134,6 +134,19 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-018 | Sheet-style failure rolls back qualified writes or reports exact remaining changed properties/targets and cannot report success. |
 | AC-FMT-019 | Workbook AutoFormat/AutoColor requires an explicit included-sheet inventory and never silently expands to hidden/unselected sheets. |
 | AC-FMT-020 | Workbook-scale formatting meets frozen resource/performance/AutoSave/coauthoring gates and cannot expose partial success as the default result. |
+| AC-FMT-021 | A cycle advances from the selection's current format to the next entry and wraps at the end, deriving position from the cell rather than stored state. |
+| AC-FMT-022 | A current format absent from the cycle applies entry 0, and a mixed selection applies entry 0 to every cell. |
+| AC-FMT-023 | Cycles are independent; entering a cycle from a different family starts at entry 0 and carries no position across families. |
+| AC-FMT-024 | Cycling changes only the number format, never the underlying value or formula, and records an undo receipt. |
+| AC-FMT-025 | Default cycle entries present negatives in parentheses. |
+| AC-FMT-026 | A user may add, remove, reorder, and edit cycles and their entries, including cycles that did not ship with the product. |
+| AC-FMT-027 | An invalid format string is refused with its cycle and position, and the prior profile remains active. |
+| AC-FMT-028 | An empty cycle reports that nothing is configured and changes nothing. |
+| AC-FMT-029 | Custom cycle slots and Command Search both invoke a user-added cycle by its user-given name. |
+| AC-FMT-030 | The settings editor previews a positive and negative sample per entry and writes through validate-then-atomic-replace. |
+| AC-FMT-031 | Migration from profile schema 5 lifts each existing single number format into a one-entry cycle with no setting lost. |
+| AC-FMT-032 | `formula.units.to_basis_points` multiplies by 10,000, applies a basis-point format, and carries the same impact tier, preview, and undo as the other unit transforms. |
+| AC-FMT-033 | The ribbon groups commands by modeling task, and every registered command's declared keyboard route matches the ribbon it is reachable through. |
 | AC-NAV-001 | Previous/next sheet navigation honors visible-sheet and wrap policy without altering workbook content. |
 | AC-NAV-002 | A1 navigation selects A1 on the intended active sheet and preserves workbook content. |
 | AC-NAV-003 | First/last used navigation matches the documented used-range semantics and exposes/refuses unsupported ambiguity. |

@@ -9,6 +9,10 @@ prevents a feature from disappearing during document restructuring.
 | Original area | Detailed contract | Current disposition |
 |---|---|---|
 | §6.1 formatting cycles | `commands/CATALOG.md` §1.1/1.2 | Phase 1A |
+| Number-format cycles, user-defined | `commands/FORMAT_CYCLES.md` | Approved, not implemented |
+| Settings editor for cycles | `commands/FORMAT_CYCLES.md` | Approved, not implemented |
+| Blue-black input/formula toggle | `commands/FORMAT_CYCLES.md` (pending) | Proposed, not specified |
+| Ribbon task grouping | `commands/RIBBON_LAYOUT.md` | Implemented 2026-08-20 |
 | §6.1 AutoColor selection/worksheet | `commands/CATALOG.md` §1.3 | Phase 1A |
 | §6.1 workbook AutoColor | `commands/WORKBOOK_OPERATIONS.md` §4 | Gated high-impact |
 | §6.1 named styles and capture/apply | `commands/DISCOVERY_STYLES_AND_PROFILES.md` | Phase 1B |

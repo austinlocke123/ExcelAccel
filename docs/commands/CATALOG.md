@@ -7,6 +7,13 @@ defines scope; it is not authorization to implement later-phase commands.
 
 Detailed retained-feature contracts are indexed in [`README.md`](README.md).
 
+> **Number-format commands changed.** `format.number.*` now cycles a
+> profile-defined list of formats rather than applying one fixed format, and the
+> set of cycles is user-editable and extensible. The rows below still describe
+> the property scope and impact correctly; for cycle semantics, defaults, the
+> settings surface, and basis points see
+> [`FORMAT_CYCLES.md`](FORMAT_CYCLES.md).
+
 ## 1. Phase 1A command groups
 
 All Phase 1A mutations:
@@ -29,12 +36,12 @@ mixed-selection policy. An empty cycle or invalid profile causes refusal.
 |---|---|---|---|---|---|
 | `format.font_color.cycle` | Font color only | Cell/range | low | none | AC-FMT-001, AC-REL-005 |
 | `format.fill_color.cycle` | Fill color only | Cell/range | low | none | AC-FMT-001, AC-REL-005 |
-| `format.number.general` | Number format only | Cell/range | low | none | AC-FMT-002 |
-| `format.number.currency` | Number format only | Cell/range | low | none | AC-FMT-002, AC-LOC-001 |
-| `format.number.percentage` | Number format only | Cell/range | low | none | AC-FMT-002, AC-LOC-001 |
-| `format.number.multiple` | Number format only | Cell/range | low | none | AC-FMT-002 |
-| `format.number.date` | Number format only | Cell/range | low | none | AC-FMT-002, AC-LOC-001 |
-| `format.number.boolean` | Number format only | Cell/range | low | none | AC-FMT-002 |
+| `format.number.general` | Number format cycle only | Cell/range | low | none | AC-FMT-002 |
+| `format.number.currency` | Number format cycle only | Cell/range | low | none | AC-FMT-002, AC-LOC-001 |
+| `format.number.percentage` | Number format cycle only | Cell/range | low | none | AC-FMT-002, AC-LOC-001 |
+| `format.number.multiple` | Number format cycle only | Cell/range | low | none | AC-FMT-002 |
+| `format.number.date` | Number format cycle only | Cell/range | low | none | AC-FMT-002, AC-LOC-001 |
+| `format.number.boolean` | Number format cycle only | Cell/range | low | none | AC-FMT-002 |
 | `format.number.decimals.increase` | Number format decimal precision only | Cell/range | low | none | AC-FMT-003 |
 | `format.number.decimals.decrease` | Number format decimal precision only | Cell/range | low | none | AC-FMT-003 |
 | `format.alignment.horizontal.cycle` | Horizontal alignment only | Cell/range | low | none | AC-FMT-001 |

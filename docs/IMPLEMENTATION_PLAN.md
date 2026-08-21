@@ -234,6 +234,24 @@ Every gated package ends with its own fault-injection, resource-soak,
 compatibility, performance, accessibility, and privacy review before it may be
 included in a release.
 
+## 7b. Approved feature work packages
+
+These are approved product changes, not gated capability packages. They came
+from using the add-in rather than from the original specification.
+
+| Work package | Scope | Depends on | Primary acceptance |
+|---|---|---|---|
+| WP-F-01 | Number-format cycles: profile schema 5 to 6, cycle semantics, defaults with parenthesised negatives, migration | none | AC-FMT-021..025, AC-FMT-031 |
+| WP-F-02 | User-defined cycles: add/remove/reorder, validation, custom cycle slots, Command Search by cycle name | WP-F-01 | AC-FMT-026..029 |
+| WP-F-03 | Settings editor for cycles, with positive and negative preview per entry | WP-F-01/02 | AC-FMT-030 |
+| WP-F-04 | Ribbon regrouping to the approved task taxonomy | none | AC-FMT-033 |
+| WP-F-05 | Blue-black input/formula toggle | WP-F-04 | to be specified |
+| WP-F-06 | `formula.units.to_basis_points` unit transform | none | AC-FMT-032 |
+
+Sequencing note: WP-F-01 is the schema change and everything in WP-F-02 and
+WP-F-03 sits on it, so it goes first. WP-F-04 and WP-F-06 are independent and
+can land in any order.
+
 ## 8. Pull-request slicing rules
 
 - One architectural mechanism or coherent command family per PR.
