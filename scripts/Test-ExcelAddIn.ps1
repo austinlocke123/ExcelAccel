@@ -57,6 +57,7 @@ public static class ExcelAccelNativeMethods
     $secondSheet = $null
     $secondSheetCell = $null
     $inspectCell = $null
+    $undoCell = $null
     $font = $null
     $interior = $null
     $multiArea = $null
@@ -680,6 +681,7 @@ public static class ExcelAccelNativeMethods
         if ($auditViewSecondResult -ne 'open|success') {
             throw 'The direct-precedent view did not present the second workbook result.'
         }
+        Release-ComObject $undoCell
         Release-ComObject $inspectCell
         Release-ComObject $secondSheetCell
         Release-ComObject $secondSheet
@@ -865,6 +867,26 @@ public static class ExcelAccelNativeMethods
             throw "Model Check rescan did not repeat the prior scope: $modelCheckRescan"
         }
 
+
+        $undoCell = $worksheet.Range('F240')
+        $undoCell.Value2 = 1234.5
+        $undoCell.NumberFormat = 'General'
+        [void]$undoCell.Select()
+        $undoArm = [string]$excel.Run('ExcelAccel.Smoke.ApplyCurrencyThenArmUndo')
+        $undoFormatAfterApply = [string]$undoCell.NumberFormat
+        # Invoke the macro exactly as Excel's Ctrl+Z would.
+        [void]$excel.Run('ExcelAccel.UndoLastFromExcel')
+        $undoFormatAfterUndo = [string]$undoCell.NumberFormat
+        [Console]::WriteLine("excel_undo_arm=$undoArm")
+        [Console]::WriteLine("excel_undo_applied=$($undoFormatAfterApply -ne 'General')")
+        [Console]::WriteLine("excel_undo_reverted=$($undoFormatAfterUndo -eq 'General')")
+        [Console]::WriteLine("excel_undo_value_preserved=$([double]$undoCell.Value2 -eq 1234.5)")
+        [Console]::Out.Flush()
+        if ($undoArm -ne 'armed') { throw "Applying a format through the boundary did not arm Excel undo: $undoArm" }
+        if ($undoFormatAfterApply -eq 'General') { throw 'The currency format was not applied before the undo test.' }
+        if ($undoFormatAfterUndo -ne 'General') {
+            throw "Excel's undo macro did not revert the format: got '$undoFormatAfterUndo'"
+        }
 
         $inspectCell = $worksheet.Range('F230')
         $inspectCell.Formula = '=IF(A200>0,SUM(B200:B210)*2,-C200)'
@@ -1211,6 +1233,10 @@ try {
         'model_check_rescan=success|',
         'model_check_explicit_close=closed',
         'workbook_dependents_unconfirmed=Refused|AUDIT_PREVIEW_REQUIRED|0',
+        'excel_undo_arm=armed',
+        'excel_undo_applied=True',
+        'excel_undo_reverted=True',
+        'excel_undo_value_preserved=True',
         'formula_inspector=open|success',
         'formula_inspector_content_preserved=True',
         'formula_inspector_explicit_close=closed',

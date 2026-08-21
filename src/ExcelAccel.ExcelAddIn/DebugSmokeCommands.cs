@@ -68,6 +68,24 @@ public static class DebugSmokeCommands
         catch (Exception exception) { DiagnosticLog.Error("smoke.audit.dependents.cancelled", exception); throw; }
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Smoke.ApplyCurrencyThenArmUndo", Description = "Debug-only hook: apply a format through the boundary so Excel undo is armed.")]
+    public static string ApplyCurrencyThenArmUndo()
+    {
+        try
+        {
+            // Goes through CallbackBoundary, which is what arms Excel's undo
+            // slot, rather than calling the dispatcher directly.
+            CallbackBoundary.Run(
+                ExcelAccel.Application.Commands.ApplyCurrencyFormatCommand.Id,
+                CommandDispatcher.ApplyCurrencyFormat,
+                showResult: false);
+            System.Windows.Forms.Application.DoEvents();
+            DiagnosticLog.Info("smoke.undo.arm", "armed");
+            return "armed";
+        }
+        catch (Exception exception) { DiagnosticLog.Error("smoke.undo.arm", exception); throw; }
+    }
+
     [ExcelCommand(Name = "ExcelAccel.Smoke.InspectFormula", Description = "Debug-only registered formula-inspector hook.")]
     public static string InspectFormula()
     {

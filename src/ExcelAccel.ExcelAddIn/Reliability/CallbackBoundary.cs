@@ -42,6 +42,9 @@ internal static class CallbackBoundary
                     stopwatch.ElapsedMilliseconds);
                 if (result.Succeeded)
                 {
+                    // A change that recorded a receipt can be reversed, so offer
+                    // it to Excel's own Ctrl+Z as well as to the add-in's undo.
+                    if (!string.IsNullOrEmpty(result.ReceiptId)) ExcelUndoBridge.Arm(commandId);
                     // A command that worked must not interrupt the user. Success
                     // goes to the Excel status bar, which needs no dismissing,
                     // so keyboard-driven work is never blocked by a dialog.
