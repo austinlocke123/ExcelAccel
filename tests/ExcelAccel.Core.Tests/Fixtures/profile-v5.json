@@ -1,0 +1,37 @@
+{
+  "schema_version": 5,
+  "profile_id": "excelaccel.default.v5",
+  "font_color_cycle": ["#000000", "#0000FF", "#008000", "#FF0000"],
+  "fill_color_cycle": ["#FFFFFF", "#FFF2CC", "#D9EAD3", "#F4CCCC"],
+  "font_size_cycle": [8, 9, 10, 11, 12, 14],
+  "number_formats": {
+    "boolean": "Yes;Yes;No",
+    "currency": "$#,##0.00;($#,##0.00);-",
+    "date": "m/d/yyyy",
+    "general": "General",
+    "multiple": "0.0x",
+    "percentage": "0.0%"
+  },
+  "horizontal_alignment_cycle": ["general", "left", "center", "right"],
+  "vertical_alignment_cycle": ["bottom", "center", "top"],
+  "underline_cycle": ["none", "single", "double"],
+  "row_height_cycle": [12, 15, 18, 24],
+  "column_width_cycle": [8.43, 10, 12, 15, 20],
+  "auto_color_colors": {
+    "cross_sheet_formula": "#008000",
+    "error": "#FF0000",
+    "external_formula": "#FF0000",
+    "numeric_hardcode": "#0000FF",
+    "same_sheet_formula": "#000000",
+    "text": "#000000"
+  },
+  "quick_keys": [
+    { "command_id": "inspect.selection.summary", "sequence": "CTRL+SHIFT+K,I" },
+    { "command_id": "format.number.currency", "sequence": "CTRL+SHIFT+K,C" }
+  ],
+  "favorites": [],
+  "local_styles": [],
+  "immediate_preview_cell_limit": 50000,
+  "wrap_sheet_navigation": true,
+  "formula_iferror_fallback": "0"
+}

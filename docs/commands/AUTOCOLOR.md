@@ -67,8 +67,12 @@ A cycle entry is therefore one of two things:
 - **A literal colour** — a hex value belonging to no category, for colours the
   user wants on the cycle but that carry no classification meaning.
 
-The default font colour cycle is the six category references in precedence
-order, and the user may add literals or reorder freely.
+The default font colour cycle is all six category references, ordered as the
+palette has always been ordered rather than by classification precedence, so it
+resolves to black, blue, green, red. Precedence decides which category a cell
+*is*; it is not a sensible order to walk colours in, and leading with red would
+change what the first keypress does for no benefit. The user may add literals or
+reorder freely.
 
 **References track, literals do not.** Changing the hardcode colour from blue to
 navy changes it everywhere at once: both AutoColor commands and the cycle
@@ -185,5 +189,5 @@ worksheet command earns its qualification.
 | AC-FMT-037 | Both commands write only the font colour, record an undo receipt, and leave value, formula, and other format properties unchanged. |
 | AC-FMT-046 | Colouring occurs only on explicit user invocation; the add-in registers no change, calculate, or timer handler that recolours cells. |
 | AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product, and each is editable per category from the settings editor. |
-| AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in precedence order. |
+| AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in palette order, resolving to black, blue, green, red. |
 | AC-FMT-042 | Changing a category's colour updates both AutoColor commands and every cycle entry referencing it, while literal entries are unaffected. |

@@ -28,7 +28,7 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                   </group>
 
                   <group id='ExcelAccel.Group.NumberFormat' label='Number Format'>
-                    <button id='ExcelAccel.ApplyCurrency' label='Currency' keytip='C' imageMso='AccountingFormat' onAction='OnApplyCurrencyFormat'/>
+                    <button id='ExcelAccel.ApplyCurrency' label='Currency' keytip='C' imageMso='AccountingFormat' tag='format.number.currency' onAction='OnFormattingCommand'/>
                     <button id='ExcelAccel.General' label='General' keytip='G' tag='format.number.general' onAction='OnFormattingCommand'/>
                     <button id='ExcelAccel.Percentage' label='Percentage' keytip='P' tag='format.number.percentage' onAction='OnFormattingCommand'/>
                     <button id='ExcelAccel.Date' label='Date' keytip='D' tag='format.number.date' onAction='OnFormattingCommand'/>
@@ -207,12 +207,6 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     public void OnOpenCommandSearch(IRibbonControl control)
     {
         CallbackBoundary.Run("command.search.open", CommandSearchRuntime.Open);
-    }
-
-    public void OnApplyCurrencyFormat(IRibbonControl control)
-    {
-        CallbackBoundary.Run(ApplyCurrencyFormatCommand.Id, () =>
-            CommandDispatcher.ApplyCurrencyFormat());
     }
 
     public void OnFormattingCommand(IRibbonControl control)

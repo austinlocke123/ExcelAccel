@@ -1,6 +1,8 @@
 # Number format cycles and user-defined cycles
 
-Status: **Approved for implementation, 2026-08-20**
+Status: **Schema, defaults, and cycle semantics implemented 2026-08-20 (WP-F-01).
+User-defined cycle management (WP-F-02) and the settings editor (WP-F-03) are
+approved and not yet built.**
 Capability: CAP-FMT-004
 Supersedes: the one-shot behaviour of `format.number.*` in
 [`CATALOG.md`](CATALOG.md) §1.1

@@ -180,8 +180,20 @@ public static class ExcelAccelNativeMethods
         [Console]::WriteLine("currency_format=$formatAfter")
         [Console]::WriteLine("content_preserved=$formatPreservedContent")
         [Console]::Out.Flush()
-        if ($formatAfter -ne '$#,##0.00;($#,##0.00);-' -or -not $formatPreservedContent) {
+        # Currency is a cycle now, not a single format. A cell holding General
+        # matches no entry, so the first press lands on entry 0 and a second
+        # press must advance to entry 1; a stuck cycle is the failure this
+        # catches (AC-FMT-021).
+        if ($formatAfter -ne '$#,##0_);($#,##0)' -or -not $formatPreservedContent) {
             throw 'The formatting command did not produce the exact property-scoped result.'
+        }
+
+        [void]$excel.Run('ExcelAccel.Smoke.ApplyCurrencyFormat')
+        $formatSecond = [string]$cell.NumberFormat
+        [Console]::WriteLine("currency_format_second=$formatSecond")
+        [Console]::Out.Flush()
+        if ($formatSecond -ne '$#,##0.00_);($#,##0.00)') {
+            throw 'The number-format cycle did not advance to its second entry.'
         }
 
         $font = $cell.Font
@@ -1194,7 +1206,8 @@ try {
     $requiredEvidence = @(
         'registered=True',
         'version=',
-        'currency_format=$#,##0.00;($#,##0.00);-',
+        'currency_format=$#,##0_);($#,##0)',
+        'currency_format_second=$#,##0.00_);($#,##0.00)',
         'content_preserved=True',
         'font_color_after=0',
         'command_search_ui=opened_and_closed',

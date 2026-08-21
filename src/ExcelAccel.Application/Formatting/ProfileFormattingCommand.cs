@@ -21,14 +21,17 @@ public sealed class ProfileFormattingCommand
     private readonly Func<ProfileDefinition, string, string> _resolveValue;
     private readonly Func<string, string, bool> _verifyPostcondition;
     private readonly string? _noChangeMessage;
+    private readonly string? _unconfiguredMessage;
 
     public ProfileFormattingCommand(
         CommandDescriptor descriptor,
         Func<ProfileDefinition, string, string> resolveValue,
         Func<string, string, bool>? verifyPostcondition = null,
-        string? noChangeMessage = null)
+        string? noChangeMessage = null,
+        string? unconfiguredMessage = null)
     {
         _noChangeMessage = noChangeMessage;
+        _unconfiguredMessage = unconfiguredMessage;
         _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
         _resolveValue = resolveValue ?? throw new ArgumentNullException(nameof(resolveValue));
         _verifyPostcondition = verifyPostcondition ?? ((desired, observed) =>
@@ -69,10 +72,13 @@ public sealed class ProfileFormattingCommand
 
         if (string.IsNullOrWhiteSpace(desired))
         {
+            // Name the cycle the user asked for, not the underlying property.
+            // A command reached after its cycle was deleted is the one case where
+            // saying nothing would leave the user guessing (AC-FMT-028).
             throw new CommandRefusedException(
                 RefusalCodes.CommandUnavailable,
-                $"The active profile does not define a usable value for '{propertyId}'.",
-                "Repair or reset the active profile and try again.");
+                _unconfiguredMessage ?? $"The active profile does not define a usable value for '{propertyId}'.",
+                "Add the cycle in Settings, or reset the active profile.");
         }
 
         return new CommandPlan(

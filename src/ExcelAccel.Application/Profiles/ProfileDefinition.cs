@@ -8,7 +8,7 @@ namespace ExcelAccel.Application.Profiles;
 
 public sealed class ProfileDefinition
 {
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 6;
     public const int MaximumBindings = 512;
     public const int MaximumFavorites = 128;
     public const int MaximumLocalStyles = 64;
@@ -16,16 +16,8 @@ public sealed class ProfileDefinition
     public ProfileDefinition(
         int schemaVersion,
         string profileId,
-        IEnumerable<string> fontColorCycle,
-        IEnumerable<string> fillColorCycle,
-        IEnumerable<double> fontSizeCycle,
-        IEnumerable<string> horizontalAlignmentCycle,
-        IEnumerable<string> verticalAlignmentCycle,
-        IEnumerable<string> underlineCycle,
-        IEnumerable<double> rowHeightCycle,
-        IEnumerable<double> columnWidthCycle,
+        ProfileCycles cycles,
         IEnumerable<KeyValuePair<string, string>> autoColorColors,
-        IEnumerable<KeyValuePair<string, string>> numberFormats,
         IEnumerable<QuickKeyBinding> quickKeys,
         IEnumerable<FavoriteDefinition> favorites,
         IEnumerable<StyleRecipe> localStyles,
@@ -40,33 +32,9 @@ public sealed class ProfileDefinition
 
         SchemaVersion = schemaVersion;
         ProfileId = RequireToken(profileId, nameof(profileId));
-        FontColorCycle = NormalizeColors(fontColorCycle, nameof(fontColorCycle));
-        FillColorCycle = NormalizeColors(fillColorCycle, nameof(fillColorCycle));
-        FontSizeCycle = (fontSizeCycle ?? throw new ArgumentNullException(nameof(fontSizeCycle))).ToArray();
-        if (FontSizeCycle.Count == 0 || FontSizeCycle.Any(value => value < 6 || value > 72 || double.IsNaN(value) || double.IsInfinity(value)))
-        {
-            throw new ArgumentException("Font-size cycles require values from 6 through 72 points.", nameof(fontSizeCycle));
-        }
-
-        HorizontalAlignmentCycle = NormalizeTokens(horizontalAlignmentCycle, nameof(horizontalAlignmentCycle));
-        VerticalAlignmentCycle = NormalizeTokens(verticalAlignmentCycle, nameof(verticalAlignmentCycle));
-        UnderlineCycle = NormalizeTokens(underlineCycle, nameof(underlineCycle));
-        RowHeightCycle = NormalizeDimensions(rowHeightCycle, 3, 409, nameof(rowHeightCycle));
-        ColumnWidthCycle = NormalizeDimensions(columnWidthCycle, 1, 255, nameof(columnWidthCycle));
+        Cycles = cycles ?? throw new ArgumentNullException(nameof(cycles));
         AutoColorColors = NormalizeColorMap(autoColorColors, nameof(autoColorColors));
 
-        var formats = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        foreach (var format in numberFormats ?? throw new ArgumentNullException(nameof(numberFormats)))
-        {
-            var key = RequireToken(format.Key, nameof(numberFormats));
-            if (string.IsNullOrWhiteSpace(format.Value) || formats.ContainsKey(key))
-            {
-                throw new ArgumentException("Number-format entries require unique keys and nonempty values.", nameof(numberFormats));
-            }
-            formats.Add(key, format.Value);
-        }
-
-        NumberFormats = formats;
         var bindings = (quickKeys ?? throw new ArgumentNullException(nameof(quickKeys))).ToArray();
         if (bindings.Length > MaximumBindings)
         {
@@ -100,16 +68,8 @@ public sealed class ProfileDefinition
 
     public int SchemaVersion { get; }
     public string ProfileId { get; }
-    public IReadOnlyList<string> FontColorCycle { get; }
-    public IReadOnlyList<string> FillColorCycle { get; }
-    public IReadOnlyList<double> FontSizeCycle { get; }
-    public IReadOnlyList<string> HorizontalAlignmentCycle { get; }
-    public IReadOnlyList<string> VerticalAlignmentCycle { get; }
-    public IReadOnlyList<string> UnderlineCycle { get; }
-    public IReadOnlyList<double> RowHeightCycle { get; }
-    public IReadOnlyList<double> ColumnWidthCycle { get; }
+    public ProfileCycles Cycles { get; }
     public IReadOnlyDictionary<string, string> AutoColorColors { get; }
-    public IReadOnlyDictionary<string, string> NumberFormats { get; }
     public IReadOnlyList<QuickKeyBinding> QuickKeys { get; }
     public IReadOnlyList<FavoriteDefinition> Favorites { get; }
     public IReadOnlyList<StyleRecipe> LocalStyles { get; }
@@ -117,16 +77,63 @@ public sealed class ProfileDefinition
     public bool WrapSheetNavigation { get; }
     public string FormulaIfErrorFallback { get; }
 
+    /// <summary>
+    /// Resolves a named cycle to the values a command applies, substituting each
+    /// AutoColor category reference for that category's current colour.
+    /// </summary>
+    /// <remarks>
+    /// Entries that resolve to a value already present are dropped, keeping the
+    /// first occurrence. Two categories may legitimately share a colour — the
+    /// default palette paints both error and external red, and both same-sheet
+    /// and text black. Without collapsing, the stateless advance would match the
+    /// earlier index every time and the cycle would oscillate between two values
+    /// with the rest unreachable. Give a category its own colour and its entry
+    /// reappears automatically.
+    /// </remarks>
+    public IReadOnlyList<string> ResolveCycle(string family, string cycleId) =>
+        Cycles.TryGet(family, cycleId, out var cycle) ? Resolve(cycle) : Array.Empty<string>();
+
+    /// <summary>
+    /// Resolves the first configured cycle in a family. Commands whose ribbon label
+    /// names no particular cycle follow whichever cycle the user has placed first.
+    /// </summary>
+    public IReadOnlyList<string> ResolveFirstCycle(string family)
+    {
+        var cycles = Cycles[family];
+        return cycles.Count == 0 ? Array.Empty<string>() : Resolve(cycles[0]);
+    }
+
+    private IReadOnlyList<string> Resolve(ProfileCycle cycle)
+    {
+        var resolved = new List<string>(cycle.Entries.Count);
+        foreach (var entry in cycle.Entries)
+        {
+            var value = entry;
+            if (ColorReference.TryResolveKey(entry, out var categoryKey)
+                && AutoColorColors.TryGetValue(categoryKey, out var color))
+            {
+                value = color;
+            }
+
+            if (!resolved.Contains(value, StringComparer.OrdinalIgnoreCase))
+            {
+                resolved.Add(value);
+            }
+        }
+
+        return resolved;
+    }
+
+    public ProfileDefinition WithCycles(ProfileCycles cycles) => new ProfileDefinition(
+        CurrentSchemaVersion, ProfileId, cycles, AutoColorColors, QuickKeys, Favorites, LocalStyles,
+        ImmediatePreviewCellLimit, WrapSheetNavigation, FormulaIfErrorFallback);
+
     public ProfileDefinition WithFavorites(IEnumerable<FavoriteDefinition> favorites) => new ProfileDefinition(
-        CurrentSchemaVersion, ProfileId, FontColorCycle, FillColorCycle, FontSizeCycle,
-        HorizontalAlignmentCycle, VerticalAlignmentCycle, UnderlineCycle, RowHeightCycle,
-        ColumnWidthCycle, AutoColorColors, NumberFormats, QuickKeys, favorites, LocalStyles,
+        CurrentSchemaVersion, ProfileId, Cycles, AutoColorColors, QuickKeys, favorites, LocalStyles,
         ImmediatePreviewCellLimit, WrapSheetNavigation, FormulaIfErrorFallback);
 
     public ProfileDefinition WithLocalStyles(IEnumerable<StyleRecipe> localStyles) => new ProfileDefinition(
-        CurrentSchemaVersion, ProfileId, FontColorCycle, FillColorCycle, FontSizeCycle,
-        HorizontalAlignmentCycle, VerticalAlignmentCycle, UnderlineCycle, RowHeightCycle,
-        ColumnWidthCycle, AutoColorColors, NumberFormats, QuickKeys, Favorites, localStyles,
+        CurrentSchemaVersion, ProfileId, Cycles, AutoColorColors, QuickKeys, Favorites, localStyles,
         ImmediatePreviewCellLimit, WrapSheetNavigation, FormulaIfErrorFallback);
 
     private static string ValidateFormulaFallback(string value)
@@ -139,26 +146,13 @@ public sealed class ProfileDefinition
         return value;
     }
 
-    private static IReadOnlyList<string> NormalizeColors(IEnumerable<string> values, string parameterName)
-    {
-        var colors = (values ?? throw new ArgumentNullException(parameterName))
-            .Select(value => value?.ToUpperInvariant() ?? string.Empty)
-            .ToArray();
-        if (colors.Length == 0 || colors.Any(value => value.Length != 7 || value[0] != '#' || !value.Skip(1).All(IsHex)))
-        {
-            throw new ArgumentException("Color cycles require one or more #RRGGBB values.", parameterName);
-        }
-
-        return colors;
-    }
-
     private static IReadOnlyDictionary<string, string> NormalizeColorMap(IEnumerable<KeyValuePair<string, string>> values, string parameterName)
     {
         var result = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var item in values ?? throw new ArgumentNullException(parameterName))
         {
             var key = RequireToken(item.Key, parameterName).ToLowerInvariant();
-            var color = NormalizeColors(new[] { item.Value }, parameterName)[0];
+            var color = NormalizeColor(item.Value, parameterName);
             if (result.ContainsKey(key)) throw new ArgumentException("AutoColor categories must be unique.", parameterName);
             result.Add(key, color);
         }
@@ -167,30 +161,19 @@ public sealed class ProfileDefinition
         return result;
     }
 
-    private static bool IsHex(char value) =>
-        (value >= '0' && value <= '9') || (value >= 'A' && value <= 'F');
-
-    private static IReadOnlyList<string> NormalizeTokens(IEnumerable<string> values, string parameterName)
+    private static string NormalizeColor(string value, string parameterName)
     {
-        var result = (values ?? throw new ArgumentNullException(parameterName))
-            .Select(value => RequireToken(value, parameterName).ToLowerInvariant())
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        return result.Length == 0
-            ? throw new ArgumentException("A formatting cycle cannot be empty.", parameterName)
-            : result;
-    }
-
-    private static IReadOnlyList<double> NormalizeDimensions(IEnumerable<double> values, double minimum, double maximum, string parameterName)
-    {
-        var result = (values ?? throw new ArgumentNullException(parameterName)).ToArray();
-        if (result.Length == 0 || result.Any(value => value < minimum || value > maximum || double.IsNaN(value) || double.IsInfinity(value)))
+        var color = value?.ToUpperInvariant() ?? string.Empty;
+        if (color.Length != 7 || color[0] != '#' || !color.Skip(1).All(IsHex))
         {
-            throw new ArgumentException($"Dimension cycles require values from {minimum} through {maximum}.", parameterName);
+            throw new ArgumentException("An AutoColor category requires a #RRGGBB value.", parameterName);
         }
 
-        return result;
+        return color;
     }
+
+    private static bool IsHex(char value) =>
+        (value >= '0' && value <= '9') || (value >= 'A' && value <= 'F');
 
     private static string RequireToken(string value, string parameterName) =>
         string.IsNullOrWhiteSpace(value)

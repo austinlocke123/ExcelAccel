@@ -1,22 +1,103 @@
 {
-  "schema_version": 5,
-  "profile_id": "excelaccel.default.v5",
-  "font_color_cycle": ["#000000", "#0000FF", "#008000", "#FF0000"],
-  "fill_color_cycle": ["#FFFFFF", "#FFF2CC", "#D9EAD3", "#F4CCCC"],
-  "font_size_cycle": [8, 9, 10, 11, 12, 14],
-  "number_formats": {
-    "boolean": "Yes;Yes;No",
-    "currency": "$#,##0.00;($#,##0.00);-",
-    "date": "m/d/yyyy",
-    "general": "General",
-    "multiple": "0.0x",
-    "percentage": "0.0%"
+  "schema_version": 6,
+  "profile_id": "excelaccel.default.v6",
+  "cycles": {
+    "column_width": [
+      {
+        "cycle_id": "standard",
+        "display_name": "Column Width",
+        "entries": ["8.43", "10", "12", "15", "20"]
+      }
+    ],
+    "fill_color": [
+      {
+        "cycle_id": "standard",
+        "display_name": "Fill Color",
+        "entries": ["#FFFFFF", "#FFF2CC", "#D9EAD3", "#F4CCCC"]
+      }
+    ],
+    "font_color": [
+      {
+        "cycle_id": "standard",
+        "display_name": "Font Color",
+        "entries": ["@same_sheet", "@text", "@hardcode", "@cross_sheet", "@error", "@external"]
+      }
+    ],
+    "font_size": [
+      {
+        "cycle_id": "standard",
+        "display_name": "Font Size",
+        "entries": ["8", "9", "10", "11", "12", "14"]
+      }
+    ],
+    "horizontal_alignment": [
+      {
+        "cycle_id": "standard",
+        "display_name": "Horizontal Alignment",
+        "entries": ["general", "left", "center", "right"]
+      }
+    ],
+    "number_format": [
+      {
+        "cycle_id": "general",
+        "display_name": "General",
+        "entries": ["#,##0_);(#,##0)", "#,##0.0_);(#,##0.0)", "#,##0.00_);(#,##0.00)"]
+      },
+      {
+        "cycle_id": "currency",
+        "display_name": "Currency",
+        "entries": [
+          "$#,##0_);($#,##0)",
+          "$#,##0.00_);($#,##0.00)",
+          "€#,##0_);(€#,##0)",
+          "€#,##0.00_);(€#,##0.00)",
+          "£#,##0_);(£#,##0)",
+          "£#,##0.00_);(£#,##0.00)"
+        ]
+      },
+      {
+        "cycle_id": "percentage",
+        "display_name": "Percentage",
+        "entries": ["0.0%_);(0.0%)", "0.00%_);(0.00%)", "0%_);(0%)"]
+      },
+      {
+        "cycle_id": "multiple",
+        "display_name": "Multiple",
+        "entries": ["0.0x_);(0.0x)", "0.00x_);(0.00x)", "0x_);(0x)"]
+      },
+      {
+        "cycle_id": "date",
+        "display_name": "Date",
+        "entries": ["m/d/yyyy", "mmm-yy", "mmmm d, yyyy"]
+      },
+      {
+        "cycle_id": "boolean",
+        "display_name": "Boolean",
+        "entries": ["\"TRUE\";\"TRUE\";\"FALSE\"", "\"YES\";\"YES\";\"NO\"", "0;0;1"]
+      }
+    ],
+    "row_height": [
+      {
+        "cycle_id": "standard",
+        "display_name": "Row Height",
+        "entries": ["12", "15", "18", "24"]
+      }
+    ],
+    "underline": [
+      {
+        "cycle_id": "standard",
+        "display_name": "Underline",
+        "entries": ["none", "single", "double"]
+      }
+    ],
+    "vertical_alignment": [
+      {
+        "cycle_id": "standard",
+        "display_name": "Vertical Alignment",
+        "entries": ["bottom", "center", "top"]
+      }
+    ]
   },
-  "horizontal_alignment_cycle": ["general", "left", "center", "right"],
-  "vertical_alignment_cycle": ["bottom", "center", "top"],
-  "underline_cycle": ["none", "single", "double"],
-  "row_height_cycle": [12, 15, 18, 24],
-  "column_width_cycle": [8.43, 10, 12, 15, 20],
   "auto_color_colors": {
     "cross_sheet_formula": "#008000",
     "error": "#FF0000",

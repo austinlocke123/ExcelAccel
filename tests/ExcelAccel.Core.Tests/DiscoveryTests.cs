@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Discovery;
@@ -108,14 +109,176 @@ public sealed class DiscoveryTests
         Assert.Equal(CommandResultStatus.Refused, refused.Status);
     }
 
+    /// <summary>
+    /// The legacy shape is a checked-in fixture rather than mutated serializer
+    /// output: v6 no longer emits any of the keys these migrations exercise, so
+    /// deriving the old shape from the new one is no longer possible.
+    /// </summary>
+    private static string LegacyProfileV5() => File.ReadAllText(
+        Path.Combine(AppContext.BaseDirectory, "Fixtures", "profile-v5.json"));
+
+    [Fact]
+    public void ProfileV5MigratesNumberFormatsToOneEntryCyclesAndLiftsPropertyCycles()
+    {
+        var store = new ProfileStore();
+
+        var migrated = store.Parse(LegacyProfileV5());
+
+        Assert.Equal(ProfileDefinition.CurrentSchemaVersion, migrated.SchemaVersion);
+
+        // Every v5 number format becomes a one-entry cycle under its own name.
+        var numberFormats = migrated.Cycles["number_format"];
+        Assert.Equal(6, numberFormats.Count);
+        var currency = numberFormats.Single(cycle => cycle.CycleId == "currency");
+        Assert.Equal(new[] { "$#,##0.00;($#,##0.00);-" }, currency.Entries);
+        Assert.Equal("Currency", currency.DisplayName);
+
+        // Each property family keeps its whole ordered list under one cycle.
+        var fontColor = Assert.Single(migrated.Cycles["font_color"]);
+        Assert.Equal(new[] { "#000000", "#0000FF", "#008000", "#FF0000" }, fontColor.Entries);
+        Assert.Equal(new[] { "8", "9", "10", "11", "12", "14" },
+            Assert.Single(migrated.Cycles["font_size"]).Entries);
+        Assert.Equal(new[] { "8.43", "10", "12", "15", "20" },
+            Assert.Single(migrated.Cycles["column_width"]).Entries);
+    }
+
+    [Fact]
+    public void ProfileV5CannotCarryACyclesObjectAndV6CannotOmitOne()
+    {
+        var store = new ProfileStore();
+        var withCycles = LegacyProfileV5().Replace(
+            "\"profile_id\": \"excelaccel.default.v5\",",
+            "\"profile_id\": \"excelaccel.default.v5\",\n  \"cycles\": {},",
+            StringComparison.Ordinal);
+        Assert.Throws<InvalidDataException>(() => store.Parse(withCycles));
+
+        var v6WithoutCycles = LegacyProfileV5().Replace(
+            "\"schema_version\": 5", "\"schema_version\": 6", StringComparison.Ordinal);
+        Assert.Throws<InvalidDataException>(() => store.Parse(v6WithoutCycles));
+    }
+
+    [Fact]
+    public void SerializedProfileEmitsNoLegacyCycleFieldAndNoNullMember()
+    {
+        var store = new ProfileStore();
+
+        var serialized = store.Serialize(store.LoadDefault());
+
+        Assert.DoesNotContain("number_formats", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain("font_color_cycle", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain("column_width_cycle", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain(": null", serialized, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnconfiguredFamilyIsAbsentRatherThanEmpty()
+    {
+        var store = new ProfileStore();
+        var profile = store.LoadDefault();
+
+        var trimmed = profile.WithCycles(new ProfileCycles(
+            profile.Cycles.Families
+                .Where(family => family != "underline")
+                .Select(family => new KeyValuePair<string, IEnumerable<ProfileCycle>>(
+                    family, profile.Cycles[family]))));
+
+        var serialized = store.Serialize(trimmed);
+        Assert.DoesNotContain("underline", serialized, StringComparison.Ordinal);
+        Assert.Empty(store.Parse(serialized).Cycles["underline"]);
+    }
+
+    [Fact]
+    public void AnEmptyCycleAndAnEmptyFamilyAreBothUnrepresentable()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new ProfileCycle("font_size", "empty", "Empty", Array.Empty<string>()));
+
+        Assert.Throws<ArgumentException>(() => new ProfileCycles(new[]
+        {
+            new KeyValuePair<string, IEnumerable<ProfileCycle>>("font_size", Array.Empty<ProfileCycle>()),
+        }));
+    }
+
+    [Fact]
+    public void NinthCycleInAFamilyIsRefusedNamingTheLimit()
+    {
+        var cycles = Enumerable.Range(0, 9)
+            .Select(index => new ProfileCycle("number_format", "c" + index, "C" + index, new[] { "0.0" + index }))
+            .ToArray();
+
+        var error = Assert.Throws<ArgumentException>(() => new ProfileCycles(new[]
+        {
+            new KeyValuePair<string, IEnumerable<ProfileCycle>>("number_format", cycles),
+        }));
+        Assert.Contains("8", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ColorReferencesTrackTheCategoryWhileLiteralsStayPinned()
+    {
+        var store = new ProfileStore();
+        var profile = store.LoadDefault();
+
+        var mixed = profile.WithCycles(new ProfileCycles(new[]
+        {
+            new KeyValuePair<string, IEnumerable<ProfileCycle>>("font_color", new[]
+            {
+                new ProfileCycle("font_color", "standard", "Font Color", new[] { "@hardcode", "#123456" }),
+            }),
+        }));
+
+        Assert.Equal(new[] { "#0000FF", "#123456" }, mixed.ResolveFirstCycle("font_color"));
+
+        var recolored = new ProfileDefinition(
+            ProfileDefinition.CurrentSchemaVersion,
+            mixed.ProfileId,
+            mixed.Cycles,
+            mixed.AutoColorColors
+                .Select(entry => entry.Key == "numeric_hardcode"
+                    ? new KeyValuePair<string, string>(entry.Key, "#000080")
+                    : entry)
+                .ToArray(),
+            mixed.QuickKeys, mixed.Favorites, mixed.LocalStyles,
+            mixed.ImmediatePreviewCellLimit, mixed.WrapSheetNavigation, mixed.FormulaIfErrorFallback);
+
+        Assert.Equal(new[] { "#000080", "#123456" }, recolored.ResolveFirstCycle("font_color"));
+    }
+
+    /// <summary>
+    /// Two categories may share a colour, and the default palette does exactly
+    /// that. Without collapsing, the stateless advance would match the earlier
+    /// index forever and the cycle would oscillate between two values.
+    /// </summary>
+    [Fact]
+    public void DefaultFontColorCycleCollapsesCategoriesThatShareAColour()
+    {
+        var resolved = new ProfileStore().LoadDefault().ResolveFirstCycle("font_color");
+
+        Assert.Equal(new[] { "#000000", "#0000FF", "#008000", "#FF0000" }, resolved);
+    }
+
+    [Fact]
+    public void DefaultCurrencyCycleWalksDollarEuroPoundAtZeroAndTwoDecimals()
+    {
+        var entries = new ProfileStore().LoadDefault().ResolveCycle("number_format", "currency");
+
+        Assert.Equal(6, entries.Count);
+        Assert.StartsWith("$#,##0_)", entries[0], StringComparison.Ordinal);
+        Assert.StartsWith("$#,##0.00_)", entries[1], StringComparison.Ordinal);
+        Assert.StartsWith("\u20ac#,##0_)", entries[2], StringComparison.Ordinal);
+        Assert.StartsWith("\u20ac#,##0.00_)", entries[3], StringComparison.Ordinal);
+        Assert.StartsWith("\u00a3#,##0_)", entries[4], StringComparison.Ordinal);
+        Assert.StartsWith("\u00a3#,##0.00_)", entries[5], StringComparison.Ordinal);
+        Assert.All(entries, entry => Assert.Contains("_);(", entry, StringComparison.Ordinal));
+    }
+
     [Fact]
     public void ProfileV2MigratesToCurrentSchemaWithEmptyPhase1BCollections()
     {
         var store = new ProfileStore();
-        var current = store.Serialize(store.LoadDefault());
-        var v2 = current.Replace("\"schema_version\": 5", "\"schema_version\": 2", StringComparison.Ordinal)
-            .Replace("  \"favorites\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal)
-            .Replace("  \"local_styles\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal);
+        var v2 = LegacyProfileV5().Replace("\"schema_version\": 5", "\"schema_version\": 2", StringComparison.Ordinal)
+            .Replace("  \"favorites\": [],\n", string.Empty, StringComparison.Ordinal)
+            .Replace("  \"local_styles\": [],\n", string.Empty, StringComparison.Ordinal);
 
         var migrated = store.Parse(v2);
 
@@ -129,10 +292,12 @@ public sealed class DiscoveryTests
     public void ProfileV3MigratesFavoritesAndAddsEmptyLocalStyles()
     {
         var store = new ProfileStore();
-        var profile = store.LoadDefault().WithFavorites(new[] { new FavoriteDefinition("favorite.currency", "format.number.currency", 1) });
-        var v3 = store.Serialize(profile)
+        var v3 = LegacyProfileV5()
             .Replace("\"schema_version\": 5", "\"schema_version\": 3", StringComparison.Ordinal)
-            .Replace("  \"local_styles\": []," + Environment.NewLine, string.Empty, StringComparison.Ordinal);
+            .Replace("\"favorites\": []",
+                "\"favorites\": [ { \"favorite_id\": \"favorite.currency\", \"command_id\": \"format.number.currency\", \"contract_version\": 1, \"arguments\": {} } ]",
+                StringComparison.Ordinal)
+            .Replace("  \"local_styles\": [],\n", string.Empty, StringComparison.Ordinal);
 
         var migrated = store.Parse(v3);
 
@@ -145,11 +310,9 @@ public sealed class DiscoveryTests
     public void ProfileV4MigratesWithQualifiedDefaultIfErrorFallback()
     {
         var store = new ProfileStore();
-        var v4 = store.Serialize(store.LoadDefault())
+        var v4 = LegacyProfileV5()
             .Replace("\"schema_version\": 5", "\"schema_version\": 4", StringComparison.Ordinal)
-            .Replace("  \"formula_iferror_fallback\": \"0\"" + Environment.NewLine, string.Empty, StringComparison.Ordinal)
-            .Replace("  \"wrap_sheet_navigation\": true," + Environment.NewLine,
-                "  \"wrap_sheet_navigation\": true" + Environment.NewLine, StringComparison.Ordinal);
+            .Replace(",\n  \"formula_iferror_fallback\": \"0\"", string.Empty, StringComparison.Ordinal);
 
         var migrated = store.Parse(v4);
 
