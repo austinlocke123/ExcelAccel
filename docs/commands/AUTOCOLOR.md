@@ -1,7 +1,8 @@
 # Cell classification and AutoColor
 
-Status: **Reviewed and approved 2026-08-20, including the command surface.
-Not implemented: the planner exists and execution is hard-stopped.**
+Status: **Classification implemented 2026-08-20 (WP-F-08) to the rules below.
+The two commands are not registered and cannot run: no adapter reads or writes
+per-cell font colours yet, and the undo receipt ceiling is unresolved.**
 Capability: CAP-FMT-002
 Related: [`FORMAT_CYCLES.md`](FORMAT_CYCLES.md),
 [`MODEL_CHECK.md`](MODEL_CHECK.md)
