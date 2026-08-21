@@ -68,19 +68,25 @@ The scheme is therefore:
 - sub-items within a menu need only be unique within that menu.
 
 A validator parses the ribbon XML and fails on any duplicate KeyTip, any prefix
-collision, and any button without an action.
+collision, and any button without an action. It lives in `RibbonRouteTests` and
+was built in WP-F-07; before that this paragraph described behaviour that did
+not exist.
 
-### Routes are generated, not written
+### Routes are hand-maintained, and checked against the ribbon
 
-`RibbonRoutes` is generated from the ribbon definition itself, and every command
-descriptor reads its route from there. Previously each catalog composed its own
-route from a KeyTip fragment, which let a descriptor disagree with the ribbon
-silently — meaning Command Search and the shortcut cheat sheet could print a
-route that no longer worked.
+`RibbonRoutes` is written by hand, not generated. Every command descriptor must
+read its route from there rather than composing one from a KeyTip fragment;
+catalogs that composed their own let a descriptor disagree with the ribbon
+silently, so Command Search and the cheat sheet printed routes that did nothing.
+Ten descriptors had drifted that way before WP-F-07 checked.
 
-Regenerate `RibbonRoutes` whenever the ribbon changes. The registry-wide
-keyboard-route uniqueness test is the backstop, and it has caught real
-collisions.
+`RibbonRoutes.For` throws on an unknown id. It used to fall back to the Command
+Search route, which meant a typo produced a descriptor that looked routed and
+advertised a path that did nothing.
+
+Update `RibbonRoutes` whenever the ribbon changes; `RibbonRouteTests` fails if
+you forget, and compares each descriptor's route against the path its button
+actually has.
 
 Commands hosted in a dialog rather than on the ribbon carry an honest route
 describing how they are actually reached, for example

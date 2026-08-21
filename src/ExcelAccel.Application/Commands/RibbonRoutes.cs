@@ -144,8 +144,19 @@ public static class RibbonRoutes
     /// Command Search route, which is always true: every registered command is
     /// reachable there.
     /// </summary>
+    /// <summary>
+    /// Throws on an unknown id rather than falling back. The previous fallback
+    /// returned the Command Search route, so a typo'd or renamed id produced a
+    /// descriptor that looked routed and advertised a keyboard path that did
+    /// nothing; ten descriptors had drifted this way before anything checked.
+    /// A command genuinely reached some other way still belongs in the table,
+    /// with an honest route describing how it is actually reached.
+    /// </summary>
     public static string For(string commandId) =>
-        Routes.TryGetValue(commandId, out var route) ? route : "Command Search: Alt, X, A, Q";
+        Routes.TryGetValue(commandId, out var route)
+            ? route
+            : throw new KeyNotFoundException(
+                $"No ribbon route is defined for '{commandId}'. Add it to RibbonRoutes when you add the ribbon control.");
 
     public static bool Has(string commandId) => Routes.ContainsKey(commandId);
 }

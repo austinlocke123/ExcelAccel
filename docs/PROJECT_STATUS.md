@@ -415,6 +415,28 @@ formats; stapling a second command on produces two receipts, so one Ctrl+Z would
 reverse only the format and leave the values scaled. Both are worse than waiting
 for a decision.
 
+## WP-F-07 delivered behavior
+
+`RibbonRouteTests` is the validator `commands/RIBBON_LAYOUT.md` had described
+for weeks without it existing. It parses the ribbon XML from source and enforces
+that every control has an action and a KeyTip, that no KeyTip duplicates or
+prefixes another within the scope Excel resolves it in, that every tagged button
+names a registered command, and that every descriptor's route equals both the
+route table and the path its button actually has.
+
+It found ten drifted descriptors, six of them previously unknown. Four Model
+Check commands built their route by concatenating a different command's route
+with a KeyTip fragment, and `navigate.cell.a1` named a Navigate menu KeyTip of
+`V` when the menu is `VN`. All five advertised keyboard paths that did nothing,
+printed verbatim by Command Search and the cheat sheet. Two style commands
+carried labels naming a menu that does not exist, and three favorite commands
+spelled the same route two different ways.
+
+`RibbonRoutes.For` now throws on an unknown id. The old fallback returned the
+Command Search route, so a typo produced a descriptor that looked routed. Every
+registered command already had a real entry, so the fallback only ever hid
+mistakes.
+
 ## Open design questions blocking WP-F
 
 All three specifications were reviewed and approved on 2026-08-20, and WP-F-01
