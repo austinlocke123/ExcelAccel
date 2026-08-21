@@ -115,6 +115,29 @@ public sealed class FormulaBlockCommandTests
         Assert.Equal(new[] { "formula", "value" }, units.CommandPlan.ChangedProperties);
     }
 
+    /// <summary>
+    /// A rate stored as 0.0125 becomes 125. This is a value transform, not a
+    /// display format, because Excel cannot scale by 10,000 without also
+    /// printing percent signs; see docs/commands/FORMAT_CYCLES.md.
+    /// </summary>
+    [Fact]
+    public void BasisPointsMultipliesByTenThousandAndCarriesTheUnitTransformContract()
+    {
+        var snapshot = Snapshot(Block(1, 2,
+            FormulaCellValue.Formula("=A1"), FormulaCellValue.Number(0.0125)));
+        var descriptor = BuiltInCommandRegistry.GetRequired("formula.units.to_basis_points");
+
+        var plan = Command("formula.units.to_basis_points")
+            .PlanScale(snapshot, 10000, divide: false, includeNumericConstants: true);
+
+        Assert.Equal("=(A1)*10000", plan.After[0, 0].InvariantValue);
+        Assert.Equal(125, plan.After[0, 1].AsNumber());
+        Assert.Equal(new[] { "formula", "value" }, plan.CommandPlan.ChangedProperties);
+        Assert.Equal(CommandImpact.Medium, descriptor.Impact);
+        Assert.Equal(UndoPolicy.SessionPropertyReceipt, descriptor.UndoPolicy);
+        Assert.Equal(PreviewPolicy.Threshold, descriptor.PreviewPolicy);
+    }
+
     [Fact]
     public void ExecuteRevalidatesWritesVerifiesAndCreatesOptimisticUndo()
     {

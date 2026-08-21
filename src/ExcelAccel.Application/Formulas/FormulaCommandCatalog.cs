@@ -55,6 +55,7 @@ public static class FormulaCommandCatalog
         Descriptor("formula.units.from_thousands", "Convert from Thousands", new[] { "formula", "value" }, true, "UF", "Multiply formulas and optionally numeric constants by 1,000.", new[] { "unscale thousands", "multiply 1000" }, "AC-FORM-004", "AC-FORM-025", ChangedPropertyPolicy.DeclaredSubset),
         Descriptor("formula.units.to_millions", "Convert to Millions", new[] { "formula", "value" }, true, "UM", "Divide formulas and optionally numeric constants by 1,000,000.", new[] { "scale millions", "divide 1000000" }, "AC-FORM-004", "AC-FORM-025", ChangedPropertyPolicy.DeclaredSubset),
         Descriptor("formula.units.from_millions", "Convert from Millions", new[] { "formula", "value" }, true, "UN", "Multiply formulas and optionally numeric constants by 1,000,000.", new[] { "unscale millions", "multiply 1000000" }, "AC-FORM-004", "AC-FORM-025", ChangedPropertyPolicy.DeclaredSubset),
+        Descriptor("formula.units.to_basis_points", "Convert to Basis Points", new[] { "formula", "value" }, true, "UB", "Multiply formulas and optionally numeric constants by 10,000, so 1% reads as 100.", new[] { "bps", "basis points", "multiply 10000" }, "AC-FMT-032", "AC-FORM-025", ChangedPropertyPolicy.DeclaredSubset),
     }.OrderBy(value => value.Id, StringComparer.Ordinal).ToArray();
 
     public static IReadOnlyList<CommandDescriptor> All => Commands;

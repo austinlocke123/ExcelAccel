@@ -400,6 +400,21 @@ Verification: Release and Debug builds warning-free, 539/539 Release tests,
 `scripts/Test-ExcelAddIn.ps1` passing with Excel exiting cleanly and no stale
 session markers.
 
+## WP-F-06 delivered behavior
+
+`formula.units.to_basis_points` multiplies by 10,000 so a rate held as 0.0125
+reads as 125, sitting beside the thousands and millions transforms with the
+identical impact, preview, and undo contract. The qualified scale allowlist in
+`FormulaWrapperTransformer` gained 10,000 and stays an allowlist.
+
+The number-format half of AC-FMT-032 is **not** delivered. The formula block
+pipeline writes formula and value through a transactional adapter with rollback
+and one undo receipt, and a number format is a different property on a different
+port. Extending the plan means teaching the rollback path to write number
+formats; stapling a second command on produces two receipts, so one Ctrl+Z would
+reverse only the format and leave the values scaled. Both are worse than waiting
+for a decision.
+
 ## Open design questions blocking WP-F
 
 All three specifications were reviewed and approved on 2026-08-20, and WP-F-01
@@ -418,6 +433,12 @@ Settled 2026-08-20:
   those categories symbolically so the two never drift apart.
 
 Still open, needed before the work packages they touch:
+
+- **Should `to_basis_points` also apply a number format?** AC-FMT-032 says yes,
+  but doing it properly means teaching the transactional formula adapter to
+  write a second property type. Today the transform ships without it and the
+  user applies a bps format from the number-format cycle. Options: extend the
+  adapter, drop the format half from the criterion, or leave it as is.
 
 - **Precedent and dependent tracing behaviour.** The user has flagged this as
   complicated and wants to specify it deliberately rather than have it inferred.
