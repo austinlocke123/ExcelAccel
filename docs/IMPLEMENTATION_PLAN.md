@@ -249,6 +249,7 @@ from using the add-in rather than from the original specification.
 | WP-F-06 | `formula.units.to_basis_points` unit transform | none | AC-FMT-032 | |
 | WP-F-07 | Ribbon route validator: KeyTip uniqueness, prefix rule, descriptor/ribbon agreement | none | AC-FMT-033 | |
 | WP-F-08 | AutoColor classification, planning and gating to the approved precedence | WP-F-01 | AC-FMT-034..038, AC-FMT-041, AC-FMT-042, AC-FMT-046 | |
+| WP-F-09 | Number-format entry diagnostics, including the round-trip trap | WP-F-01 | AC-FMT-044 | |
 
 Sequencing note: WP-F-01 is the schema change and everything in WP-F-02,
 WP-F-03, and WP-F-08 sits on it, so it goes first. WP-F-06 and WP-F-07 are

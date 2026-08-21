@@ -481,6 +481,23 @@ leaves its ribbon button in place, refusing by name when pressed. Removing the
 button needs `getVisible` on every cycle button plus `IRibbonUI.Invalidate` on
 profile change, which is a ribbon-lifecycle change rather than a cycle change.
 
+## WP-F-09 delivered behavior
+
+`NumberFormatDiagnostics` inspects a cycle entry: structural rejection for what
+is not a number format at all, and detection of the locale-qualified currency
+tokens Excel rewrites on assignment. A rewritten entry can never match itself, so
+its cycle would stick on the first entry forever; the diagnostic names the stored
+form and suggests the bare-symbol form that round-trips.
+
+These checks are deliberately **advisory, not constructor-enforced**. Constructor
+validation also runs during schema migration, so tightening it would make an
+existing profile holding such a format fail to load, and `ProfileRuntime` falls
+back to the embedded default when a load throws. Silently discarding a user's
+whole profile to fix a formatting nuisance is worse than the nuisance. The
+settings editor calls these where the user is typing.
+
+The live probe and the oracle harness remain, and belong with that editor.
+
 ## Open design questions blocking WP-F
 
 All three specifications were reviewed and approved on 2026-08-20, and WP-F-01
