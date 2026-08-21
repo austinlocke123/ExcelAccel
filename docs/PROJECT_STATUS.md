@@ -437,6 +437,31 @@ Command Search route, so a typo produced a descriptor that looked routed. Every
 registered command already had a real entry, so the fallback only ever hid
 mistakes.
 
+## WP-F-08 delivered behavior
+
+AutoColor classification now follows the approved precedence, built on the
+formula parser instead of two regular expressions. The old implementation never
+returned a hardcode for a formula at all, so `=A1*2` was black where the
+specification says blue.
+
+A hardcode outranks external and cross-sheet, and no allowlist applies. The
+divergence from Model Check's allowlisted embedded-constant rule is asserted
+directly by a test, so neither side can quietly drift into agreeing with the
+other. Expect more blue cells than Model Check findings on the same sheet; that
+is intended.
+
+An unparseable formula classifies as unsupported and is left alone rather than
+guessed at. `ReadEmbeddedLiterals` returns empty both for "no literals" and for a
+parse failure, so parse success is checked explicitly.
+
+The execution gate is split: selection scope is permitted, worksheet scope stays
+behind `PERFORMANCE_QUALIFICATION_REQUIRED`.
+
+**The two commands are deliberately not registered.** No port reads or writes
+per-cell font colours, so registering them would put two buttons on the ribbon
+that refuse the moment they are pressed. AC-FMT-036, AC-FMT-037 and AC-FMT-046
+are not claimed.
+
 ## Open design questions blocking WP-F
 
 All three specifications were reviewed and approved on 2026-08-20, and WP-F-01
@@ -455,6 +480,11 @@ Settled 2026-08-20:
   those categories symbolically so the two never drift apart.
 
 Still open, needed before the work packages they touch:
+
+- **The undo receipt ceiling blocks AutoColor execution.** `PropertyBatchReceipt`
+  caps at 32 changes, and a real selection exceeds that, so AutoColor cannot
+  record undo with today's receipt types. Options: a new receipt kind, or one
+  coarse property in the style of the existing `cell_format_block_v1`.
 
 - **Should `to_basis_points` also apply a number format?** AC-FMT-032 says yes,
   but doing it properly means teaching the transactional formula adapter to

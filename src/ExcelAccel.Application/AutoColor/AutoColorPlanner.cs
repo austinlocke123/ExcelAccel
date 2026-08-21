@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Profiles;
 using ExcelAccel.Core.Commands;
+using ExcelAccel.Core.Formulas;
+using ExcelAccel.Core.ModelCheck;
 
 namespace ExcelAccel.Application.AutoColor;
 
@@ -77,21 +78,78 @@ public sealed class AutoColorPlan
 public static class AutoColorPlanner
 {
     public const int MaximumPlannableCells = 250_000;
-    private static readonly Regex ExternalReference = new Regex(@"\[[^\]]+\]", RegexOptions.CultureInvariant);
-    private static readonly Regex SheetReference = new Regex(@"(?:'[^']+'|[A-Za-z_][A-Za-z0-9_.]*)!", RegexOptions.CultureInvariant);
-
-    public static AutoColorCategory Classify(AutoColorCellSnapshot cell)
+    /// <summary>
+    /// Classifies one cell. Precedence is Error, numeric hardcode, external,
+    /// cross-sheet, same-sheet, text; the first match wins.
+    /// </summary>
+    /// <remarks>
+    /// A hardcode outranks external and cross-sheet deliberately: the point of
+    /// the colouring is to make typed numbers findable, and a number buried in an
+    /// external reference is exactly the kind that hides. No allowlist applies,
+    /// so <c>=A1*2</c> is a hardcode. That is a deliberate divergence from Model
+    /// Check, whose embedded-constant rule allowlists 0, 1, -1, 2, 100, 12 and
+    /// 365 because its job is to raise findings worth a person's attention. A
+    /// colour map is worse for a missed hardcode than an over-coloured one, so
+    /// the two rules must not be unified. See docs/commands/AUTOCOLOR.md.
+    /// </remarks>
+    public static AutoColorCategory Classify(AutoColorCellSnapshot cell, string originWorksheet)
     {
+        if (cell is null) throw new ArgumentNullException(nameof(cell));
         if (cell.ScalarKind == CellScalarKind.Error) return AutoColorCategory.Error;
-        if (!string.IsNullOrWhiteSpace(cell.Formula))
+
+        if (string.IsNullOrWhiteSpace(cell.Formula))
         {
-            if (ExternalReference.IsMatch(cell.Formula)) return AutoColorCategory.ExternalFormula;
-            if (SheetReference.IsMatch(cell.Formula)) return AutoColorCategory.CrossSheetFormula;
-            return AutoColorCategory.SameSheetFormula;
+            switch (cell.ScalarKind)
+            {
+                case CellScalarKind.Number: return AutoColorCategory.NumericHardcode;
+                case CellScalarKind.Text: return AutoColorCategory.Text;
+                default: return AutoColorCategory.Unsupported;
+            }
         }
-        if (cell.ScalarKind == CellScalarKind.Text) return AutoColorCategory.Text;
-        if (cell.ScalarKind == CellScalarKind.Number) return AutoColorCategory.NumericHardcode;
-        return AutoColorCategory.Unsupported;
+
+        var parsed = new FormulaParser().Parse(cell.Formula, FormulaParseOptions.DefaultA1);
+        if (!parsed.IsSuccess || parsed.Document is null)
+        {
+            // A formula outside qualified parser coverage cannot be classified
+            // honestly, and guessing would either hide a hardcode or invent one.
+            // Unsupported cells are counted and left exactly as they are.
+            return AutoColorCategory.Unsupported;
+        }
+
+        // ReadEmbeddedLiterals also returns empty on a parse failure, which is
+        // why success is checked above rather than relying on an empty result.
+        if (FormulaShape.ReadEmbeddedLiterals(cell.Formula).Count > 0)
+        {
+            return AutoColorCategory.NumericHardcode;
+        }
+
+        var references = parsed.Document.References;
+        if (references.Any(reference => reference.Qualifier is not null && reference.Qualifier.IndexOf('[') >= 0))
+        {
+            return AutoColorCategory.ExternalFormula;
+        }
+
+        if (references.Any(reference => reference.Qualifier is not null && !IsOrigin(reference.Qualifier, originWorksheet)))
+        {
+            return AutoColorCategory.CrossSheetFormula;
+        }
+
+        return AutoColorCategory.SameSheetFormula;
+    }
+
+    /// <summary>
+    /// A sheet-qualified reference to the sheet the formula lives on is
+    /// same-sheet: <c>=Sheet1!A1</c> written on Sheet1 is not cross-sheet.
+    /// </summary>
+    private static bool IsOrigin(string qualifier, string originWorksheet)
+    {
+        var name = qualifier.Trim();
+        if (name.Length >= 2 && name[0] == '\'' && name[name.Length - 1] == '\'')
+        {
+            name = name.Substring(1, name.Length - 2).Replace("''", "'");
+        }
+
+        return string.Equals(name, originWorksheet ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     public static AutoColorPlan Plan(ProfileDefinition profile, SelectionSnapshot selection,
@@ -110,7 +168,7 @@ public static class AutoColorPlanner
         var changes = new List<AutoColorChange>();
         foreach (var cell in ordered)
         {
-            var category = Classify(cell);
+            var category = Classify(cell, selection.Context.WorksheetName);
             counts[category]++;
             if (category == AutoColorCategory.Unsupported) continue;
             var key = CategoryKey(category);
@@ -125,10 +183,19 @@ public static class AutoColorPlanner
             PreconditionFingerprint.Create(fingerprintSource));
     }
 
-    public static CanExecuteResult ExecutionGate() => CanExecuteResult.Refuse(
-        "PERFORMANCE_QUALIFICATION_REQUIRED",
-        "AutoColor execution remains unavailable until AC-P0-006 qualification and rollback evidence pass.",
-        "Run and approve the Qualification performance profile before enabling this command.");
+    /// <summary>
+    /// Selection scope is bounded by the selection the user made and is
+    /// permitted. Worksheet scope recolours thousands of cells in one action and
+    /// stays refused until it has a transactional adapter, rollback and
+    /// fault-injection evidence, and a worksheet-scale preview.
+    /// </summary>
+    public static CanExecuteResult ExecutionGate(AutoColorScope scope) =>
+        scope == AutoColorScope.Selection
+            ? CanExecuteResult.Permit()
+            : CanExecuteResult.Refuse(
+                "PERFORMANCE_QUALIFICATION_REQUIRED",
+                "AutoColor over a worksheet remains unavailable until AC-P0-006 qualification and rollback evidence pass.",
+                "Run AutoColor over a selection, or approve the Qualification performance profile.");
 
     private static string CategoryKey(AutoColorCategory category)
     {
