@@ -110,8 +110,8 @@ the product ships defaults and nothing more.
 - A user may reorder, edit, add, or remove entries within any cycle.
 - A user may **add a cycle that did not exist when the product shipped**, and
   remove one that did.
-- A cycle with no entries is inert and its command reports that nothing is
-  configured, rather than failing.
+- A cycle with no entries **does not exist as far as the user is concerned**.
+  See "No phantom slots" below.
 - Every format string is validated before it is stored; an invalid string is
   refused with its position in the cycle, and the prior profile is preserved.
 
@@ -120,23 +120,56 @@ the product ships defaults and nothing more.
 Ribbon XML is static, so a cycle invented after install cannot receive a
 purpose-built button. Two mechanisms cover it, and both are required:
 
-- **Custom cycle slots.** A fixed set of eight commands,
-  `format.number.custom.1` through `.8`, each bound to a named cycle in the
-  profile. They are registered, keyboard-reachable, and empty by default. The
-  ribbon shows only slots that are configured.
+- **Custom cycle slots.** Up to eight per family, each bound to a named cycle in
+  the profile. Eight is the ceiling, not the count: a family with two configured
+  cycles has two, not two plus six empties.
 - **Command Search.** Every configured cycle is searchable by its user-given
   name, so a ninth cycle is still reachable even with no free slot.
 
 The built-in six are simply the cycles the default profile happens to define;
 they carry no privilege beyond having dedicated ribbon buttons.
 
+### No phantom slots
+
+An unconfigured slot must be **invisible and unreachable**, not merely inert.
+Pressing a key and getting "nothing is configured" is the same interruption the
+no-dialogs-on-success rule exists to remove, and cycling through empty
+placeholders to reach a real one defeats the point of a cycle.
+
+Concretely, a slot with no entries:
+
+- does not appear on the ribbon;
+- is not offered by Command Search;
+- is skipped entirely when a cycle advances, never occupying a position;
+- refuses with a message naming the slot, and changes nothing, if reached by a
+  stored route or cheat-sheet entry that predates its deletion.
+
+The last case is the only one where a message is correct, because the user
+invoked something specific by name and deserves to know why nothing happened.
+
+### Applies to every cycle family
+
+This is not a number-format rule. The profile already defines cycles for font
+colour, fill colour, font size, horizontal and vertical alignment, underline,
+row height, and column width, and border cycles are still to be built. All of
+them take the same treatment: user-definable, up to eight custom slots per
+family, managed from the same settings editor, with no phantom slots.
+
+A family's built-in cycle is just its default; it may be edited or removed like
+any other.
+
 ## Settings surface
 
 Editing cycles by hand-writing profile JSON is not acceptable for a setting this
 central, so this work package includes a settings editor.
 
-- Lists every cycle with its entries in order.
-- Add, remove, rename, and reorder both cycles and entries.
+- Lists every family, and within it every configured cycle with its entries in
+  order.
+- Add, remove, rename, and reorder both cycles and entries, in any family.
+- Enforces the eight-per-family ceiling, refusing a ninth with a message naming
+  the limit rather than silently dropping it.
+- Makes deletion the way a slot becomes unconfigured, so the user never has to
+  leave an empty placeholder behind to get rid of a cycle.
 - Shows a live preview of a representative positive and negative value for each
   entry, so the effect is visible before saving.
 - Validates every format string on save and refuses invalid input with its
@@ -166,15 +199,21 @@ validation is refused whole, per AC-PROF-007 and AC-PROF-009.
 | AC-FMT-025 | Default cycle entries present negatives in parentheses. |
 | AC-FMT-026 | A user may add, remove, reorder, and edit cycles and their entries, including cycles that did not ship with the product. |
 | AC-FMT-027 | An invalid format string is refused with its cycle and position, and the prior profile remains active. |
-| AC-FMT-028 | An empty cycle reports that nothing is configured and changes nothing. |
+| AC-FMT-028 | A slot reached by a stored route or cheat-sheet entry after its cycle was deleted refuses with a message naming the slot and changes nothing. |
 | AC-FMT-029 | Custom cycle slots and Command Search both invoke a user-added cycle by its user-given name. |
 | AC-FMT-030 | The settings editor previews a positive and negative sample per entry and writes through validate-then-atomic-replace. |
 | AC-FMT-031 | Migration from schema 5 lifts each existing single number format into a one-entry cycle with no setting lost. |
 | AC-FMT-032 | `formula.units.to_basis_points` multiplies by 10,000, applies a basis-point format, and carries the same impact tier, preview, and undo as the other unit transforms. |
+| AC-FMT-039 | An unconfigured cycle slot does not appear on the ribbon, is not offered by Command Search, and is skipped when a cycle advances, so no press ever lands on an empty slot. |
+| AC-FMT-040 | The settings editor adds, deletes, renames, and defines cycles in every family, enforcing eight per family and refusing a ninth with a message naming the limit. |
 
 ## Explicitly out of scope
 
 - A scaling basis-point *number format*, which Excel cannot express.
 - Conditional or rule-driven formats; a cycle is an ordered list, nothing more.
-- Cycling any property other than the number format. The existing colour, font,
-  alignment, row-height, and column-width cycles are unchanged.
+- Conditional or rule-driven cycle entries; an entry is a value, not a rule.
+
+Note that cycling properties beyond the number format is **in** scope as of
+2026-08-20; see "Applies to every cycle family" above. The earlier statement
+that the colour, font, alignment, row-height, and column-width cycles were
+unchanged no longer holds — they become user-definable on the same terms.

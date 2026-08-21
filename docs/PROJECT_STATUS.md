@@ -373,6 +373,37 @@ Office/coexistence/accessibility matrix, CA-signed installer, clean-VM lifecycle
 and enterprise trust remain deferred distribution gates. They are required when
 broad distribution approaches, not before ordinary feature development.
 
+## Open design questions blocking WP-F
+
+Specification is ahead of code by intent: the user is reviewing
+`commands/FORMAT_CYCLES.md`, `commands/RIBBON_LAYOUT.md`, and
+`commands/AUTOCOLOR.md` before implementation starts. **Do not begin WP-F-01
+until that review lands.**
+
+Settled 2026-08-20:
+
+- Hardcode outranks cross-sheet and external; any numeric literal makes a cell
+  a hardcode, with no allowlist.
+- Error ranks above hardcode in classification precedence.
+- Only numeric literals count as hardcodes; text literals stay black.
+- Eight custom cycle slots per family is sufficient, and unconfigured slots must
+  be invisible and unreachable rather than inert.
+- AutoColor category colours are user-settable, and colour cycles reference
+  those categories symbolically so the two never drift apart.
+
+Still open, needed before the work packages they touch:
+
+- **Precedent and dependent tracing behaviour.** The user has flagged this as
+  complicated and wants to specify it deliberately rather than have it inferred.
+  Nothing in the tracing commands should be redesigned until they do. This is
+  the largest open item.
+- Underline cycle: whether accounting single and double variants belong in the
+  default cycle.
+- Border cycles: which edge combinations form the cycle, which line styles, and
+  whether a separate border colour cycle exists.
+- Currency cycle: sign placement, decimal defaults, and whether a no-symbol
+  variant belongs in the default.
+
 ## Recommended restart point
 
 Phase 2 is finished, so nothing here is blocking. The most useful next step is to

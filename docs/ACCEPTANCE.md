@@ -141,7 +141,7 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-025 | Default cycle entries present negatives in parentheses. |
 | AC-FMT-026 | A user may add, remove, reorder, and edit cycles and their entries, including cycles that did not ship with the product. |
 | AC-FMT-027 | An invalid format string is refused with its cycle and position, and the prior profile remains active. |
-| AC-FMT-028 | An empty cycle reports that nothing is configured and changes nothing. |
+| AC-FMT-028 | A slot reached by a stored route or cheat-sheet entry after its cycle was deleted refuses with a message naming the slot and changes nothing. |
 | AC-FMT-029 | Custom cycle slots and Command Search both invoke a user-added cycle by its user-given name. |
 | AC-FMT-030 | The settings editor previews a positive and negative sample per entry and writes through validate-then-atomic-replace. |
 | AC-FMT-031 | Migration from profile schema 5 lifts each existing single number format into a one-entry cycle with no setting lost. |
@@ -151,7 +151,11 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-035 | No allowlist is applied; `=A1*2` classifies as a hardcode while Model Check continues to exclude the same literal from its findings. |
 | AC-FMT-036 | The blue-black toggle and AutoColor assign the same colour to the same cell. |
 | AC-FMT-037 | The toggle writes only the font colour, records an undo receipt, and leaves value, formula, and other format properties unchanged. |
-| AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product. |
+| AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product, and each is editable per category from the settings editor. |
+| AC-FMT-039 | An unconfigured cycle slot does not appear on the ribbon, is not offered by Command Search, and is skipped when a cycle advances, so no press ever lands on an empty slot. |
+| AC-FMT-040 | The settings editor adds, deletes, renames, and defines cycles in every family, enforcing eight per family and refusing a ninth with a message naming the limit. |
+| AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in precedence order. |
+| AC-FMT-042 | Changing a category's colour updates AutoColor, the blue-black toggle, and every cycle entry referencing it, while literal entries are unaffected. |
 | AC-NAV-001 | Previous/next sheet navigation honors visible-sheet and wrap policy without altering workbook content. |
 | AC-NAV-002 | A1 navigation selects A1 on the intended active sheet and preserves workbook content. |
 | AC-NAV-003 | First/last used navigation matches the documented used-range semantics and exposes/refuses unsupported ambiguity. |

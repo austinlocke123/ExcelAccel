@@ -31,6 +31,38 @@ colour is a profile setting.
 | Error | red `#FF0000` | The cell holds an Excel error |
 | Text | black `#000000` | Text constant |
 
+Every one of these is a **default, not a rule**. The user may set any category to
+any colour from the settings editor, including making two categories share a
+colour or setting one to the same black as formulas to switch it off visually.
+The product hard-codes no colour; the table above is what ships in the default
+profile and nothing more.
+
+## The colour cycle and AutoColor share a palette
+
+The font colour cycle and the AutoColor categories draw on one palette, because
+a user who recolours a cell by hand is usually reaching for the same meanings
+AutoColor assigns automatically.
+
+A cycle entry is therefore one of two things:
+
+- **A category reference** — `@hardcode`, `@same_sheet`, `@cross_sheet`,
+  `@external`, `@error`, `@text`. It resolves to whatever that category's colour
+  currently is.
+- **A literal colour** — a hex value belonging to no category, for colours the
+  user wants on the cycle but that carry no classification meaning.
+
+The default font colour cycle is the six category references in precedence
+order, and the user may add literals or reorder freely.
+
+**References track, literals do not.** Changing the hardcode colour from blue to
+navy changes it everywhere at once: AutoColor, the blue-black toggle, and the
+cycle entry. This is the reason for references rather than copied hex values —
+a palette that silently drifts out of step with AutoColor would produce
+hand-coloured cells that look like classified ones but aren't, which is the
+exact confusion the colouring exists to prevent.
+
+A user who wants a colour pinned against future category changes uses a literal.
+
 ## Classification precedence
 
 Evaluated in order; the first match wins.
@@ -81,18 +113,16 @@ gets the same colour whichever way it is reached.
 It writes only the font colour, records an undo receipt, and never touches the
 value, the formula, or any other format property.
 
-## Two decisions flagged for review
+## Two decisions, confirmed 2026-08-20
 
-These were resolved by judgement, not stated, and should be confirmed:
+Both were raised for review and approved as written:
 
 1. **Error is placed above hardcode.** A cell holding `#REF!` is red even if its
    formula also contains a literal, on the grounds that a broken cell needs
-   fixing before its inputs matter. The alternative is hardcode-first
-   throughout, with no exception.
+   fixing before its inputs matter.
 2. **Only numeric literals count as hardcodes.** A text literal does not, so
-   `=IF(A1>0,"Yes","No")` is a formula and stays black. The finance convention
-   is about typed *numbers*, but this excludes hardcoded labels and thresholds
-   expressed as text.
+   `=IF(A1>0,"Yes","No")` is a formula and stays black. This does mean hardcoded
+   labels and thresholds expressed as text go uncoloured; that was accepted.
 
 Note that under the no-allowlist rule, `=DATE(2026,1,1)` is blue, because its
 arguments are numeric literals.
@@ -120,4 +150,6 @@ independently of worksheet and workbook AutoColor.
 | AC-FMT-035 | No allowlist is applied; `=A1*2` classifies as a hardcode while Model Check continues to exclude the same literal from its findings. |
 | AC-FMT-036 | The blue-black toggle and AutoColor assign the same colour to the same cell. |
 | AC-FMT-037 | The toggle writes only the font colour, records an undo receipt, and leaves value, formula, and other format properties unchanged. |
-| AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product. |
+| AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product, and each is editable per category from the settings editor. |
+| AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in precedence order. |
+| AC-FMT-042 | Changing a category's colour updates AutoColor, the blue-black toggle, and every cycle entry referencing it, while literal entries are unaffected. |
