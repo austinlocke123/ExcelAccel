@@ -21,28 +21,24 @@ public static class ModelCheckCommandCatalog
         ReadOnly(
             RunSelectionId,
             "Model Check Selection",
-            "MS",
             "Run the enabled Model Check rules over the current selection and show the findings in a read-only view.",
             PreviewPolicy.None,
             new[] { "AC-CHECK-001", "AC-CHECK-002", "AC-CHECK-003", "AC-CHECK-004", "AC-CHECK-005", "AC-CHECK-006" }),
         ReadOnly(
             RunWorksheetId,
             "Model Check Worksheet",
-            "MW",
             "Run the enabled Model Check rules over the active worksheet's used region. A large worksheet is confirmed before anything is read.",
             PreviewPolicy.Threshold,
             new[] { "AC-CHECK-001", "AC-CHECK-002", "AC-CHECK-006", "AC-CHECK-007" }),
         ReadOnly(
             RunWorkbookId,
             "Model Check Workbook",
-            "MB",
             "Run the enabled Model Check rules over every worksheet in the workbook. The sheet inventory is always confirmed before anything is read, and a worksheet that cannot be bounded is excluded with a stated reason.",
             PreviewPolicy.Mandatory,
             new[] { "AC-CHECK-001", "AC-CHECK-002", "AC-CHECK-006", "AC-CHECK-008" }),
         ReadOnly(
             RescanId,
             "Model Check Rescan",
-            "MR",
             "Repeat the exact prior scope and rule configuration against a newly captured snapshot. Prior findings are never relabelled as current.",
             PreviewPolicy.None,
             new[] { "AC-CHECK-034" }),
@@ -104,7 +100,6 @@ public static class ModelCheckCommandCatalog
     private static CommandDescriptor ReadOnly(
         string id,
         string name,
-        string keytip,
         string description,
         PreviewPolicy previewPolicy,
         IEnumerable<string> acceptanceIds) =>
@@ -115,7 +110,7 @@ public static class ModelCheckCommandCatalog
             CommandImpact.ReadOnly,
             Array.Empty<string>(),
             false,
-            RibbonRoutes.For("model_check.results.export") + keytip,
+            RibbonRoutes.For(id),
             "CAP-CHECK-001",
             CommandContextRequirement.Workbook | CommandContextRequirement.Worksheet | CommandContextRequirement.Selection,
             previewPolicy,
@@ -124,5 +119,5 @@ public static class ModelCheckCommandCatalog
             "Model Check",
             description,
             new[] { "model check", "check model", "review model" },
-            RibbonRoutes.For("model_check.results.export") + keytip);
+            RibbonRoutes.For(id));
 }

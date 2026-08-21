@@ -10,7 +10,7 @@ public static class NavigationCommandCatalog
     {
         D("navigate.sheet.previous", "Previous Visible Sheet", RibbonRoutes.For("navigate.sheet.previous"), "AC-NAV-001"),
         D("navigate.sheet.next", "Next Visible Sheet", RibbonRoutes.For("navigate.sheet.next"), "AC-NAV-001"),
-        D("navigate.cell.a1", "Go to A1", "Alt, X, A, V, A", "AC-NAV-002"),
+        D("navigate.cell.a1", "Go to A1", RibbonRoutes.For("navigate.cell.a1"), "AC-NAV-002"),
         D("navigate.used.first", "First Used Cell", RibbonRoutes.For("navigate.used.first"), "AC-NAV-003"),
         D("navigate.used.last", "Last Used Cell", RibbonRoutes.For("navigate.used.last"), "AC-NAV-003"),
         D("navigate.region.edge.up", "Region Edge Up", RibbonRoutes.For("navigate.region.edge.up"), "AC-NAV-004"),
