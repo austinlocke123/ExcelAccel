@@ -17,7 +17,7 @@ This is the thing most easily missed. ExcelAccel is not waiting on anything to b
 used on this machine:
 
 ```powershell
-# already done once, at version 0.1.0-local
+# last done at version 0.3.0-local, which is what is installed today
 ./scripts/New-ExcelAccelPackage.ps1 -Version "0.1.0-local"
 ./scripts/Install-ExcelAccel.ps1 -Action Install `
   -PackageDirectory ".tools/packages/ExcelAccel-0.1.0-local-x64" -AllowUntrustedPrototype

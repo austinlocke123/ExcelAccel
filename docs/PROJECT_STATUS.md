@@ -498,6 +498,82 @@ settings editor calls these where the user is typing.
 
 The live probe and the oracle harness remain, and belong with that editor.
 
+## Overnight run, 2026-08-20 to 2026-08-21
+
+Six work packages merged to `main`, each as its own PR with evidence:
+
+| PR | Package | What landed |
+|---|---|---|
+| #39 | WP-F-01 | Profile schema v6, cycles as data |
+| #40 | WP-F-06 | Basis-point unit transform |
+| #41 | WP-F-07 | Ribbon route validator, and ten drifted routes |
+| #42 | WP-F-08 | AutoColor classification |
+| #43 | WP-F-02 | User-defined cycles |
+| #44 | WP-F-09 | Number-format diagnostics |
+
+Verification on `main` after the last merge: Release and Debug builds
+warning-free, **591/591** Release tests (528 at the start), and
+`scripts/Test-ExcelAddIn.ps1` passing with Excel exiting cleanly and no stale
+session markers.
+
+### Four defects found that were not on anyone's list
+
+- **The specified default font colour cycle would have oscillated.** Several
+  categories share a colour under the default palette, and the stateless advance
+  matches the first index by value, so the cycle would have run red, blue, red
+  forever with green and black unreachable.
+- **Ten descriptors advertised keyboard routes that did nothing**, six of them
+  previously unknown, including `navigate.cell.a1` naming a menu KeyTip that does
+  not exist. Command Search and the cheat sheet printed them verbatim.
+- **AutoColor never classified a formula as a hardcode at all**, so `=A1*2` was
+  black where the specification says blue.
+- **Ordering the font colour default by classification precedence** changed what a
+  keypress had always done, from black to red. The real-Excel smoke caught it.
+
+### Not started, and why
+
+**WP-F-03, the settings editor**, is a WinForms dialog in a project with no test
+coverage. The operations it will call exist and are tested; the dialog needs eyes
+on it. **The AutoColor adapter** writes per-cell colours with rollback and cannot
+be verified without Excel. Both were excluded from this run by decision.
+
+**Tracing is untouched**, as agreed.
+
+### The add-in on this machine is still 0.3.0-local
+
+None of the above is installed. Nothing was installed overnight because it
+changes the working environment and the installer requires every Excel closed.
+To pick it up, with Excel closed:
+
+```powershell
+./scripts/New-ExcelAccelPackage.ps1 -Version "0.4.0-local"
+./scripts/Install-ExcelAccel.ps1 -Action Upgrade `
+  -PackageDirectory ".tools/packages/ExcelAccel-0.4.0-local-x64" -AllowUntrustedPrototype
+```
+
+`-Action Rollback` returns to 0.3.0-local.
+
+Note that upgrading migrates the profile at `%LOCALAPPDATA%\ExcelAccel\profile.json`
+from schema 5 to 6 on first read. The migration keeps every existing setting, but
+a migrated profile shows one-entry cycles where a fresh install shows three;
+"reset to default" is the way to adopt the new defaults.
+
+## Decisions waiting on you
+
+1. **AC-FMT-041 was reworded.** The default font colour cycle is now in palette
+   order rather than classification precedence, so a keypress still produces
+   black first. Confirm, or say you want precedence order and red first.
+2. **Should `to_basis_points` also apply a number format?** AC-FMT-032 says yes.
+   Doing it properly means teaching the transactional formula adapter to write a
+   second property type; stapling on a second command gives two undo receipts, so
+   one Ctrl+Z would reverse only the format. Today the transform ships without it.
+3. **The 32-change undo receipt ceiling blocks AutoColor execution.** A real
+   selection exceeds it. Options: a new receipt kind, or one coarse property in
+   the style of the existing `cell_format_block_v1`.
+4. **Deleting a built-in cycle leaves its ribbon button in place**, refusing by
+   name when pressed. Fully hiding it needs `getVisible` on every cycle button
+   plus `IRibbonUI.Invalidate` on profile change.
+
 ## Open design questions blocking WP-F
 
 All three specifications were reviewed and approved on 2026-08-20, and WP-F-01
