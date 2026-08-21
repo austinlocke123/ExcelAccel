@@ -157,7 +157,7 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in palette order, resolving to black, blue, green, red. |
 | AC-FMT-042 | Changing a category's colour updates both AutoColor commands and every cycle entry referencing it, while literal entries are unaffected. |
 | AC-FMT-043 | The default Currency cycle walks dollar, euro, and pound at zero and two decimals, in that order. |
-| AC-FMT-044 | Cycle entry validation writes each format to Excel and reads it back, rejecting any entry Excel does not store verbatim and naming the rewritten form. |
+| AC-FMT-044 | Cycle entry validation writes each format to Excel and reads it back, rejecting any entry Excel does not store verbatim and naming the rewritten form. **Pure half met (WP-F-09): static inspection and the round-trip decision ship; the live probe and oracle harness remain.** |
 | AC-FMT-045 | No cycle contents are defined in code; every default resolves from the embedded default profile, and reset restores from it. |
 | AC-FMT-046 | Colouring occurs only on explicit user invocation; the add-in registers no change, calculate, or timer handler that recolours cells. |
 | AC-NAV-001 | Previous/next sheet navigation honors visible-sheet and wrap policy without altering workbook content. |
