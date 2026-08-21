@@ -147,6 +147,11 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-031 | Migration from profile schema 5 lifts each existing single number format into a one-entry cycle with no setting lost. |
 | AC-FMT-032 | `formula.units.to_basis_points` multiplies by 10,000, applies a basis-point format, and carries the same impact tier, preview, and undo as the other unit transforms. |
 | AC-FMT-033 | The ribbon groups commands by modeling task, and every registered command's declared keyboard route matches the ribbon it is reachable through. |
+| AC-FMT-034 | Classification follows the stated precedence, and a cell containing any numeric literal is a hardcode regardless of cross-sheet or external references in the same formula. |
+| AC-FMT-035 | No allowlist is applied; `=A1*2` classifies as a hardcode while Model Check continues to exclude the same literal from its findings. |
+| AC-FMT-036 | The blue-black toggle and AutoColor assign the same colour to the same cell. |
+| AC-FMT-037 | The toggle writes only the font colour, records an undo receipt, and leaves value, formula, and other format properties unchanged. |
+| AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product. |
 | AC-NAV-001 | Previous/next sheet navigation honors visible-sheet and wrap policy without altering workbook content. |
 | AC-NAV-002 | A1 navigation selects A1 on the intended active sheet and preserves workbook content. |
 | AC-NAV-003 | First/last used navigation matches the documented used-range semantics and exposes/refuses unsupported ambiguity. |

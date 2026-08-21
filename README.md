@@ -28,6 +28,7 @@ numbers, and the restart point.
 5. [Complete feature and command specification](docs/commands/README.md)
 6. [Number format cycles](docs/commands/FORMAT_CYCLES.md)
 7. [Ribbon layout and keyboard routing](docs/commands/RIBBON_LAYOUT.md)
+8. [Cell classification and AutoColor](docs/commands/AUTOCOLOR.md)
 6. [Acceptance criteria](docs/ACCEPTANCE.md)
 7. [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 8. [Traceability matrix](docs/TRACEABILITY.md)

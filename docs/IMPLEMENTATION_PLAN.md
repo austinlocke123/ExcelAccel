@@ -245,7 +245,7 @@ from using the add-in rather than from the original specification.
 | WP-F-02 | User-defined cycles: add/remove/reorder, validation, custom cycle slots, Command Search by cycle name | WP-F-01 | AC-FMT-026..029 |
 | WP-F-03 | Settings editor for cycles, with positive and negative preview per entry | WP-F-01/02 | AC-FMT-030 |
 | WP-F-04 | Ribbon regrouping to the approved task taxonomy | none | AC-FMT-033 |
-| WP-F-05 | Blue-black input/formula toggle | WP-F-04 | to be specified |
+| WP-F-05 | Blue-black input/formula toggle over a selection | WP-F-04 | AC-FMT-034..038 |
 | WP-F-06 | `formula.units.to_basis_points` unit transform | none | AC-FMT-032 |
 
 Sequencing note: WP-F-01 is the schema change and everything in WP-F-02 and
