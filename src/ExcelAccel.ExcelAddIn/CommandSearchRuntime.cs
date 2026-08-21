@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Forms;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Discovery;
+using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Profiles;
 using ExcelAccel.ExcelAddIn.Reliability;
 
@@ -40,7 +41,11 @@ internal static class CommandSearchRuntime
 
 internal sealed class CommandSearchDialog : Form
 {
-    private readonly CommandSearchIndex _index = new CommandSearchIndex(BuiltInCommandRegistry.All);
+    // The ribbon XML is static, so a cycle created after install can never have
+    // its own button. Command Search indexes the registry plus the profile's
+    // cycles, which is what makes a user-invented cycle reachable at all.
+    private readonly CommandSearchIndex _index = new CommandSearchIndex(
+        BuiltInCommandRegistry.All.Concat(CycleCommandFactory.Descriptors(ProfileRuntime.Current)));
     private readonly TextBox _query = new TextBox();
     private readonly ListView _results = new ListView();
     private readonly Label _status = new Label();
