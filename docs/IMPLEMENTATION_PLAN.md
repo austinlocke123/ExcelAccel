@@ -1,6 +1,6 @@
 # Agent-ready implementation plan
 
-Status: **Phase 2 active; WP-2-01 reference snapshot and direct precedents complete as of 2026-08-19; WP-2-02 is next**
+Status: **Phase 2 is complete. WP-F feature packages are active; see §7b.**
 
 This plan decomposes implementation work. The documentation baseline and Phase
 0 start were approved on 2026-08-18. Phase 1A foundation work was authorized on
@@ -239,18 +239,33 @@ included in a release.
 These are approved product changes, not gated capability packages. They came
 from using the add-in rather than from the original specification.
 
-| Work package | Scope | Depends on | Primary acceptance |
-|---|---|---|---|
-| WP-F-01 | Number-format cycles: profile schema 5 to 6, cycle semantics, defaults with parenthesised negatives, migration | none | AC-FMT-021..025, AC-FMT-031 |
-| WP-F-02 | User-defined cycles: add/remove/reorder, validation, custom cycle slots, Command Search by cycle name | WP-F-01 | AC-FMT-026..029 |
-| WP-F-03 | Settings editor for cycles, with positive and negative preview per entry | WP-F-01/02 | AC-FMT-030 |
-| WP-F-04 | Ribbon regrouping to the approved task taxonomy | none | AC-FMT-033 |
-| WP-F-05 | Blue-black input/formula toggle over a selection | WP-F-04 | AC-FMT-034..038 |
-| WP-F-06 | `formula.units.to_basis_points` unit transform | none | AC-FMT-032 |
+| Work package | Scope | Depends on | Primary acceptance | State |
+|---|---|---|---|---|
+| WP-F-01 | Profile schema 5 to 6: cycles as data, cycle semantics, defaults with parenthesised negatives and `_)` padding, migration | none | AC-FMT-021..025, AC-FMT-031, AC-FMT-043, AC-FMT-045 | |
+| WP-F-02 | User-defined cycles: add/remove/reorder, validation, custom cycle slots, Command Search by cycle name, no phantom slots | WP-F-01 | AC-FMT-026..029, AC-FMT-039, AC-FMT-040 | |
+| WP-F-03 | Settings editor for cycles, with positive and negative preview per entry | WP-F-01/02 | AC-FMT-030 | |
+| WP-F-04 | Ribbon regrouping to the approved task taxonomy | none | AC-FMT-033 | **Delivered 2026-08-20** |
+| WP-F-05 | Blue-black input/formula toggle over a selection | WP-F-04 | AC-FMT-034..038 | **Withdrawn** |
+| WP-F-06 | `formula.units.to_basis_points` unit transform | none | AC-FMT-032 | |
+| WP-F-07 | Ribbon route validator: KeyTip uniqueness, prefix rule, descriptor/ribbon agreement | none | AC-FMT-033 | |
+| WP-F-08 | AutoColor classification, planning and gating to the approved precedence | WP-F-01 | AC-FMT-034..038, AC-FMT-041, AC-FMT-042, AC-FMT-046 | |
 
-Sequencing note: WP-F-01 is the schema change and everything in WP-F-02 and
-WP-F-03 sits on it, so it goes first. WP-F-04 and WP-F-06 are independent and
-can land in any order.
+Sequencing note: WP-F-01 is the schema change and everything in WP-F-02,
+WP-F-03, and WP-F-08 sits on it, so it goes first. WP-F-06 and WP-F-07 are
+independent and can land in any order.
+
+**WP-F-05 is withdrawn, not deferred.** The blue-black toggle applied the same
+classification to a selection, which is what AutoColor Selection already does on
+a one-cell selection, so it was a second name for one behaviour. AC-FMT-036 now
+reads "no third command applies the classification". Setting a colour against
+the classification is the font colour cycle's job. Its acceptance range moved to
+WP-F-08.
+
+**WP-F-07 exists because `commands/RIBBON_LAYOUT.md` describes a generator and a
+validator that do not exist.** `RibbonRoutes.cs` is hand-maintained and
+`RibbonRoutes.For()` falls back silently on an unknown id, so a descriptor can
+advertise a route that does not work; four Model Check descriptors already do.
+Either the code or the document has to change, and the document is right.
 
 ## 8. Pull-request slicing rules
 
