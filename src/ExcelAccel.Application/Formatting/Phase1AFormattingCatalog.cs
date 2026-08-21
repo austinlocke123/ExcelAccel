@@ -15,6 +15,7 @@ public static class Phase1AFormattingCatalog
         Descriptor("format.font_color.cycle", "Font Color Cycle", "font_color", "FC", "AC-FMT-001"),
         Descriptor("format.fill_color.cycle", "Fill Color Cycle", "fill_color", "FI", "AC-FMT-001"),
         Descriptor("format.number.general", "General Number Format", "number_format", "NG", "AC-FMT-002"),
+        Descriptor("format.number.currency", "Currency Format", "number_format", "NC", "AC-FMT-002"),
         Descriptor("format.number.percentage", "Percentage Format", "number_format", "NP", "AC-FMT-002"),
         Descriptor("format.number.multiple", "Multiple Format", "number_format", "NM", "AC-FMT-002"),
         Descriptor("format.number.date", "Date Format", "number_format", "NT", "AC-FMT-002"),
@@ -51,16 +52,27 @@ public static class Phase1AFormattingCatalog
         // Set where an empty resolver result means "nothing to change" rather
         // than a broken profile, so the user is told the truth.
         string? noChange = null;
+        // Set where an empty resolver result means the named cycle is not
+        // configured, so the refusal can name the cycle the user asked for.
+        string? unconfigured = null;
         switch (commandId)
         {
-            case "format.font_color.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.FontColorCycle, c); break;
-            case "format.fill_color.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.FillColorCycle, c); break;
-            case "format.font_size.cycle": resolver = (p, c) => NextNumber(p.FontSizeCycle, c); break;
-            case "format.row_height.cycle": resolver = (p, c) => NextNumber(p.RowHeightCycle, c); break;
-            case "format.column_width.cycle": resolver = (p, c) => NextNumber(p.ColumnWidthCycle, c); break;
-            case "format.alignment.horizontal.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.HorizontalAlignmentCycle, c); break;
-            case "format.alignment.vertical.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.VerticalAlignmentCycle, c); break;
-            case "format.underline.cycle": resolver = (p, c) => ProfileFormattingCommand.Next(p.UnderlineCycle, c); break;
+            case "format.font_color.cycle":
+            case "format.fill_color.cycle":
+            case "format.font_size.cycle":
+            case "format.row_height.cycle":
+            case "format.column_width.cycle":
+            case "format.alignment.horizontal.cycle":
+            case "format.alignment.vertical.cycle":
+            case "format.underline.cycle":
+            {
+                // These commands name no particular cycle on the ribbon, so they
+                // follow whichever cycle the user has placed first in the family.
+                var family = descriptor.ChangedProperties[0];
+                resolver = (p, c) => ProfileFormattingCommand.Next(p.ResolveFirstCycle(family), c);
+                unconfigured = $"No {family.Replace('_', ' ')} cycle is configured in the active profile.";
+                break;
+            }
             case "format.indent.increase":
                 resolver = (_, c) => ChangeInteger(c, 1);
                 noChange = "This cell is already at the maximum indent level.";
@@ -87,16 +99,18 @@ public static class Phase1AFormattingCatalog
             case "view.panes.freeze": resolver = (_, __) => "true"; break;
             case "view.panes.unfreeze": resolver = (_, __) => "false"; break;
             default:
-                var key = commandId.Substring("format.number.".Length);
-                resolver = (p, _) => p.NumberFormats.TryGetValue(key, out var value) ? value : string.Empty;
+            {
+                // Number-format commands are named on the ribbon, so each binds to
+                // the cycle carrying its own identifier rather than to a slot.
+                var cycleId = commandId.Substring("format.number.".Length);
+                resolver = (p, c) => ProfileFormattingCommand.Next(p.ResolveCycle("number_format", cycleId), c);
+                unconfigured = $"The '{cycleId}' number-format cycle is not configured in the active profile.";
                 break;
+            }
         }
 
-        return new ProfileFormattingCommand(descriptor, resolver, verifier, noChange);
+        return new ProfileFormattingCommand(descriptor, resolver, verifier, noChange, unconfigured);
     }
-
-    private static string NextNumber(IReadOnlyList<double> values, string current) =>
-        ProfileFormattingCommand.Next(values.Select(value => value.ToString("0.####", CultureInfo.InvariantCulture)).ToArray(), current);
 
     private static string ChangeInteger(string current, int delta) =>
         int.TryParse(current, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)

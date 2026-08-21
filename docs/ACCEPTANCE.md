@@ -154,7 +154,7 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product, and each is editable per category from the settings editor. |
 | AC-FMT-039 | An unconfigured cycle slot does not appear on the ribbon, is not offered by Command Search, and is skipped when a cycle advances, so no press ever lands on an empty slot. |
 | AC-FMT-040 | The settings editor adds, deletes, renames, and defines cycles in every family, enforcing eight per family and refusing a ninth with a message naming the limit. |
-| AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in precedence order. |
+| AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in palette order, resolving to black, blue, green, red. |
 | AC-FMT-042 | Changing a category's colour updates both AutoColor commands and every cycle entry referencing it, while literal entries are unaffected. |
 | AC-FMT-043 | The default Currency cycle walks dollar, euro, and pound at zero and two decimals, in that order. |
 | AC-FMT-044 | Cycle entry validation writes each format to Excel and reads it back, rejecting any entry Excel does not store verbatim and naming the rewritten form. |

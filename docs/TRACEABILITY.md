@@ -26,7 +26,7 @@ documents.
 | CAP-PROF-001 | Requirements §8; commands/CATALOG §5 | WP-1A-04 | AC-PROF-001..004 |
 | CAP-FMT-001 | commands/CATALOG §1.1/1.2 | WP-1A-06 | AC-FMT-001..009, AC-REL-005 |
 | CAP-FMT-002 | commands/CATALOG §1.3 | WP-1A-07 | AC-FMT-010..013 |
-| CAP-FMT-004 (number-format cycles, user-defined, settings editor) | commands/FORMAT_CYCLES | WP-F-01 | AC-FMT-021..032 |
+| CAP-FMT-004 (number-format cycles, user-defined, settings editor) | commands/FORMAT_CYCLES | WP-F-01 delivered; WP-F-02/03 pending | AC-FMT-021, 024, 025, 031, 041, 043, 045 evidenced in evidence/WP-F-01_PROFILE_CYCLES |
 | CAP-UX-002 (ribbon task grouping) | commands/RIBBON_LAYOUT | delivered 2026-08-20 | AC-FMT-033 |
 | CAP-NAV-001 | commands/CATALOG §1.4 | WP-1A-08 | AC-NAV-001..006 |
 | CAP-UNDO-001 | ADR-0003; Reliability §6 | WP-1A-09 | AC-REL-011/012 |

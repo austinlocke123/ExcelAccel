@@ -373,12 +373,38 @@ Office/coexistence/accessibility matrix, CA-signed installer, clean-VM lifecycle
 and enterprise trust remain deferred distribution gates. They are required when
 broad distribution approaches, not before ordinary feature development.
 
+## WP-F-01 delivered behavior
+
+Profile schema v6 replaced nine cycle keys with one `cycles` object holding
+family to ordered named cycles, and `ProfileDefinition` went from 18 constructor
+parameters to 10. Cycle contents live entirely in the embedded default profile;
+no format string, colour, or cycle order is written in C#.
+
+Number-format commands cycle rather than applying once. `format.number.currency`
+walks dollar, euro, and pound at zero and two decimals, and the real-Excel smoke
+now asserts the advance rather than a fixed format.
+
+`ApplyCurrencyFormatCommand` was deleted: it hard-coded a format string and could
+not cycle. Its refusal codes changed as a result, documented in
+`evidence/WP-F-01_PROFILE_CYCLES.md`; nothing that used to refuse now succeeds.
+
+Two defects were caught before shipping. The specified default font colour cycle
+would have oscillated between two colours, because several categories share a
+colour under the default palette and the stateless advance matches the first
+index by value; resolution now collapses duplicates by resolved value. And
+ordering the default by classification precedence made a font-colour keypress
+produce red where it had always produced black, which the smoke caught; the
+default is now palette order and AC-FMT-041 was reworded to match.
+
+Verification: Release and Debug builds warning-free, 539/539 Release tests,
+`scripts/Test-ExcelAddIn.ps1` passing with Excel exiting cleanly and no stale
+session markers.
+
 ## Open design questions blocking WP-F
 
-Specification is ahead of code by intent: the user is reviewing
-`commands/FORMAT_CYCLES.md`, `commands/RIBBON_LAYOUT.md`, and
-`commands/AUTOCOLOR.md` before implementation starts. **Do not begin WP-F-01
-until that review lands.**
+All three specifications were reviewed and approved on 2026-08-20, and WP-F-01
+has landed. The remaining open items below still gate the work packages named
+against them.
 
 Settled 2026-08-20:
 

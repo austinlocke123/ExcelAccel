@@ -79,7 +79,9 @@ public sealed class ProfileAndQuickKeyTests
 
         Assert.Single(loaded.Favorites);
         Assert.Equal("accounting", loaded.Favorites[0].Arguments["style"]);
-        Assert.Equal(original.NumberFormats, loaded.NumberFormats);
+        Assert.Equal(
+            original.Cycles.All.Select(cycle => cycle.CycleId + ":" + string.Join("|", cycle.Entries)),
+            loaded.Cycles.All.Select(cycle => cycle.CycleId + ":" + string.Join("|", cycle.Entries)));
         Assert.Equal(original.QuickKeys.Select(value => value.Sequence).OrderBy(value => value, StringComparer.Ordinal),
             loaded.QuickKeys.Select(value => value.Sequence).OrderBy(value => value, StringComparer.Ordinal));
     }

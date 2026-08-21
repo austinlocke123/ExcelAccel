@@ -17,5 +17,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Fixtures\formula-v1-corpus.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\profile-v5.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@ using ExcelAccel.Application.DataCleaning;
 using ExcelAccel.Application.Auditing;
 using ExcelAccel.Core.Auditing;
 using ExcelAccel.Application.Operations;
+using ExcelAccel.Application.Formatting;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -76,8 +77,8 @@ public static class DebugSmokeCommands
             // Goes through CallbackBoundary, which is what arms Excel's undo
             // slot, rather than calling the dispatcher directly.
             CallbackBoundary.Run(
-                ExcelAccel.Application.Commands.ApplyCurrencyFormatCommand.Id,
-                CommandDispatcher.ApplyCurrencyFormat,
+                "format.number.currency",
+                () => CommandDispatcher.ApplyProfileFormatting("format.number.currency"),
                 showResult: false);
             System.Windows.Forms.Application.DoEvents();
             DiagnosticLog.Info("smoke.undo.arm", "armed");
@@ -399,7 +400,7 @@ public static class DebugSmokeCommands
     {
         try
         {
-            var result = CommandDispatcher.ApplyCurrencyFormat();
+            var result = CommandDispatcher.ApplyProfileFormatting("format.number.currency");
             DiagnosticLog.Info("smoke.format.number.currency", result.Succeeded ? "success" : "refused");
         }
         catch (Exception exception)
@@ -475,8 +476,8 @@ public static class DebugSmokeCommands
         try
         {
             var port = new ExcelSelectionAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
-            var command = new ApplyCurrencyFormatCommand();
-            var plan = command.Plan(port.CaptureSelection());
+            var command = Phase1AFormattingCatalog.Create("format.number.currency");
+            var plan = command.Plan(ProfileRuntime.Current, port);
             port.SetNumberFormat("0.00");
             var result = command.Execute(plan, port);
             DiagnosticLog.Info(

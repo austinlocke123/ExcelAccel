@@ -38,7 +38,6 @@ internal static class CommandDispatcher
             return CommandResult.Refused(commandId, "This command does not yet accept fixed invocation arguments.", RefusalCodes.ContractMismatch);
         DiagnosticLog.Info(commandId, $"invocation_source:{source.ToString().ToLowerInvariant()}");
         if (commandId == InspectSelectionCommand.Id) return InspectSelection();
-        if (commandId == ApplyCurrencyFormatCommand.Id) return ApplyCurrencyFormat();
         if (commandId == UndoLastCommand.Id) return UndoLastProperty();
         if (commandId == "support.diagnostics.export") return ExportDiagnostics();
         if (commandId == "command.search.open") return CommandSearchRuntime.Open();
@@ -89,7 +88,6 @@ internal static class CommandDispatcher
                 !descriptor.ChangedProperties.Contains("user_profile_favorites") &&
                 (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(descriptor.Id)))
                 return CanExecuteResult.Refuse(RefusalCodes.CommandQuarantined, "Workbook mutation is disabled in safe mode or quarantine.", "Restart Excel cleanly before retrying.");
-            if (descriptor.Id == ApplyCurrencyFormatCommand.Id) return new ApplyCurrencyFormatCommand().CanExecute(snapshot);
             if ((descriptor.Id == "formula.transpose" || descriptor.Id == "paste.formulas_only" || descriptor.Id == "paste.values_only") &&
                 !FormulaSourceRuntime.TryGet(out _, out var sourceReason))
                 return CanExecuteResult.Refuse(RefusalCodes.CommandUnavailable, sourceReason, "Select the source and run Capture Formula Source first.");
@@ -246,32 +244,6 @@ internal static class CommandDispatcher
             exporter.Export(plan, plan.PlanHash);
             return CommandResult.Success(commandId, "The local shortcut cheat sheet was created and verified.");
         }
-    }
-
-    public static CommandResult ApplyCurrencyFormat()
-    {
-        if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(ApplyCurrencyFormatCommand.Id))
-        {
-            return CommandResult.Refused(
-                ApplyCurrencyFormatCommand.Id,
-                "ExcelAccel is in safe mode after an unclean prior session. Restart Excel cleanly before using mutation commands.",
-                RefusalCodes.CommandQuarantined);
-        }
-
-        var port = CreateSelectionAdapter();
-        var command = new ApplyCurrencyFormatCommand();
-        var snapshot = port.CaptureSelection();
-        var canExecute = command.CanExecute(snapshot);
-        if (!canExecute.Allowed)
-        {
-            return CommandResult.Refused(
-                ApplyCurrencyFormatCommand.Id,
-                $"{canExecute.Message} {canExecute.Remediation}".Trim(),
-                canExecute.RefusalCode);
-        }
-
-        var plan = command.Plan(snapshot);
-        return command.Execute(plan, port, UndoRuntime.Store);
     }
 
     public static CommandResult ApplyStyle(string styleId, bool requireBuiltIn = false)

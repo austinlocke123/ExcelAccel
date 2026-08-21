@@ -42,7 +42,7 @@ public sealed class FormattingCommandTests
 
         Assert.True(result.Succeeded);
         Assert.Equal("font_color", port.LastProperty);
-        Assert.Equal(profile.FontColorCycle[0], port.Value);
+        Assert.Equal(profile.ResolveFirstCycle("font_color")[0], port.Value);
         Assert.Equal(1, port.WriteCount);
     }
 
