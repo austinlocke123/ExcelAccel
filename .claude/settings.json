@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\austi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-austi-Programming-ExcelAccel\\\\62a80375-25e3-4354-bdbd-12de1da6a08b\\\\scratchpad\\\\align_probe.ps1\")",
+      "Bash(powershell.exe -NoProfile -Command '$s = Get-Content -Raw align_probe.ps1; $s = $s -replace '\\\\''\\\\$cell\\\\.Value2 = \\\\$val'\\\\'', '\\\\''$cell.Value2 = [double]$val'\\\\''; Set-Content -Path align_probe.ps1 -Value $s -Encoding UTF8')",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File align_probe.ps1)"
+    ]
+  }
+}

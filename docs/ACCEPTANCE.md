@@ -138,7 +138,7 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-022 | A current format absent from the cycle applies entry 0, and a mixed selection applies entry 0 to every cell. |
 | AC-FMT-023 | Cycles are independent; entering a cycle from a different family starts at entry 0 and carries no position across families. |
 | AC-FMT-024 | Cycling changes only the number format, never the underlying value or formula, and records an undo receipt. |
-| AC-FMT-025 | Default cycle entries present negatives in parentheses. |
+| AC-FMT-025 | Default cycle entries present negatives in parentheses, and General, Currency, Percent, and Multiple entries pad the positive section with `_)` so mixed-sign columns align. |
 | AC-FMT-026 | A user may add, remove, reorder, and edit cycles and their entries, including cycles that did not ship with the product. |
 | AC-FMT-027 | An invalid format string is refused with its cycle and position, and the prior profile remains active. |
 | AC-FMT-028 | A slot reached by a stored route or cheat-sheet entry after its cycle was deleted refuses with a message naming the slot and changes nothing. |
@@ -156,6 +156,9 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-040 | The settings editor adds, deletes, renames, and defines cycles in every family, enforcing eight per family and refusing a ninth with a message naming the limit. |
 | AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in precedence order. |
 | AC-FMT-042 | Changing a category's colour updates AutoColor, the blue-black toggle, and every cycle entry referencing it, while literal entries are unaffected. |
+| AC-FMT-043 | The default Currency cycle walks dollar, euro, and pound at zero and two decimals, in that order. |
+| AC-FMT-044 | Cycle entry validation writes each format to Excel and reads it back, rejecting any entry Excel does not store verbatim and naming the rewritten form. |
+| AC-FMT-045 | No cycle contents are defined in code; every default resolves from the embedded default profile, and reset restores from it. |
 | AC-NAV-001 | Previous/next sheet navigation honors visible-sheet and wrap policy without altering workbook content. |
 | AC-NAV-002 | A1 navigation selects A1 on the intended active sheet and preserves workbook content. |
 | AC-NAV-003 | First/last used navigation matches the documented used-range semantics and exposes/refuses unsupported ambiguity. |

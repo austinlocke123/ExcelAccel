@@ -52,11 +52,39 @@ common path; the decimals commands operate on **any** format, including formats
 that belong to no cycle, and remain the only way to adjust precision on an
 arbitrary custom format.
 
-## Negative numbers
+## Negative numbers and horizontal alignment
 
 Negatives are shown in parentheses. Default cycle entries carry an explicit
-negative section, for example `0.00%;(0.00%)`, rather than relying on the
-locale's default negative presentation.
+negative section rather than relying on the locale's default negative
+presentation.
+
+Parenthesised negatives create an alignment problem: the closing paren occupies
+a character width that the positive form does not, so a column of mixed signs
+does not line up at the right edge. Every default entry in the General,
+Currency, Percent, and Multiple cycles therefore ends its positive section with
+`_)`, which reserves exactly the width of a closing paren without printing one.
+
+Measured, rather than assumed:
+
+| Format | Value | Displays as |
+|---|---|---|
+| `#,##0;(#,##0)` | 1234 | `1,234` |
+| `#,##0_);(#,##0)` | 1234 | `1,234 ` |
+| `#,##0_);(#,##0)` | -1234 | `(1,234)` |
+| `$#,##0_);($#,##0)` | -1234 | `($1,234)` |
+| `0.0%_);(0.0%)` | 0.125 | `12.5% ` |
+| `0.0%_);(0.0%)` | -0.125 | `(12.5%)` |
+| `0.0x_);(0.0x)` | -2.5 | `(2.5x)` |
+
+The four families align on the same principle, so switching a column between
+General, Currency, Percent, and Multiple does not shift the digits.
+
+**The alignment is delivered by the format string, never by setting the cell's
+horizontal alignment property.** A number-format command changes the number
+format and nothing else, per AC-FMT-024. Reaching across to mutate a second
+property would break the property-scope discipline the whole command set rests
+on, and would silently overwrite a deliberate alignment choice the user made.
+Date and Binary carry no padding, having no parenthesised negative form.
 
 ## Basis points
 
@@ -95,12 +123,73 @@ Defaults only. Every entry is editable, and cycles may be added or removed.
 
 | Cycle | Entries |
 |---|---|
-| General | `#,##0;(#,##0)` → `#,##0.0;(#,##0.0)` → `#,##0.00;(#,##0.00)` |
-| Currency | `$#,##0;($#,##0)` → `$#,##0.00;($#,##0.00)` → `$#,##0.0,,"m";($#,##0.0,,"m")` |
-| Percent | `0.0%;(0.0%)` → `0.00%;(0.00%)` → `0%;(0%)` |
-| Multiple | `0.0x;(0.0x)` → `0.00x;(0.00x)` → `0x;(0x)` |
+| General | `#,##0_);(#,##0)` → `#,##0.0_);(#,##0.0)` → `#,##0.00_);(#,##0.00)` |
+| Currency | `$#,##0_);($#,##0)` → `$#,##0.00_);($#,##0.00)` → `€#,##0_);(€#,##0)` → `€#,##0.00_);(€#,##0.00)` → `£#,##0_);(£#,##0)` → `£#,##0.00_);(£#,##0.00)` |
+| Percent | `0.0%_);(0.0%)` → `0.00%_);(0.00%)` → `0%_);(0%)` |
+| Multiple | `0.0x_);(0.0x)` → `0.00x_);(0.00x)` → `0x_);(0x)` |
 | Date | `m/d/yyyy` → `mmm-yy` → `mmmm d, yyyy` |
 | Binary | `"TRUE";"TRUE";"FALSE"` → `"YES";"YES";"NO"` → `0;0;1` |
+
+The Currency cycle walks decimals within a symbol, then moves to the next
+symbol: dollar zero-decimal, dollar two-decimal, euro zero, euro two, pound
+zero, pound two. A user working in one currency stays in the first two entries;
+a user working across currencies reaches all six from one key.
+
+This replaces the previous third entry, a `$#,##0.0,,"m"` millions format. Unit
+scaling belongs to the `formula.units.*` transforms, which change the value and
+carry preview and undo, not to a display format that silently divides what the
+reader sees by a million.
+
+### Cycle entries must survive Excel's round-trip
+
+A cycle finds its position by comparing the cell's **stored** number format
+against its entries. If Excel rewrites a format string on assignment, the stored
+string never matches the entry that produced it, the comparison always misses,
+and the cycle sticks on entry 0 forever.
+
+Excel does exactly this to locale-qualified currency formats. Measured by
+writing a format, reading it back, and comparing code points:
+
+| Written | Stored back | Round-trips |
+|---|---|---|
+| `£#,##0_);(£#,##0)` | unchanged | yes |
+| `€#,##0_);(€#,##0)` | unchanged | yes |
+| `[$£-en-GB]#,##0_);(...)` | `[$£-809]#,##0_);(...)` | **no** |
+| `[$€-x-euro2]#,##0_);(...)` | `[$€-2]#,##0_);(...)` | **no** |
+
+**The defaults therefore use bare currency symbols.** The locale-qualified forms
+are the ones a user is likely to reach for, and are what Excel's own currency
+dialog produces, which makes this a trap rather than an obvious mistake.
+
+Two consequences for implementation:
+
+- Cycle entry validation must write each format to a scratch cell, read it back,
+  and reject any entry Excel does not store verbatim, naming the rewritten form
+  so the user can adopt it instead. Validating syntax alone would accept these.
+- Bare symbols are display-only and do not carry locale currency behaviour. That
+  is acceptable here because the cycle's job is presentation; a model needing
+  true locale currency semantics sets the format directly.
+
+## Where cycle defaults live
+
+Defaults ship as **data, in `config/default-profile.json`**, which is embedded as
+a resource and read by `ProfileStore`. This is already how the existing colour,
+font-size, alignment, underline, row-height, and column-width cycles are
+defined, so the starting point exists and needs extending rather than inventing.
+
+The rule, stated so it does not erode:
+
+- **The default profile is the only place a cycle's contents are written.** No
+  C# file contains a format string, a colour, or a cycle order.
+- **The settings editor edits the active profile**, never the embedded default.
+- **Reset restores from the embedded default**, which is what makes it a
+  meaningful starting point rather than a one-time seed.
+
+So the answer to "settings feature or codebase" is both, with a clean split:
+the codebase ships the starting point as data, and the settings feature is the
+only way to change it. What must not happen is a cycle defined in code, because
+then a user editing it in settings is overriding something they cannot see, and
+the two drift apart.
 
 ## User-defined cycles
 
@@ -196,7 +285,10 @@ validation is refused whole, per AC-PROF-007 and AC-PROF-009.
 | AC-FMT-022 | A current format absent from the cycle applies entry 0, and a mixed selection applies entry 0 to every cell. |
 | AC-FMT-023 | Cycles are independent; entering a cycle from a different family starts at entry 0 and carries no position across families. |
 | AC-FMT-024 | Cycling changes only the number format, never the underlying value or formula, and records an undo receipt. |
-| AC-FMT-025 | Default cycle entries present negatives in parentheses. |
+| AC-FMT-025 | Default cycle entries present negatives in parentheses, and General, Currency, Percent, and Multiple entries pad the positive section with `_)` so mixed-sign columns align. |
+| AC-FMT-043 | The default Currency cycle walks dollar, euro, and pound at zero and two decimals, in that order. |
+| AC-FMT-044 | Cycle entry validation writes each format to Excel and reads it back, rejecting any entry Excel does not store verbatim and naming the rewritten form. |
+| AC-FMT-045 | No cycle contents are defined in code; every default resolves from the embedded default profile, and reset restores from it. |
 | AC-FMT-026 | A user may add, remove, reorder, and edit cycles and their entries, including cycles that did not ship with the product. |
 | AC-FMT-027 | An invalid format string is refused with its cycle and position, and the prior profile remains active. |
 | AC-FMT-028 | A slot reached by a stored route or cheat-sheet entry after its cycle was deleted refuses with a message naming the slot and changes nothing. |
