@@ -1,21 +1,37 @@
-# Cell classification, AutoColor, and the blue-black toggle
+# Cell classification and AutoColor
 
-Status: **Classification rules approved 2026-08-20. Not implemented: the planner
-exists, execution is hard-stopped, and the blue-black toggle does not exist.**
+Status: **Reviewed and approved 2026-08-20, including the command surface.
+Not implemented: the planner exists and execution is hard-stopped.**
 Capability: CAP-FMT-002
 Related: [`FORMAT_CYCLES.md`](FORMAT_CYCLES.md),
 [`MODEL_CHECK.md`](MODEL_CHECK.md)
 
 ## What this governs
 
-One classification rule feeds two features:
+One classification rule feeds **two commands, and only two**:
 
-- **AutoColor** — recolours a selection, worksheet, or workbook so a reader can
-  see at a glance what is an input and what is derived.
-- **Blue-black toggle** — the single-cell case of the same rule, applied on
-  demand from the keyboard.
+- **AutoColor Selection** — recolours the current selection, whether that is a
+  single cell or a contiguous block.
+- **AutoColor Worksheet** — recolours the used range of the active worksheet.
 
-They must never disagree, so the rule is specified once, here.
+Both are invoked by the user, deliberately, one press at a time. They share one
+rule so a cell gets the same colour whichever command reaches it.
+
+There is no workbook scope. `AutoColorScope` in the planner is exactly
+`{ Selection, Worksheet }`, and that is the whole surface.
+
+### There is no third toggle command
+
+An earlier draft of this document described a separate "blue-black toggle" as
+the single-cell case of the rule. That is precisely what AutoColor Selection
+already does on a one-cell selection, so it is **not** a separate command. Two
+commands that classify identically and differ only in name would be a
+maintenance trap and a second thing to keep in sync.
+
+A user wanting to set a colour **against** the classification — marking a cell
+blue that AutoColor would call black — uses the font colour cycle, whose entries
+include the category references described below. That is the deliberate override
+path, and it is manual by construction.
 
 ## Categories and colours
 
@@ -55,8 +71,8 @@ The default font colour cycle is the six category references in precedence
 order, and the user may add literals or reorder freely.
 
 **References track, literals do not.** Changing the hardcode colour from blue to
-navy changes it everywhere at once: AutoColor, the blue-black toggle, and the
-cycle entry. This is the reason for references rather than copied hex values —
+navy changes it everywhere at once: both AutoColor commands and the cycle
+entry. This is the reason for references rather than copied hex values —
 a palette that silently drifts out of step with AutoColor would produce
 hand-coloured cells that look like classified ones but aren't, which is the
 exact confusion the colouring exists to prevent.
@@ -104,14 +120,26 @@ belongs to the colour.
 Consequence to expect: on a typical model, more cells turn blue than a Model
 Check scan reports as findings. That is the intended behaviour, not a defect.
 
-## Blue-black toggle
+## Both commands are user-invoked, always
 
-Applies the classification to the current selection and writes the resulting
-font colour. It is the same rule as AutoColor over a smaller scope, so a cell
-gets the same colour whichever way it is reached.
+**Nothing in this feature watches cells.** There is no `Worksheet_Change`
+handler, no `SheetChange` or `SheetCalculate` subscription, and no timer that
+recolours in the background. A cell's colour changes when, and only when, the
+user invokes one of the two commands.
 
-It writes only the font colour, records an undo receipt, and never touches the
-value, the formula, or any other format property.
+This is a firm product constraint, not an implementation convenience:
+
+- Live recolouring would mutate the workbook while the user is typing, making
+  every keystroke a potential undo entry and defeating the single custom undo
+  slot the product relies on.
+- A model in progress is *full* of cells that are temporarily hardcodes. Colour
+  that reacts instantly turns normal editing into a flicker of changing colours
+  and trains the user to ignore it, which destroys the signal.
+- Unrequested writes to a workbook the user did not ask to modify is exactly
+  the behaviour that makes add-ins untrustworthy.
+
+Both commands write only the font colour, record an undo receipt, and never
+touch the value, the formula, or any other format property.
 
 ## Two decisions, confirmed 2026-08-20
 
@@ -129,18 +157,23 @@ arguments are numeric literals.
 
 ## Scope boundary
 
-AutoColor over a worksheet or workbook changes thousands of cells in one action.
-The planner is deterministic, address ordered, bounded at 250,000 cells, carries
-a complete precondition fingerprint, and requires preview for worksheet scope,
-but execution stays refused with `PERFORMANCE_QUALIFICATION_REQUIRED` until it
-has a transactional adapter, rollback and fault-injection evidence, and a
+The two commands carry very different risk, and are gated differently.
+
+**AutoColor Selection is bounded** by the existing selection ceiling and can
+ship now. A user selecting a block has already scoped the change themselves.
+
+**AutoColor Worksheet changes thousands of cells in one action.** The planner is
+deterministic, address ordered, bounded at 250,000 cells, carries a complete
+precondition fingerprint, and requires preview at this scope, but execution
+stays refused with `PERFORMANCE_QUALIFICATION_REQUIRED` until it has a
+transactional adapter, rollback and fault-injection evidence, and a
 worksheet-scale preview UI. Nothing else in the product mutates that many cells
 at once, and a half-applied recolour is exactly the partial success the
 architecture refuses everywhere else.
 
-**The blue-black toggle over a selection does not carry that risk** and is not
-blocked by it. It is bounded by the existing selection ceiling and can ship
-independently of worksheet and workbook AutoColor.
+Shipping the selection command first is therefore not a compromise: it is the
+whole feature for anyone working a block at a time, available while the
+worksheet command earns its qualification.
 
 ## Acceptance
 
@@ -148,8 +181,9 @@ independently of worksheet and workbook AutoColor.
 |---|---|
 | AC-FMT-034 | Classification follows the stated precedence, and a cell containing any numeric literal is a hardcode regardless of cross-sheet or external references in the same formula. |
 | AC-FMT-035 | No allowlist is applied; `=A1*2` classifies as a hardcode while Model Check continues to exclude the same literal from its findings. |
-| AC-FMT-036 | The blue-black toggle and AutoColor assign the same colour to the same cell. |
-| AC-FMT-037 | The toggle writes only the font colour, records an undo receipt, and leaves value, formula, and other format properties unchanged. |
+| AC-FMT-036 | AutoColor Selection and AutoColor Worksheet assign the same colour to the same cell, and no third command applies the classification. |
+| AC-FMT-037 | Both commands write only the font colour, record an undo receipt, and leave value, formula, and other format properties unchanged. |
+| AC-FMT-046 | Colouring occurs only on explicit user invocation; the add-in registers no change, calculate, or timer handler that recolours cells. |
 | AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product, and each is editable per category from the settings editor. |
 | AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in precedence order. |
-| AC-FMT-042 | Changing a category's colour updates AutoColor, the blue-black toggle, and every cycle entry referencing it, while literal entries are unaffected. |
+| AC-FMT-042 | Changing a category's colour updates both AutoColor commands and every cycle entry referencing it, while literal entries are unaffected. |

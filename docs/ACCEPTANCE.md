@@ -149,16 +149,17 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-033 | The ribbon groups commands by modeling task, and every registered command's declared keyboard route matches the ribbon it is reachable through. |
 | AC-FMT-034 | Classification follows the stated precedence, and a cell containing any numeric literal is a hardcode regardless of cross-sheet or external references in the same formula. |
 | AC-FMT-035 | No allowlist is applied; `=A1*2` classifies as a hardcode while Model Check continues to exclude the same literal from its findings. |
-| AC-FMT-036 | The blue-black toggle and AutoColor assign the same colour to the same cell. |
-| AC-FMT-037 | The toggle writes only the font colour, records an undo receipt, and leaves value, formula, and other format properties unchanged. |
+| AC-FMT-036 | AutoColor Selection and AutoColor Worksheet assign the same colour to the same cell, and no third command applies the classification. |
+| AC-FMT-037 | Both commands write only the font colour, record an undo receipt, and leave value, formula, and other format properties unchanged. |
 | AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product, and each is editable per category from the settings editor. |
 | AC-FMT-039 | An unconfigured cycle slot does not appear on the ribbon, is not offered by Command Search, and is skipped when a cycle advances, so no press ever lands on an empty slot. |
 | AC-FMT-040 | The settings editor adds, deletes, renames, and defines cycles in every family, enforcing eight per family and refusing a ninth with a message naming the limit. |
 | AC-FMT-041 | A colour cycle entry may be a category reference or a literal colour, and the default font colour cycle is the six category references in precedence order. |
-| AC-FMT-042 | Changing a category's colour updates AutoColor, the blue-black toggle, and every cycle entry referencing it, while literal entries are unaffected. |
+| AC-FMT-042 | Changing a category's colour updates both AutoColor commands and every cycle entry referencing it, while literal entries are unaffected. |
 | AC-FMT-043 | The default Currency cycle walks dollar, euro, and pound at zero and two decimals, in that order. |
 | AC-FMT-044 | Cycle entry validation writes each format to Excel and reads it back, rejecting any entry Excel does not store verbatim and naming the rewritten form. |
 | AC-FMT-045 | No cycle contents are defined in code; every default resolves from the embedded default profile, and reset restores from it. |
+| AC-FMT-046 | Colouring occurs only on explicit user invocation; the add-in registers no change, calculate, or timer handler that recolours cells. |
 | AC-NAV-001 | Previous/next sheet navigation honors visible-sheet and wrap policy without altering workbook content. |
 | AC-NAV-002 | A1 navigation selects A1 on the intended active sheet and preserves workbook content. |
 | AC-NAV-003 | First/last used navigation matches the documented used-range semantics and exposes/refuses unsupported ambiguity. |

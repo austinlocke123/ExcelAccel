@@ -1,6 +1,6 @@
 # Ribbon layout and keyboard routing
 
-Status: **Group structure approved 2026-08-20; regrouping to the task taxonomy
+Status: **Reviewed and approved 2026-08-20. Regrouping to the task taxonomy
 below is approved and not yet implemented.**
 Capability: CAP-UX-002
 Acceptance: AC-FMT-033
@@ -37,7 +37,7 @@ and confirmed against a reference product's shortcut taxonomy.
 | Modeling | Smart Copy down/right, spacing, fills, IFERROR, reverse sign, unit transforms |
 | Paste | Capture source, paste formulas/values/formats, transpose |
 | Numbers | The number-format cycles, increase/decrease decimals |
-| Colors | Font colour cycle, fill colour cycle, blue-black toggle, AutoColor when enabled |
+| Colors | Font colour cycle, fill colour cycle, AutoColor Selection, AutoColor Worksheet when qualified |
 | Fonts | Font size cycle, underline cycle |
 | Alignment | Horizontal and vertical cycles, indent, center across |
 | Borders | Sum bar, remove borders, and the border cycles when built |
