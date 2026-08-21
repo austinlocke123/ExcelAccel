@@ -462,6 +462,25 @@ per-cell font colours, so registering them would put two buttons on the ribbon
 that refuse the moment they are pressed. AC-FMT-036, AC-FMT-037 and AC-FMT-046
 are not claimed.
 
+## WP-F-02 delivered behavior
+
+`ProfileCycleEditor` provides add, remove, rename, set-entries and move as pure
+operations that return a new collection, so a rejected edit leaves the caller's
+profile untouched. There is deliberately no way to empty a cycle: deletion is the
+only way one stops existing, and removing the last cycle in a family removes the
+family, leaving nothing for a command to find.
+
+A cycle the user invents after install is reachable through Command Search, which
+now indexes the profile's cycles alongside the static registry. The ribbon is a
+static XML string and can never grow a button for such a cycle, so this is the
+only mechanism that can work. Those commands advertise "Search Commands, then the
+cycle name" rather than an Alt sequence they do not have.
+
+One part of AC-FMT-039 is not met: deleting a built-in cycle such as `date`
+leaves its ribbon button in place, refusing by name when pressed. Removing the
+button needs `getVisible` on every cycle button plus `IRibbonUI.Invalidate` on
+profile change, which is a ribbon-lifecycle change rather than a cycle change.
+
 ## Open design questions blocking WP-F
 
 All three specifications were reviewed and approved on 2026-08-20, and WP-F-01
@@ -480,6 +499,11 @@ Settled 2026-08-20:
   those categories symbolically so the two never drift apart.
 
 Still open, needed before the work packages they touch:
+
+- **Ribbon buttons cannot hide themselves yet.** Deleting a built-in cycle leaves
+  its button on the ribbon, refusing by name when pressed. Fully meeting
+  AC-FMT-039 needs `getVisible` on every cycle button plus `IRibbonUI.Invalidate`
+  when the profile changes.
 
 - **The undo receipt ceiling blocks AutoColor execution.** `PropertyBatchReceipt`
   caps at 32 changes, and a real selection exceeds that, so AutoColor cannot

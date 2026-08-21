@@ -41,6 +41,7 @@ internal static class CommandDispatcher
         if (commandId == UndoLastCommand.Id) return UndoLastProperty();
         if (commandId == "support.diagnostics.export") return ExportDiagnostics();
         if (commandId == "command.search.open") return CommandSearchRuntime.Open();
+        if (CycleCommandFactory.IsCycleCommand(commandId)) return ApplyProfileCycle(commandId);
         if (commandId == "profile.export") return ExportProfile();
         if (commandId == "profile.import.preview") return ImportProfile(apply: false);
         if (commandId == "profile.import.apply") return ImportProfile(apply: true);
@@ -300,6 +301,23 @@ internal static class CommandDispatcher
     {
         var removed = ProfileRuntime.DeleteLocalStyle(styleId);
         return CommandResult.Success("style.delete_local", removed ? "The local style was deleted." : "The local style was already absent.");
+    }
+
+    /// <summary>
+    /// Runs a cycle that exists only in the profile. These carry no ribbon button
+    /// and are reached through Command Search.
+    /// </summary>
+    public static CommandResult ApplyProfileCycle(string commandId)
+    {
+        if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(commandId))
+        {
+            return CommandResult.Refused(commandId, "Mutation commands are disabled in safe mode or quarantine.", RefusalCodes.CommandQuarantined);
+        }
+
+        var port = CreateSelectionAdapter();
+        var command = CycleCommandFactory.Create(ProfileRuntime.Current, commandId);
+        var plan = command.Plan(ProfileRuntime.Current, port);
+        return command.Execute(plan, port, receiptSink: UndoRuntime.Store);
     }
 
     public static CommandResult ApplyProfileFormatting(string commandId)
