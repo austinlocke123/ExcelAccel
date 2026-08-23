@@ -61,6 +61,7 @@ public sealed class AddInLifecycle : IExcelAddIn
         yield return Reset("trace_views", TraceViewRuntimes.Reset);
         yield return Reset("inspector_view", InspectorViewRuntime.Reset);
         yield return Reset("model_check", ModelCheckRuntime.Reset);
+        yield return Reset("name_inventory", NameInventoryViewRuntime.Reset);
     }
 
     private static KeyValuePair<string, Action> Reset(string name, Action action) =>

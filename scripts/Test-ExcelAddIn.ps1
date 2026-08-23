@@ -172,6 +172,17 @@ public static class ExcelAccelNativeMethods
         $valueBefore = $cell.Value2
         $formulaBefore = $cell.Formula
         [void]$cell.Select()
+        # Seed one name of each interesting shape, then inventory them. A range
+        # name must be navigable; a constant, an external and a broken one must
+        # all still be listed.
+        $names = $workbook.Names
+        [void]$names.Add('SmokeRange', '=Sheet1!$A$1')
+        [void]$names.Add('SmokeConst', '=42')
+        [void]$names.Add('SmokeExternal', "='[NoSuchBook.xlsx]Sheet1'!`$A`$1")
+        [void]$excel.Run('ExcelAccel.Smoke.NameInventory')
+        [Console]::WriteLine('name_inventory=exercised')
+        [Console]::Out.Flush()
+
         # Ribbon callbacks are bound by name and signature at load time, so a
         # mismatch breaks the tab without failing any unit test.
         [void]$excel.Run('ExcelAccel.Smoke.RibbonCycleVisibility')
@@ -1218,6 +1229,7 @@ try {
     $requiredEvidence = @(
         'registered=True',
         'version=',
+        'name_inventory=exercised',
         'ribbon_callbacks=invoked',
         'currency_format=$#,##0_);($#,##0)',
         'currency_format_second=$#,##0.00_);($#,##0.00)',

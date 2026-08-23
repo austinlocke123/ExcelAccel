@@ -13,6 +13,8 @@ prevents a feature from disappearing during document restructuring.
 | Settings editor for cycles | `commands/FORMAT_CYCLES.md` | Approved, not implemented (WP-F-03) |
 | Blue-black input/formula toggle | `commands/AUTOCOLOR.md` | Approved, not implemented |
 | Cell classification rules | `commands/AUTOCOLOR.md` | Implemented 2026-08-20 (WP-F-08); commands unregistered pending an adapter |
+| Named-range inventory | `commands/NAMES_AND_LINKS.md` | Implemented 2026-08-23 (WP-G-01); usage coverage unbuilt |
+| External-link inventory | `commands/NAMES_AND_LINKS.md` | Approved, not implemented (WP-G-02) |
 | Ribbon task grouping | `commands/RIBBON_LAYOUT.md` | Implemented 2026-08-20 |
 | §6.1 AutoColor selection/worksheet | `commands/CATALOG.md` §1.3 | Phase 1A |
 | §6.1 workbook AutoColor | `commands/WORKBOOK_OPERATIONS.md` §4 | Gated high-impact |
