@@ -20,15 +20,16 @@ public sealed class ProfileCycleEditorTests
 
         Assert.True(added.TryGet("number_format", "spread", out var cycle));
         Assert.Equal(new[] { "0\" bps\"", "0.0\" bps\"" }, cycle.Entries);
-        Assert.Equal(7, added["number_format"].Count);
+        Assert.Equal(8, added["number_format"].Count);
     }
 
     [Fact]
     public void AddingANinthCycleToAFamilyIsRefusedNamingTheLimit()
     {
         var cycles = Defaults();
-        for (var index = 0; index < 2; index++)
+        while (cycles["number_format"].Count < ProfileCycles.MaximumCyclesPerFamily)
         {
+            var index = cycles["number_format"].Count;
             cycles = ProfileCycleEditor.Add(cycles, new ProfileCycle(
                 "number_format", "extra" + index, "Extra " + index, new[] { "0.0" + index }));
         }
@@ -111,12 +112,18 @@ public sealed class ProfileCycleEditorTests
 
 public sealed class CycleCommandFactoryTests
 {
+    /// <summary>
+    /// Only cycles no ribbon button already covers get a generated descriptor.
+    /// The default profile has exactly one such cycle, basis points, which has no
+    /// button of its own and is therefore reachable only by name.
+    /// </summary>
     [Fact]
-    public void CyclesAlreadyCoveredByARibbonCommandGetNoDuplicateEntry()
+    public void OnlyCyclesWithNoRibbonButtonGetAGeneratedEntry()
     {
         var descriptors = CycleCommandFactory.Descriptors(new ProfileStore().LoadDefault());
 
-        Assert.Empty(descriptors);
+        var descriptor = Assert.Single(descriptors);
+        Assert.Equal("format.cycle.number_format.basis_points", descriptor.Id);
     }
 
     [Fact]
@@ -126,7 +133,8 @@ public sealed class CycleCommandFactoryTests
         var extended = profile.WithCycles(ProfileCycleEditor.Add(profile.Cycles, new ProfileCycle(
             "number_format", "spread", "Spread", new[] { "0\" bps\"" })));
 
-        var descriptor = Assert.Single(CycleCommandFactory.Descriptors(extended));
+        var descriptor = CycleCommandFactory.Descriptors(extended)
+            .Single(value => value.Id == "format.cycle.number_format.spread");
 
         Assert.Equal("format.cycle.number_format.spread", descriptor.Id);
         Assert.Equal("Spread", descriptor.DisplayName);
@@ -178,7 +186,8 @@ public sealed class CycleCommandFactoryTests
         var extended = profile.WithCycles(ProfileCycleEditor.Add(profile.Cycles, new ProfileCycle(
             "number_format", "spread", "Spread", new[] { "0\" bps\"" })));
 
-        var descriptor = Assert.Single(CycleCommandFactory.Descriptors(extended));
+        var descriptor = CycleCommandFactory.Descriptors(extended)
+            .Single(value => value.Id == "format.cycle.number_format.spread");
 
         Assert.DoesNotContain("Alt,", descriptor.KeyboardRoute, StringComparison.Ordinal);
         Assert.Equal(descriptor.KeyboardRoute, descriptor.ShortcutLabel);

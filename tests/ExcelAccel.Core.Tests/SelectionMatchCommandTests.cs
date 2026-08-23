@@ -139,6 +139,10 @@ public sealed class SelectionMatchCommandTests
         }
         public IReadOnlyList<string> CaptureSelectedAreaAddresses() => ObservedOverride ?? Selected.AsReadOnly();
         public void WriteFormulaBlock(FormulaCellBlock contents) { WriteCount++; Current = contents; }
+        public string? AppliedNumberFormat { get; private set; }
+
+        public void ApplyNumberFormat(SelectionContext target, string numberFormat) => AppliedNumberFormat = numberFormat;
+
         public void WriteFormulaBlock(SelectionContext target, FormulaCellBlock contents) { WriteCount++; Current = contents; }
         public void SetNumberFormat(string formatCode) => throw new NotSupportedException();
         public bool TryRead(SelectionContext target, string propertyId, out string value) { value = string.Empty; return false; }

@@ -562,15 +562,32 @@ from schema 5 to 6 on first read. The migration keeps every existing setting, bu
 a migrated profile shows one-entry cycles where a fresh install shows three;
 "reset to default" is the way to adopt the new defaults.
 
+## WP-F-10 delivered behavior
+
+`formula.units.to_basis_points` now applies the basis-point format as well as
+scaling the value, closing AC-FMT-032.
+
+WP-F-06 deferred this on the grounds that a second command would mean a second
+undo receipt. That was right about stapling and wrong about the conclusion:
+`PropertyBatchReceipt` already carries up to 32 changes under one receipt id,
+which is exactly the mechanism for two properties and one undo. Only one new port
+member was needed, because `IPropertyReceiptPort` already reads and writes the
+whole format block under `cell_format_block_v1`.
+
+If the prior formats cannot be captured, the command refuses before writing
+anything, because the change could not be made undoable. Rollback restores the
+format alongside the contents.
+
+The format is data: a `basis_points` cycle joined the `number_format` family in
+the default profile. Since no ribbon button covers it, it is also reachable from
+Command Search by name.
+
 ## Decisions waiting on you
 
-1. **AC-FMT-041 was reworded.** The default font colour cycle is now in palette
-   order rather than classification precedence, so a keypress still produces
-   black first. Confirm, or say you want precedence order and red first.
-2. **Should `to_basis_points` also apply a number format?** AC-FMT-032 says yes.
-   Doing it properly means teaching the transactional formula adapter to write a
-   second property type; stapling on a second command gives two undo receipts, so
-   one Ctrl+Z would reverse only the format. Today the transform ships without it.
+1. ~~**AC-FMT-041 was reworded.**~~ **Confirmed 2026-08-23:** the default font
+   colour cycle stays in palette order, so a keypress still produces black first.
+2. ~~**Should `to_basis_points` also apply a number format?**~~ **Answered: yes.**
+   Delivered in WP-F-10 on one batch receipt, so a single undo reverses both.
 3. **The 32-change undo receipt ceiling blocks AutoColor execution.** A real
    selection exceeds it. Options: a new receipt kind, or one coarse property in
    the style of the existing `cell_format_block_v1`.

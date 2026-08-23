@@ -234,6 +234,10 @@ public sealed class DataCleaningCommandTests
         public FormulaBlockSnapshot CaptureFormulaBlock() => new FormulaBlockSnapshot(_snapshot.Selection, _snapshot.FirstRow, _snapshot.FirstColumn, Current);
         public FormulaBlockSnapshot CaptureFormulaBlock(SelectionContext target) { if (!target.Equals(_snapshot.Selection.Context)) throw new InvalidOperationException(); return CaptureFormulaBlock(); }
         public void WriteFormulaBlock(FormulaCellBlock contents) => Current = contents;
+        public string? AppliedNumberFormat { get; private set; }
+
+        public void ApplyNumberFormat(SelectionContext target, string numberFormat) => AppliedNumberFormat = numberFormat;
+
         public void WriteFormulaBlock(SelectionContext target, FormulaCellBlock contents) { if (!target.Equals(_snapshot.Selection.Context)) throw new InvalidOperationException(); Current = contents; }
         public void SetNumberFormat(string formatCode) => throw new NotSupportedException();
         public bool TryRead(SelectionContext target, string propertyId, out string value) { value = Current.Serialize(); return target.Equals(_snapshot.Selection.Context); }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExcelAccel.Application.Commands;
+using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Formulas;
 using ExcelAccel.Application.Undo;
 using ExcelAccel.Core.Commands;
@@ -136,6 +137,56 @@ public sealed class FormulaBlockCommandTests
         Assert.Equal(CommandImpact.Medium, descriptor.Impact);
         Assert.Equal(UndoPolicy.SessionPropertyReceipt, descriptor.UndoPolicy);
         Assert.Equal(PreviewPolicy.Threshold, descriptor.PreviewPolicy);
+    }
+
+    /// <summary>
+    /// The scale and the display format move together on one receipt, so a single
+    /// Ctrl+Z reverses both. Two receipts would let a user undo the format and be
+    /// left with values silently multiplied by 10,000.
+    /// </summary>
+    [Fact]
+    public void BasisPointsAppliesTheFormatAndOneUndoReversesValueAndFormatTogether()
+    {
+        var snapshot = Snapshot(Block(1, 1, FormulaCellValue.Number(0.0125)));
+        var port = new FakeFormulaPort(snapshot);
+        var store = new SessionUndoStore();
+        var command = Command("formula.units.to_basis_points");
+
+        var plan = command.PlanScale(snapshot, 10000, divide: false, includeNumericConstants: true,
+            numberFormat: "0\" bps\"");
+        var result = command.Execute(plan, port, plan.CommandPlan.PlanHash, store);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(125, port.Current[0, 0].AsNumber());
+        Assert.Equal("0\" bps\"", port.AppliedNumberFormat);
+        Assert.Contains(FormatPasteCommand.ReceiptPropertyId, plan.CommandPlan.ChangedProperties);
+
+        var undo = store.TryUndo(snapshot.Selection.Context.WorkbookId, port, DateTimeOffset.UtcNow);
+
+        Assert.Equal(UndoOutcome.Success, undo.Outcome);
+        Assert.Equal(0.0125, port.Current[0, 0].AsNumber());
+        Assert.Equal("General", port.NumberFormatBlock);
+    }
+
+    /// <summary>
+    /// If the prior formats cannot be captured there is no way to make the change
+    /// undoable, so nothing is written at all.
+    /// </summary>
+    [Fact]
+    public void BasisPointsRefusesWhenThePriorFormatsCannotBeCaptured()
+    {
+        var snapshot = Snapshot(Block(1, 1, FormulaCellValue.Number(0.0125)));
+        var port = new FakeFormulaPort(snapshot) { FormatCaptureFails = true };
+        var command = Command("formula.units.to_basis_points");
+
+        var plan = command.PlanScale(snapshot, 10000, divide: false, includeNumericConstants: true,
+            numberFormat: "0\" bps\"");
+        var result = command.Execute(plan, port, plan.CommandPlan.PlanHash, new SessionUndoStore());
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(RefusalCodes.CommandUnavailable, result.RefusalCode);
+        Assert.Equal(0.0125, port.Current[0, 0].AsNumber());
+        Assert.Null(port.AppliedNumberFormat);
     }
 
     [Fact]
@@ -275,16 +326,39 @@ public sealed class FormulaBlockCommandTests
             WriteFormulaBlock(contents);
         }
         public void SetNumberFormat(string formatCode) => throw new NotSupportedException();
+
+        /// <summary>The whole-target number format, as the real adapter treats it.</summary>
+        public string NumberFormatBlock { get; private set; } = "General";
+
+        public string? AppliedNumberFormat { get; private set; }
+
+        public void ApplyNumberFormat(SelectionContext target, string numberFormat)
+        {
+            if (!target.Equals(_template.Selection.Context)) throw new InvalidOperationException("Unexpected target.");
+            AppliedNumberFormat = numberFormat;
+            NumberFormatBlock = numberFormat;
+        }
+
+        public bool FormatCaptureFails { get; set; }
+
         public bool TryRead(SelectionContext target, string propertyId, out string value)
         {
             value = string.Empty;
-            if (!target.Equals(_template.Selection.Context) || propertyId != FormulaBlockCommand.ReceiptPropertyId) return false;
-            value = Current.Serialize();
-            return true;
+            if (!target.Equals(_template.Selection.Context)) return false;
+            if (propertyId == FormulaBlockCommand.ReceiptPropertyId) { value = Current.Serialize(); return true; }
+            if (propertyId == FormatPasteCommand.ReceiptPropertyId)
+            {
+                if (FormatCaptureFails) return false;
+                value = NumberFormatBlock;
+                return true;
+            }
+            return false;
         }
         public bool TryWrite(SelectionContext target, string propertyId, string value)
         {
-            if (!target.Equals(_template.Selection.Context) || propertyId != FormulaBlockCommand.ReceiptPropertyId) return false;
+            if (!target.Equals(_template.Selection.Context)) return false;
+            if (propertyId == FormatPasteCommand.ReceiptPropertyId) { NumberFormatBlock = value; return true; }
+            if (propertyId != FormulaBlockCommand.ReceiptPropertyId) return false;
             try { WriteFormulaBlock(FormulaCellBlock.Deserialize(value)); return true; }
             catch { return false; }
         }

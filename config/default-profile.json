@@ -66,6 +66,11 @@
         "entries": ["0.0x_);(0.0x)", "0.00x_);(0.00x)", "0x_);(0x)"]
       },
       {
+        "cycle_id": "basis_points",
+        "display_name": "Basis Points",
+        "entries": ["0\" bps\"_);(0\" bps\")", "0.0\" bps\"_);(0.0\" bps\")"]
+      },
+      {
         "cycle_id": "date",
         "display_name": "Date",
         "entries": ["m/d/yyyy", "mmm-yy", "mmmm d, yyyy"]

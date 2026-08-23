@@ -108,10 +108,13 @@ The two are inseparable, so a format can scale by 10,000 or print a clean
 
 Basis points are therefore supported two ways, both honest:
 
-- **As a unit transform.** A `formula.units.to_basis_points` command multiplies
-  the formula by 10,000 and applies a `0" bps"` format, matching the existing
-  to/from thousands and millions commands. This changes the value, so it carries
-  the same impact tier, preview, and undo receipt as the other unit transforms.
+- **As a unit transform.** `formula.units.to_basis_points` multiplies the formula
+  by 10,000 and applies the basis-point format, matching the existing to/from
+  thousands and millions commands. This changes the value, so it carries the same
+  impact tier and preview as the other unit transforms. Value and format move on
+  **one batch receipt**, so a single undo reverses both; two receipts would let a
+  user undo the format and be left with values silently scaled by 10,000. The
+  format comes from the `basis_points` cycle in the profile, not from code.
 - **As a cycle entry for values already stored in basis points.** A model that
   holds a spread as `125` can use a `0" bps"` cycle entry directly, because no
   scaling is required.
