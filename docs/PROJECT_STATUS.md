@@ -582,6 +582,23 @@ The format is data: a `basis_points` cycle joined the `number_format` family in
 the default profile. Since no ribbon button covers it, it is also reachable from
 Command Search by name.
 
+## WP-F-11 delivered behavior
+
+Fourteen cycle-bound ribbon controls now carry `getVisible`, so deleting a cycle
+hides its button instead of leaving one that refuses by name on every press. The
+decimals commands are deliberately excluded, because they work on any number
+format including formats belonging to no cycle.
+
+`onLoad` captures `IRibbonUI` and `ProfileRuntime.Activate` invalidates it, since
+the ribbon caches `getVisible` until told otherwise. A control whose visibility
+cannot be evaluated stays visible and logs the failure; an invisible command is
+harder to diagnose than one that refuses with a reason.
+
+Ribbon callbacks are bound by name and signature at load time, so a mismatch
+would break the tab without failing any unit test, and the smoke drives macros
+rather than callbacks. A Debug-only hook now calls them the way Excel does; in
+real Excel it reported `configured=True|decimals=True|wired=True`.
+
 ## Decisions waiting on you
 
 1. ~~**AC-FMT-041 was reworded.**~~ **Confirmed 2026-08-23:** the default font
@@ -591,9 +608,8 @@ Command Search by name.
 3. **The 32-change undo receipt ceiling blocks AutoColor execution.** A real
    selection exceeds it. Options: a new receipt kind, or one coarse property in
    the style of the existing `cell_format_block_v1`.
-4. **Deleting a built-in cycle leaves its ribbon button in place**, refusing by
-   name when pressed. Fully hiding it needs `getVisible` on every cycle button
-   plus `IRibbonUI.Invalidate` on profile change.
+4. ~~**Deleting a built-in cycle leaves its ribbon button in place.**~~
+   **Answered: fix it.** Delivered in WP-F-11.
 
 ## Open design questions blocking WP-F
 
@@ -614,10 +630,7 @@ Settled 2026-08-20:
 
 Still open, needed before the work packages they touch:
 
-- **Ribbon buttons cannot hide themselves yet.** Deleting a built-in cycle leaves
-  its button on the ribbon, refusing by name when pressed. Fully meeting
-  AC-FMT-039 needs `getVisible` on every cycle button plus `IRibbonUI.Invalidate`
-  when the profile changes.
+- ~~Ribbon buttons cannot hide themselves.~~ Closed by WP-F-11.
 
 - **The undo receipt ceiling blocks AutoColor execution.** `PropertyBatchReceipt`
   caps at 32 changes, and a real selection exceeds that, so AutoColor cannot

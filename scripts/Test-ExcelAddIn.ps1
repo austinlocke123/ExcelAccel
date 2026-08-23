@@ -172,6 +172,12 @@ public static class ExcelAccelNativeMethods
         $valueBefore = $cell.Value2
         $formulaBefore = $cell.Formula
         [void]$cell.Select()
+        # Ribbon callbacks are bound by name and signature at load time, so a
+        # mismatch breaks the tab without failing any unit test.
+        [void]$excel.Run('ExcelAccel.Smoke.RibbonCycleVisibility')
+        [Console]::WriteLine("ribbon_callbacks=invoked")
+        [Console]::Out.Flush()
+
         [void]$excel.Run('ExcelAccel.Smoke.ApplyCurrencyFormat')
         $formatAfter = [string]$cell.NumberFormat
         $valueAfter = $cell.Value2
@@ -1206,6 +1212,7 @@ try {
     $requiredEvidence = @(
         'registered=True',
         'version=',
+        'ribbon_callbacks=invoked',
         'currency_format=$#,##0_);($#,##0)',
         'currency_format_second=$#,##0.00_);($#,##0.00)',
         'content_preserved=True',

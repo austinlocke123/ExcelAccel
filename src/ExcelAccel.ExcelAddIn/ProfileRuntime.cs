@@ -31,6 +31,11 @@ internal static class ProfileRuntime
     public static void Activate(ProfileDefinition profile)
     {
         lock (Sync) _current = profile ?? throw new ArgumentNullException(nameof(profile));
+
+        // An imported profile can add or remove cycles, and the ribbon caches
+        // getVisible until something invalidates it, so a deleted cycle's button
+        // would linger for the rest of the session.
+        ExcelAccelRibbon.InvalidateCycleVisibility();
     }
 
     public static bool AddFavorite(FavoriteDefinition favorite)

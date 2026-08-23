@@ -2,6 +2,7 @@
 using System;
 using System.Globalization;
 using ExcelDna.Integration;
+using ExcelDna.Integration.CustomUI;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Core.Reliability;
 using ExcelAccel.Core.Commands;
@@ -391,6 +392,39 @@ public static class DebugSmokeCommands
             DiagnosticLog.Info("smoke.style.major_header", "success");
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.style.major_header", exception); throw; }
+    }
+
+    [ExcelCommand(
+        Name = "ExcelAccel.Smoke.RibbonCycleVisibility",
+        Description = "Debug-only ribbon-callback hook; not compiled into Release builds.")]
+    public static void RibbonCycleVisibility()
+    {
+        try
+        {
+            // Excel resolves ribbon callbacks by name and signature at load time,
+            // so a mismatch breaks the tab without failing any unit test. This
+            // calls them the way Excel does.
+            var ribbon = new ExcelAccelRibbon();
+            var configured = ribbon.OnGetCycleVisible(new SmokeRibbonControl("format.number.currency"));
+            var decimals = ribbon.OnGetCycleVisible(new SmokeRibbonControl("format.number.decimals.increase"));
+            var xml = ribbon.GetCustomUI("Microsoft.Excel.Workbook");
+            var wired = xml.Contains("onLoad='OnRibbonLoad'") && xml.Contains("getVisible='OnGetCycleVisible'");
+            DiagnosticLog.Info(
+                "smoke.ribbon.cycle_visibility",
+                $"configured={configured}|decimals={decimals}|wired={wired}");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.ribbon.cycle_visibility", exception);
+        }
+    }
+
+    private sealed class SmokeRibbonControl : IRibbonControl
+    {
+        public SmokeRibbonControl(string tag) => Tag = tag;
+        public string Id => "smoke";
+        public string Tag { get; }
+        public object Context => null!;
     }
 
     [ExcelCommand(
