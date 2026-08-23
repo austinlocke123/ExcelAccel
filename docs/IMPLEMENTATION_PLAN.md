@@ -216,7 +216,7 @@ its prerequisites and capability-specific performance/reliability corpus exist.
 
 | Work package | Scope | Depends on | Primary acceptance |
 |---|---|---|---|
-| WP-G-01 | Read-only named-range inventory/search/navigation/export | WP-2-01/09 | AC-NAME-001..011 |
+| WP-G-01 | Read-only named-range inventory/search/navigation/export | WP-2-01/09 | AC-NAME-001..011 | **Delivered 2026-08-23 except AC-NAME-008..010 usage coverage** |
 | WP-G-02 | Read-only external-link inventory/search/navigation/export | WP-2-01/09 | AC-LINK-001..011 |
 | WP-G-03 | Same-shape range/worksheet/workbook compare and export | WP-2-01/04/09 | AC-CMP-001..019 |
 | WP-G-04 | Native one/two-way sensitivity creation and inspection | WP-1A-03/09/12, ADR-0005 | AC-SENS-001..014 |
@@ -252,6 +252,8 @@ from using the add-in rather than from the original specification.
 | WP-F-09 | Number-format entry diagnostics, including the round-trip trap | WP-F-01 | AC-FMT-044 | |
 | WP-F-10 | Basis points applies its number format on one batch receipt | WP-F-06 | AC-FMT-032 | |
 | WP-F-11 | Ribbon buttons hide when their cycle is deleted | WP-F-02 | AC-FMT-039 | |
+| WP-R-01 | Add-in unload path coverage and teardown resilience | none | AC-REL-005 | |
+| WP-G-01 | Read-only named-range inventory, search, navigation, export | WP-2-01/09 | AC-NAME-001..007, 011 | |
 
 Sequencing note: WP-F-01 is the schema change and everything in WP-F-02,
 WP-F-03, and WP-F-08 sits on it, so it goes first. WP-F-06 and WP-F-07 are

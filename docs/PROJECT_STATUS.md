@@ -291,7 +291,7 @@ coverage gap, recorded here rather than fixed.
 
 ## Current verification
 
-- **Head of `main`: 591/591 Release tests pass**, Release and Debug builds are
+- **Head of `main`: 675/675 Release tests pass**, Release and Debug builds are
   warning-free, and the hidden-Excel smoke passes with the process-exit check
   working and no surviving Excel process. The rows below are historical
   per-package records and keep the counts current at the time each landed.
@@ -599,7 +599,7 @@ would break the tab without failing any unit test, and the smoke drives macros
 rather than callbacks. A Debug-only hook now calls them the way Excel does; in
 real Excel it reported `configured=True|decimals=True|wired=True`.
 
-## Decisions waiting on you
+## Decisions raised 2026-08-20, all answered 2026-08-23
 
 1. ~~**AC-FMT-041 was reworded.**~~ **Confirmed 2026-08-23:** the default font
    colour cycle stays in palette order, so a keypress still produces black first.
@@ -706,22 +706,62 @@ AC-NAME-008..010, usage navigation, is **not built and not claimed**. It needs
 per-category qualification across cell formulas, name expressions, chart series,
 validation, and print areas, and the spec says each is separately qualified.
 
+## Session of 2026-08-23
+
+Four packages merged, each as its own PR with evidence:
+
+| PR | Package | What landed |
+|---|---|---|
+| #45 | WP-F-10 | Basis points applies its number format, on one receipt |
+| #46 | WP-F-11 | Ribbon buttons hide when their cycle is deleted |
+| #47 | WP-R-01 | Add-in unload path exercised, and the defect it exposed fixed |
+| #48 | WP-G-01 | Named-range inventory |
+
+Verification on `main` after the last merge: Release and Debug builds
+warning-free, **675/675** Release tests (614 at the start of the day), and
+`scripts/Test-ExcelAddIn.ps1` passing with Excel exiting cleanly and no stale
+session markers.
+
+**All four decisions raised on 2026-08-20 are now answered and implemented.**
+AC-FMT-041 stays palette order; basis points applies its format; the ribbon
+hides deleted cycles; and the undo receipt question was answered by finding that
+`PropertyBatchReceipt` already carries up to 32 changes under one receipt id,
+which is what made WP-F-10 possible without new receipt machinery.
+
+Two defects were found by running code that had never run:
+
+- **The unload path had never executed** in 290 sessions, and running it exposed
+  a reset sequence where one throwing step skipped the session-marker cleanup.
+  That would have put the user's next Excel session into safe mode.
+- **A fresh workbook carries `_xlfn.SINGLE`**, an Excel-internal function shim,
+  which appeared in a named-range inventory the user would expect to hold only
+  their own names. No fixture would have invented it.
+
+### Where the restart-point items stand
+
+Item 1 is done. Item 2 is half done: named ranges have landed, external links
+have not. Items 3 through 6 are untouched, and item 2's second half is the
+natural next package.
+
 ## Recommended restart point
 
-Phase 2 and six WP-F packages are finished, so nothing here is blocking. The most
-useful next step is to **install 0.4.0-local and use the add-in on a real model**,
-letting the friction set the backlog ahead of any remaining plan row. The four
-decisions listed above are the only things genuinely waiting on a person.
+Nothing here is blocking, and no decision is outstanding. The most useful next
+step is still to **install and use the add-in on a real model**, letting the
+friction set the backlog ahead of any remaining plan row; note that the installed
+build is 0.3.0-local and predates everything below.
 
-If engineering work is wanted instead, in rough order of value:
+Remaining engineering work, in rough order of value:
 
 1. ~~**Cover the add-in unload path.**~~ **Done (WP-R-01).** The path is now
    exercised by the smoke and its resilience is fault-injected; a defect that
    would have left a stale session marker was found and fixed.
-2. **WP-G-01 named-range inventory is done.** **WP-G-02 external-link inventory**
-   is next and follows the same shape: read-only, projected into the shared trace
-   view, exported through the same manifest pattern. **WP-G-03 compare** is the
-   larger user win and is unblocked now that WP-2-04 has landed.
+2. **WP-G-02 external-link inventory.** Half of this item is done: WP-G-01
+   landed the named-range side, and links follow the same shape — read-only,
+   projected into the shared trace view, exported through the same manifest
+   pattern, with `NameInventory` and `NameInventoryPresentation` as the template.
+   Name **usage** coverage (AC-NAME-008..010) is also still unbuilt and needs
+   per-category qualification. **WP-G-03 compare** is the larger user win and is
+   unblocked now that WP-2-04 has landed.
 3. **Settle the WP-1A-12 dependency.** WP-G-04, G-09, G-11, and G-13 depend on
    it; the installer source exists but its GA gates are deferred, so "depends on
    WP-1A-12" is ambiguous. Same class of document conflict as the workbook-scale
