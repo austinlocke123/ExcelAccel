@@ -13,6 +13,8 @@ using ExcelAccel.Application.DataCleaning;
 using ExcelAccel.Application.Auditing;
 using ExcelAccel.Core.Auditing;
 using ExcelAccel.Application.Operations;
+using ExcelAccel.Core.Names;
+using ExcelAccel.Application.Names;
 using ExcelAccel.Application.Formatting;
 using System.Linq;
 using System.Windows.Forms;
@@ -392,6 +394,31 @@ public static class DebugSmokeCommands
             DiagnosticLog.Info("smoke.style.major_header", "success");
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.style.major_header", exception); throw; }
+    }
+
+    [ExcelCommand(
+        Name = "ExcelAccel.Smoke.NameInventory",
+        Description = "Debug-only named-range inventory hook; not compiled into Release builds.")]
+    public static void NameInventory()
+    {
+        try
+        {
+            var port = new ExcelNameInventoryAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var result = new NameInventoryCoordinator().Open(
+                port, new NameInventoryRequest(includeHidden: true, includeBuiltIn: false));
+
+            var kinds = string.Join("+", result.Inventory.Entries
+                .Select(entry => entry.Record.Name + ":" + entry.TargetKind)
+                .OrderBy(value => value, StringComparer.Ordinal));
+            var navigable = result.Presentation.Rows.Count(row => row.IsNavigable);
+            DiagnosticLog.Info(
+                "smoke.names.inventory",
+                $"count={result.Inventory.Entries.Count}|complete={result.Inventory.IsComplete}|navigable={navigable}|{kinds}");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.names.inventory", exception);
+        }
     }
 
     [ExcelCommand(

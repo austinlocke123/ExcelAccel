@@ -676,6 +676,36 @@ In real Excel the new smoke hook opens a modeless dialog, tears down, and reopen
 `marker_before=True|cleared=True|shutting_down=True|reopened=True`, with
 `addin.close normal`. That is the first `addin.close` in 291 sessions.
 
+## WP-G-01 named-range inventory
+
+`names.inventory.open`, `names.navigate_target`, and `names.inventory.export`
+list every qualified defined name with its scope, visibility, target category,
+and navigability. Targets are classified from local metadata alone, so a name
+pointing at a closed workbook is classified without opening it. The `#REF!` check
+runs before the external check, so a broken external name reports as broken.
+
+**No new window was written.** The inventory projects into
+`TraceResultPresentation` and renders through the existing shared
+`TraceViewRuntime`, so there is no second read-only view to drift.
+
+Search takes no port at all: re-reading per keystroke would put a workbook scan
+behind typing and let results change under a filter the user did not touch.
+
+Export excludes name expressions by default, since a target can carry a path or a
+business term, and writes through a temporary file so a failure cannot leave a
+half-written export that looks complete.
+
+Real Excel found what no fixture would have invented: a fresh workbook carries
+`_xlfn.SINGLE`, a function shim Excel adds for itself, which appeared in a list
+the user would expect to hold only their own names. Reserved-name recognition now
+lives in `ReservedNames` in the core layer, where it is testable, covering the
+classic reserved names and the `_xlfn.`, `_xlref`, `_xludf.`, `_xlchart.`
+prefixes.
+
+AC-NAME-008..010, usage navigation, is **not built and not claimed**. It needs
+per-category qualification across cell formulas, name expressions, chart series,
+validation, and print areas, and the spec says each is separately qualified.
+
 ## Recommended restart point
 
 Phase 2 and six WP-F packages are finished, so nothing here is blocking. The most
@@ -688,11 +718,10 @@ If engineering work is wanted instead, in rough order of value:
 1. ~~**Cover the add-in unload path.**~~ **Done (WP-R-01).** The path is now
    exercised by the smoke and its resilience is fault-injected; a defect that
    would have left a stale session marker was found and fixed.
-2. **WP-G-02 external-link inventory** and **WP-G-01 named-range inventory**.
-   Both are read-only and reuse the shared trace view, the registration pattern,
-   and the export-with-manifest that already exist, so they are the cheapest
-   genuine features left. **WP-G-03 compare** is the larger user win and is
-   unblocked now that WP-2-04 has landed.
+2. **WP-G-01 named-range inventory is done.** **WP-G-02 external-link inventory**
+   is next and follows the same shape: read-only, projected into the shared trace
+   view, exported through the same manifest pattern. **WP-G-03 compare** is the
+   larger user win and is unblocked now that WP-2-04 has landed.
 3. **Settle the WP-1A-12 dependency.** WP-G-04, G-09, G-11, and G-13 depend on
    it; the installer source exists but its GA gates are deferred, so "depends on
    WP-1A-12" is ambiguous. Same class of document conflict as the workbook-scale

@@ -5,6 +5,7 @@ using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
 using ExcelAccel.Application.Operations;
 using ExcelAccel.Application.ModelCheck;
+using ExcelAccel.Application.Names;
 using ExcelAccel.Core.ModelCheck;
 using ExcelAccel.Core.Auditing;
 using ExcelAccel.Core.Formulas;
@@ -60,6 +61,9 @@ internal static class CommandDispatcher
         if (commandId == AuditingCommandCatalog.IndirectPrecedentsId) return ShowIndirectTrace(TraceDirection.Precedents);
         if (commandId == AuditingCommandCatalog.IndirectDependentsId) return ShowIndirectTrace(TraceDirection.Dependents);
         if (commandId == AuditingCommandCatalog.InspectFormulaId) return InspectFormula();
+        if (commandId == NamesCommandCatalog.InventoryId) return ShowNameInventory();
+        if (commandId == NamesCommandCatalog.NavigateTargetId) return NavigateNameTarget();
+        if (commandId == NamesCommandCatalog.ExportId) return ExportNameInventory();
         if (commandId == ModelCheckCommandCatalog.RunSelectionId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Selection);
         if (commandId == ModelCheckCommandCatalog.RunWorksheetId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Worksheet);
         if (commandId == ModelCheckCommandCatalog.RunWorkbookId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Workbook);
@@ -566,6 +570,53 @@ internal static class CommandDispatcher
         var command = new SelectionMatchCommand(descriptor);
         var plan = command.Plan(port.CaptureFormulaBlock(), predicate);
         return command.Execute(plan, port);
+    }
+
+    public static CommandResult ShowNameInventory()
+    {
+        var port = new ExcelNameInventoryAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var presence = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var result = new NameInventoryCoordinator().Open(
+            port, new NameInventoryRequest(includeHidden: true, includeBuiltIn: false));
+        DiagnosticLog.Info(
+            NamesCommandCatalog.InventoryId,
+            $"names:{result.Inventory.Entries.Count};complete:{result.Inventory.IsComplete};excluded:{result.Inventory.ExcludedByBound}");
+        return NameInventoryViewRuntime.Present(result, presence);
+    }
+
+    /// <summary>
+    /// Navigation happens by activating a row in the inventory view, which is
+    /// where the selected name is known. This command exists so the behaviour is
+    /// discoverable from the ribbon and Command Search rather than only by
+    /// double-clicking, and it says so plainly rather than doing nothing.
+    /// </summary>
+    public static CommandResult NavigateNameTarget()
+    {
+        if (!NameInventoryViewRuntime.IsOpen)
+        {
+            return CommandResult.Refused(
+                NamesCommandCatalog.NavigateTargetId,
+                "Open the name inventory first, then choose a name to go to its target.",
+                RefusalCodes.CommandUnavailable);
+        }
+
+        return CommandResult.Success(
+            NamesCommandCatalog.NavigateTargetId,
+            "Choose a name in the inventory to select its target. Constants, expressions, external and broken names stay listed but cannot be selected.");
+    }
+
+    public static CommandResult ExportNameInventory()
+    {
+        var captured = NameInventoryViewRuntime.Captured;
+        if (captured is null)
+        {
+            return CommandResult.Refused(
+                NamesCommandCatalog.ExportId,
+                "Open the name inventory before exporting it.",
+                RefusalCodes.CommandUnavailable);
+        }
+
+        return NameInventoryExportRuntime.Export(captured);
     }
 
     public static CommandResult ShowDirectPrecedents()

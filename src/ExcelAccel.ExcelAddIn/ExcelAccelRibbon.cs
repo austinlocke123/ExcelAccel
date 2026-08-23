@@ -154,6 +154,11 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                             supertip='Opens a read-only tree of functions, operators, constants, and references with exact source spans. Nothing is evaluated, scored, or explained.'
                             onAction='OnAuditCommand'
                             tag='audit.formula.inspect'/>
+                    <menu id='ExcelAccel.Names' label='Named Ranges' keytip='AN' imageMso='NameDefine'>
+                      <button id='ExcelAccel.NamesInventory' label='Name Inventory' keytip='O' tag='names.inventory.open' onAction='OnAuditCommand'/>
+                      <button id='ExcelAccel.NamesNavigate' label='Go to Name Target' keytip='G' tag='names.navigate_target' onAction='OnAuditCommand'/>
+                      <button id='ExcelAccel.NamesExport' label='Export Inventory...' keytip='E' tag='names.inventory.export' onAction='OnAuditCommand'/>
+                    </menu>
                     <menu id='ExcelAccel.ModelCheck' label='Model Check' keytip='AM' imageMso='ReviewShowMarkupMenu'>
                       <button id='ExcelAccel.ModelCheckSelection' label='Check Selection' keytip='S' tag='model_check.run.selection' onAction='OnModelCheckCommand'/>
                       <button id='ExcelAccel.ModelCheckWorksheet' label='Check Worksheet' keytip='W' tag='model_check.run.worksheet' onAction='OnModelCheckCommand'/>

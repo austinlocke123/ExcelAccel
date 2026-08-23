@@ -1,8 +1,9 @@
 # Named-range and external-link command contracts
 
-Status: **Draft for review**  
+Status: **Named-range inventory, search, target navigation, and export
+implemented 2026-08-23 (WP-G-01). Name usage coverage and the whole external-link
+family remain unbuilt.**  
 Capabilities: CAP-NAME-001, CAP-LINK-001  
-Earliest phase: gated after Phase 2  
 Approved scope: read-only inventory, search, navigation, and export
 
 ## Common boundary
