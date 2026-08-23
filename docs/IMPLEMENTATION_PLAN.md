@@ -254,6 +254,7 @@ from using the add-in rather than from the original specification.
 | WP-F-11 | Ribbon buttons hide when their cycle is deleted | WP-F-02 | AC-FMT-039 | |
 | WP-R-01 | Add-in unload path coverage and teardown resilience | none | AC-REL-005 | |
 | WP-G-01 | Read-only named-range inventory, search, navigation, export | WP-2-01/09 | AC-NAME-001..007, 011 | |
+| WP-G-02 | Read-only external-link inventory, grouping, search, navigation, export | WP-2-01/09 | AC-LINK-001..008, 010, 011 | |
 
 Sequencing note: WP-F-01 is the schema change and everything in WP-F-02,
 WP-F-03, and WP-F-08 sits on it, so it goes first. WP-F-06 and WP-F-07 are

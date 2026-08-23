@@ -1043,6 +1043,14 @@ public static class ExcelAccelNativeMethods
         [Console]::WriteLine("handle_count=$($excelProcess.HandleCount)")
         [Console]::Out.Flush()
 
+        # Seeded last: these formulas enlarge the worksheet's used range, and the
+        # dependent-scan assertions above count scanned formulas exactly.
+        $worksheet.Range('E1').Formula = "='[NoSuchBook.xlsx]Sheet1'!`$A`$1"
+        $worksheet.Range('E2').Formula = "='[NoSuchBook.xlsx]Sheet1'!#REF!"
+        [void]$excel.Run('ExcelAccel.Smoke.LinkInventory')
+        [Console]::WriteLine('link_inventory=exercised')
+        [Console]::Out.Flush()
+
         # Runs last: teardown resets the profile, undo, and view runtimes, so
         # anything after it would be exercising a reopened session.
         [void]$excel.Run('ExcelAccel.Smoke.UnloadAndReopen')
@@ -1229,6 +1237,7 @@ try {
     $requiredEvidence = @(
         'registered=True',
         'version=',
+        'link_inventory=exercised',
         'name_inventory=exercised',
         'ribbon_callbacks=invoked',
         'currency_format=$#,##0_);($#,##0)',
