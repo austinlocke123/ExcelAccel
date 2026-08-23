@@ -5,6 +5,7 @@ using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
 using ExcelAccel.Application.Operations;
 using ExcelAccel.Application.ModelCheck;
+using ExcelAccel.Application.Links;
 using ExcelAccel.Application.Names;
 using ExcelAccel.Core.ModelCheck;
 using ExcelAccel.Core.Auditing;
@@ -64,6 +65,9 @@ internal static class CommandDispatcher
         if (commandId == NamesCommandCatalog.InventoryId) return ShowNameInventory();
         if (commandId == NamesCommandCatalog.NavigateTargetId) return NavigateNameTarget();
         if (commandId == NamesCommandCatalog.ExportId) return ExportNameInventory();
+        if (commandId == LinksCommandCatalog.InventoryId) return ShowLinkInventory();
+        if (commandId == LinksCommandCatalog.NavigateUsageId) return NavigateLinkUsage();
+        if (commandId == LinksCommandCatalog.ExportId) return ExportLinkInventory();
         if (commandId == ModelCheckCommandCatalog.RunSelectionId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Selection);
         if (commandId == ModelCheckCommandCatalog.RunWorksheetId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Worksheet);
         if (commandId == ModelCheckCommandCatalog.RunWorkbookId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Workbook);
@@ -570,6 +574,51 @@ internal static class CommandDispatcher
         var command = new SelectionMatchCommand(descriptor);
         var plan = command.Plan(port.CaptureFormulaBlock(), predicate);
         return command.Execute(plan, port);
+    }
+
+    public static CommandResult ShowLinkInventory()
+    {
+        var port = new ExcelLinkInventoryAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var presence = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var result = new LinkInventoryCoordinator().Open(port);
+        DiagnosticLog.Info(
+            LinksCommandCatalog.InventoryId,
+            $"sources:{result.Inventory.Sources.Count};usages:{result.Inventory.UsageCount};complete:{result.Inventory.IsComplete}");
+        return LinkInventoryViewRuntime.Present(result, presence);
+    }
+
+    /// <summary>
+    /// Navigation happens by activating a row in the inventory view, where the
+    /// selected usage is known. This command makes the behaviour discoverable and
+    /// says so plainly rather than doing nothing.
+    /// </summary>
+    public static CommandResult NavigateLinkUsage()
+    {
+        if (!LinkInventoryViewRuntime.IsOpen)
+        {
+            return CommandResult.Refused(
+                LinksCommandCatalog.NavigateUsageId,
+                "Open the link inventory first, then choose a usage to go to it.",
+                RefusalCodes.CommandUnavailable);
+        }
+
+        return CommandResult.Success(
+            LinksCommandCatalog.NavigateUsageId,
+            "Choose a usage in the inventory to select the cell that carries it. The external source is never opened, and non-cell usages stay listed but are not selectable.");
+    }
+
+    public static CommandResult ExportLinkInventory()
+    {
+        var captured = LinkInventoryViewRuntime.Captured;
+        if (captured is null)
+        {
+            return CommandResult.Refused(
+                LinksCommandCatalog.ExportId,
+                "Open the link inventory before exporting it.",
+                RefusalCodes.CommandUnavailable);
+        }
+
+        return LinkInventoryExportRuntime.Export(captured);
     }
 
     public static CommandResult ShowNameInventory()

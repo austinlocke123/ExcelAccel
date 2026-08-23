@@ -14,6 +14,7 @@ using ExcelAccel.Application.Auditing;
 using ExcelAccel.Core.Auditing;
 using ExcelAccel.Application.Operations;
 using ExcelAccel.Core.Names;
+using ExcelAccel.Application.Links;
 using ExcelAccel.Application.Names;
 using ExcelAccel.Application.Formatting;
 using System.Linq;
@@ -394,6 +395,29 @@ public static class DebugSmokeCommands
             DiagnosticLog.Info("smoke.style.major_header", "success");
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.style.major_header", exception); throw; }
+    }
+
+    [ExcelCommand(
+        Name = "ExcelAccel.Smoke.LinkInventory",
+        Description = "Debug-only external-link inventory hook; not compiled into Release builds.")]
+    public static void LinkInventory()
+    {
+        try
+        {
+            var port = new ExcelLinkInventoryAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var result = new LinkInventoryCoordinator().Open(port);
+            var detail = string.Join("+", result.Inventory.Sources
+                .Select(source => source.Token + ":" + source.Status + ":" + source.UsageCount)
+                .OrderBy(value => value, StringComparer.Ordinal));
+            var navigable = result.Presentation.Rows.Count(row => row.IsNavigable);
+            DiagnosticLog.Info(
+                "smoke.links.inventory",
+                $"sources={result.Inventory.Sources.Count}|usages={result.Inventory.UsageCount}|navigable={navigable}|complete={result.Inventory.IsComplete}|{detail}");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.links.inventory", exception);
+        }
     }
 
     [ExcelCommand(

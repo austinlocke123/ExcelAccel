@@ -159,6 +159,11 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                       <button id='ExcelAccel.NamesNavigate' label='Go to Name Target' keytip='G' tag='names.navigate_target' onAction='OnAuditCommand'/>
                       <button id='ExcelAccel.NamesExport' label='Export Inventory...' keytip='E' tag='names.inventory.export' onAction='OnAuditCommand'/>
                     </menu>
+                    <menu id='ExcelAccel.Links' label='External Links' keytip='AL' imageMso='WorkbookLinks'>
+                      <button id='ExcelAccel.LinksInventory' label='Link Inventory' keytip='O' tag='links.inventory.open' onAction='OnAuditCommand'/>
+                      <button id='ExcelAccel.LinksNavigate' label='Go to Link Usage' keytip='G' tag='links.navigate_usage' onAction='OnAuditCommand'/>
+                      <button id='ExcelAccel.LinksExport' label='Export Link Inventory...' keytip='E' tag='links.inventory.export' onAction='OnAuditCommand'/>
+                    </menu>
                     <menu id='ExcelAccel.ModelCheck' label='Model Check' keytip='AM' imageMso='ReviewShowMarkupMenu'>
                       <button id='ExcelAccel.ModelCheckSelection' label='Check Selection' keytip='S' tag='model_check.run.selection' onAction='OnModelCheckCommand'/>
                       <button id='ExcelAccel.ModelCheckWorksheet' label='Check Worksheet' keytip='W' tag='model_check.run.worksheet' onAction='OnModelCheckCommand'/>

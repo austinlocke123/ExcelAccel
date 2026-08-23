@@ -291,7 +291,7 @@ coverage gap, recorded here rather than fixed.
 
 ## Current verification
 
-- **Head of `main`: 675/675 Release tests pass**, Release and Debug builds are
+- **Head of `main`: 703/703 Release tests pass**, Release and Debug builds are
   warning-free, and the hidden-Excel smoke passes with the process-exit check
   working and no surviving Excel process. The rows below are historical
   per-package records and keep the counts current at the time each landed.
@@ -743,6 +743,36 @@ Item 1 is done. Item 2 is half done: named ranges have landed, external links
 have not. Items 3 through 6 are untouched, and item 2's second half is the
 natural next package.
 
+## WP-G-02 external-link inventory
+
+`links.inventory.open`, `links.navigate_usage`, and `links.inventory.export`
+group every qualified external link by normalized source and list where each is
+used. Sources normalize to their file name textually, so a formula token and a
+full path to the same workbook land in one group without resolving any path.
+
+**Status never claims a check that did not happen.** The vocabulary is about this
+Excel session: "Open in Excel", "Not open (not checked)", "Broken reference",
+"Unsupported source". No filesystem probe is performed, deliberately — a
+`File.Exists` on a UNC path pointing at a dead share can block, and an inventory
+that hangs Excel is worse than one that says "not checked". A test asserts the
+label says "not checked" and never "missing", "inaccessible", or "unavailable".
+The adapter never calls `UpdateLink`, `BreakLink`, `ChangeLink`, or
+`Workbooks.Open`, and never triggers a recalculation.
+
+Nothing is hidden: a source Excel reports but no scanned usage explains still
+appears, since omitting it would contradict Excel's own Edit Links dialog.
+Unscanned categories are named as coverage gaps rather than counted as zero.
+
+The tests caught a real bug. Display strings were chosen by taking the longest
+form seen, and a usage token is a raw formula, so a formula fragment would have
+appeared in the column the user reads as a file path — and would have defeated the
+export's path redaction by smuggling formula text into a redacted column. Only a
+source Excel itself reported now contributes a display string.
+
+AC-LINK-009 is half met: non-cell usages are visibly non-navigable with a stated
+reason, but no qualified selection path exists for chart series or connections
+because neither is scanned yet.
+
 ## Recommended restart point
 
 Nothing here is blocking, and no decision is outstanding. The most useful next
@@ -755,13 +785,12 @@ Remaining engineering work, in rough order of value:
 1. ~~**Cover the add-in unload path.**~~ **Done (WP-R-01).** The path is now
    exercised by the smoke and its resilience is fault-injected; a defect that
    would have left a stale session marker was found and fixed.
-2. **WP-G-02 external-link inventory.** Half of this item is done: WP-G-01
-   landed the named-range side, and links follow the same shape — read-only,
-   projected into the shared trace view, exported through the same manifest
-   pattern, with `NameInventory` and `NameInventoryPresentation` as the template.
-   Name **usage** coverage (AC-NAME-008..010) is also still unbuilt and needs
-   per-category qualification. **WP-G-03 compare** is the larger user win and is
-   unblocked now that WP-2-04 has landed.
+2. **Both inventories are done** (WP-G-01, WP-G-02). What remains of this item:
+   **WP-G-03 compare**, the larger user win, unblocked now that WP-2-04 has
+   landed; name **usage** coverage (AC-NAME-008..010); and link scanning for
+   chart series, queries/connections, and validation, each of which the spec
+   requires to be separately qualified and each of which is currently reported as
+   a coverage gap.
 3. **Settle the WP-1A-12 dependency.** WP-G-04, G-09, G-11, and G-13 depend on
    it; the installer source exists but its GA gates are deferred, so "depends on
    WP-1A-12" is ambiguous. Same class of document conflict as the workbook-scale
