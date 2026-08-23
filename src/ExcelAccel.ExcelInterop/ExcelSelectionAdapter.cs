@@ -304,6 +304,46 @@ public sealed class ExcelSelectionAdapter : IFormattingPort, IPropertyReceiptPor
         }
     }
 
+    public void ApplyNumberFormat(SelectionContext target, string numberFormat)
+    {
+        _verifyExcelThread();
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        if (string.IsNullOrWhiteSpace(numberFormat)) throw new ArgumentException("A number format is required.", nameof(numberFormat));
+        ExcelComRetry.Execute(() => ApplyNumberFormatOnce(target, numberFormat));
+    }
+
+    private void ApplyNumberFormatOnce(SelectionContext target, string numberFormat)
+    {
+        object? applicationObject = null;
+        object? workbookObject = null;
+        object? worksheetsObject = null;
+        object? worksheetObject = null;
+        object? rangeObject = null;
+        try
+        {
+            applicationObject = _getApplication();
+            ExcelCommandReadiness.RequireReady(applicationObject);
+            workbookObject = ((dynamic)applicationObject).ActiveWorkbook;
+            if (workbookObject is null) throw new CommandRefusedException(RefusalCodes.SelectionUnsupported, "An active workbook is required.", "Open the planned workbook and retry.");
+            RequireWorkbookIdentity(workbookObject, target.WorkbookId);
+            worksheetsObject = ((dynamic)workbookObject).Worksheets;
+            worksheetObject = ((dynamic)worksheetsObject)[target.WorksheetName];
+            rangeObject = ((dynamic)worksheetObject).Range[target.Address];
+            ApplicationStateGuard.Run(
+                new ExcelApplicationStateAdapter(applicationObject),
+                ApplicationStateChangeSet.PropertyMutation(),
+                () => { ((dynamic)rangeObject).NumberFormat = numberFormat; });
+        }
+        finally
+        {
+            ComRelease.Owned(rangeObject);
+            ComRelease.Owned(worksheetObject);
+            ComRelease.Owned(worksheetsObject);
+            ComRelease.Owned(workbookObject);
+            ComRelease.Owned(applicationObject);
+        }
+    }
+
     private void WriteFormatBlockOnce(SelectionContext target, FormatBlock contents)
     {
         object? applicationObject = null;

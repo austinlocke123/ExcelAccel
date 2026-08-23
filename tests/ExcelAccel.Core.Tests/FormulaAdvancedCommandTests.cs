@@ -277,6 +277,10 @@ public sealed class FormulaAdvancedCommandTests
             throw new InvalidOperationException("Unexpected range target.");
         }
         public void WriteFormulaBlock(FormulaCellBlock contents) { WriteCount++; Current = contents; }
+        public string? AppliedNumberFormat { get; private set; }
+
+        public void ApplyNumberFormat(SelectionContext target, string numberFormat) => AppliedNumberFormat = numberFormat;
+
         public void WriteFormulaBlock(SelectionContext target, FormulaCellBlock contents)
         {
             if (!target.Equals(_snapshot.Selection.Context)) throw new InvalidOperationException("Unexpected write target.");

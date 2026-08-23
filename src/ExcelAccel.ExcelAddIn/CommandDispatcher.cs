@@ -450,12 +450,17 @@ internal static class CommandDispatcher
                 plan = command.PlanScale(snapshot, 1000000, divide: false, includeNumericConstants: false, previewLimit);
                 break;
             case "formula.units.to_basis_points":
-                // A rate stored as 0.0125 becomes 125. Excel cannot express a
-                // scaling basis-point display format, which is why this is a
-                // value transform rather than a number format; see
-                // docs/commands/FORMAT_CYCLES.md.
-                plan = command.PlanScale(snapshot, 10000, divide: false, includeNumericConstants: false, previewLimit);
+            {
+                // A rate stored as 0.0125 becomes 125, and the display format is
+                // restated to match in the same transaction. Excel cannot express
+                // a scaling basis-point format, so the value has to move; leaving
+                // the old percent format behind would then misread by 10,000.
+                // The format is profile data, not a literal in this file.
+                var basisPoints = ProfileRuntime.Current.ResolveCycle("number_format", "basis_points");
+                plan = command.PlanScale(snapshot, 10000, divide: false, includeNumericConstants: false, previewLimit,
+                    numberFormat: basisPoints.Count > 0 ? basisPoints[0] : null);
                 break;
+            }
             default:
                 return CommandResult.Refused(commandId, "The formula command has no qualified host route.", RefusalCodes.CommandUnavailable);
         }

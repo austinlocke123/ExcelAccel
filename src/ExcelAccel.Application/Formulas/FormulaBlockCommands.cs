@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using ExcelAccel.Application.Commands;
+using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Undo;
 using ExcelAccel.Core.Commands;
 using ExcelAccel.Core.Formulas;
@@ -15,13 +16,23 @@ public interface IFormulaBlockPort : ISelectionPort, IPropertyReceiptPort
     FormulaBlockSnapshot CaptureFormulaBlock(SelectionContext target);
     void WriteFormulaBlock(FormulaCellBlock contents);
     void WriteFormulaBlock(SelectionContext target, FormulaCellBlock contents);
+
+    /// <summary>
+    /// Applies one number format across the whole target. Capturing the prior
+    /// formats and restoring them needs no new member: <see cref="IPropertyReceiptPort"/>
+    /// already reads and writes the whole format block under
+    /// <c>cell_format_block_v1</c>, which is what undo uses.
+    /// </summary>
+    void ApplyNumberFormat(SelectionContext target, string numberFormat);
 }
 
 public sealed class FormulaBlockPlan
 {
     public FormulaBlockPlan(CommandPlan commandPlan, FormulaBlockSnapshot before, FormulaCellBlock after,
-        int changedCount, int skippedCount, IEnumerable<string> samples, FormulaBlockSnapshot? externalSource = null)
+        int changedCount, int skippedCount, IEnumerable<string> samples, FormulaBlockSnapshot? externalSource = null,
+        string? numberFormat = null)
     {
+        NumberFormat = string.IsNullOrWhiteSpace(numberFormat) ? null : numberFormat;
         CommandPlan = commandPlan ?? throw new ArgumentNullException(nameof(commandPlan));
         Before = before ?? throw new ArgumentNullException(nameof(before));
         After = after ?? throw new ArgumentNullException(nameof(after));
@@ -35,6 +46,9 @@ public sealed class FormulaBlockPlan
         ExternalSource = externalSource;
     }
     public CommandPlan CommandPlan { get; }
+
+    /// <summary>An optional number format applied across the whole target.</summary>
+    public string? NumberFormat { get; }
     public FormulaBlockSnapshot Before { get; }
     public FormulaCellBlock After { get; }
     public int ChangedCount { get; }
@@ -141,7 +155,7 @@ public sealed class FormulaBlockCommand
     }
 
     public FormulaBlockPlan PlanScale(FormulaBlockSnapshot snapshot, long scale, bool divide, bool includeNumericConstants,
-        int immediatePreviewLimit = DefaultImmediatePreviewLimit)
+        int immediatePreviewLimit = DefaultImmediatePreviewLimit, string? numberFormat = null)
     {
         RequireSafe(snapshot);
         var changed = 0;
@@ -173,6 +187,7 @@ public sealed class FormulaBlockCommand
             return proposed;
         });
         if (changedProperties.Count == 0) changedProperties.Add("formula");
+        if (!string.IsNullOrWhiteSpace(numberFormat)) changedProperties.Add(FormatPasteCommand.ReceiptPropertyId);
         var operation = divide ? "divide" : "multiply";
         return BuildPlan(snapshot, after, changed, skipped, samples, changed > immediatePreviewLimit,
             $"{operation} {changed:N0} cell(s) by {scale.ToString("N0", CultureInfo.InvariantCulture)}; skip {skipped:N0}.",
@@ -181,7 +196,7 @@ public sealed class FormulaBlockCommand
                 new KeyValuePair<string, string>("operator", divide ? "/" : "*"),
                 new KeyValuePair<string, string>("scale", scale.ToString(CultureInfo.InvariantCulture)),
                 new KeyValuePair<string, string>("include_numeric_constants", includeNumericConstants ? "true" : "false"),
-            });
+            }, numberFormat);
     }
 
     public CommandResult Execute(FormulaBlockPlan plan, IFormulaBlockPort port, string? confirmedPlanHash, IPropertyReceiptSink? receiptSink)
@@ -209,16 +224,41 @@ public sealed class FormulaBlockCommand
         var beforeSerialized = plan.Before.Contents.Serialize();
         var afterSerialized = plan.After.Serialize();
 
+        // A unit transform that also restates the display format has to do both
+        // inside one transaction and record both on one receipt, or a single
+        // Ctrl+Z would reverse the format and leave the values scaled.
+        var formatBefore = string.Empty;
+        var formatAfter = string.Empty;
+        if (plan.NumberFormat is not null
+            && !port.TryRead(plan.Before.Selection.Context, FormatPasteCommand.ReceiptPropertyId, out formatBefore))
+        {
+            return CommandResult.Refused(plan.CommandPlan,
+                "The target's current number formats could not be captured, so the change could not be made undoable.",
+                RefusalCodes.CommandUnavailable);
+        }
+
         try
         {
             port.WriteFormulaBlock(plan.Before.Selection.Context, plan.After);
             var observed = port.CaptureFormulaBlock(plan.Before.Selection.Context);
             if (!plan.Before.Selection.Context.Equals(observed.Selection.Context) || !plan.After.ContentEquals(observed.Contents))
                 throw new InvalidOperationException("Formula block postcondition mismatch.");
+            if (plan.NumberFormat is not null)
+            {
+                port.ApplyNumberFormat(plan.Before.Selection.Context, plan.NumberFormat);
+                if (!port.TryRead(plan.Before.Selection.Context, FormatPasteCommand.ReceiptPropertyId, out formatAfter))
+                    throw new InvalidOperationException("The applied number format could not be read back.");
+            }
         }
         catch (Exception exception)
         {
             var restored = TryRestore(plan.Before, port);
+            if (restored && plan.NumberFormat is not null)
+            {
+                try { restored = port.TryWrite(plan.Before.Selection.Context, FormatPasteCommand.ReceiptPropertyId, formatBefore); }
+                catch { restored = false; }
+            }
+
             if (restored) return CommandResult.Failed(_descriptor.Id,
                 $"Formula mutation failed ({exception.GetType().Name}); the entire target was restored to its exact before-state.",
                 "FORMULA_WRITE_ROLLED_BACK");
@@ -231,9 +271,28 @@ public sealed class FormulaBlockCommand
         var receiptId = Guid.NewGuid().ToString("N");
         try
         {
-            receiptSink.Add(new PropertyReceipt(receiptId, _descriptor.Id, _descriptor.ContractVersion,
-                plan.Before.Selection.Context, ReceiptPropertyId, beforeSerialized, afterSerialized,
-                plan.CommandPlan.PlanHash, now, now.AddHours(8)));
+            if (plan.NumberFormat is null)
+            {
+                receiptSink.Add(new PropertyReceipt(receiptId, _descriptor.Id, _descriptor.ContractVersion,
+                    plan.Before.Selection.Context, ReceiptPropertyId, beforeSerialized, afterSerialized,
+                    plan.CommandPlan.PlanHash, now, now.AddHours(8)));
+            }
+            else if (receiptSink is IPropertyBatchReceiptSink batchSink)
+            {
+                batchSink.Add(new PropertyBatchReceipt(receiptId, _descriptor.Id, _descriptor.ContractVersion,
+                    plan.Before.Selection.Context,
+                    new[]
+                    {
+                        new PropertyChange(ReceiptPropertyId, beforeSerialized, afterSerialized),
+                        new PropertyChange(FormatPasteCommand.ReceiptPropertyId, formatBefore, formatAfter),
+                    },
+                    plan.CommandPlan.PlanHash, now, now.AddHours(8)));
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "A transform that also sets a number format needs a batch receipt store so one undo reverses both.");
+            }
         }
         catch (Exception exception)
         {
@@ -274,7 +333,8 @@ public sealed class FormulaBlockCommand
 
     private FormulaBlockPlan BuildPlan(FormulaBlockSnapshot snapshot, FormulaCellBlock after,
         int changed, int skipped, IEnumerable<string> samples, bool requiresPreview,
-        string summary, IEnumerable<string> changedProperties, IEnumerable<KeyValuePair<string, string>> arguments)
+        string summary, IEnumerable<string> changedProperties, IEnumerable<KeyValuePair<string, string>> arguments,
+        string? numberFormat = null)
     {
         var fullArguments = arguments.Concat(new[]
         {
@@ -286,7 +346,7 @@ public sealed class FormulaBlockCommand
         var commandPlan = new CommandPlan(_descriptor.Id, _descriptor.Impact, snapshot.Selection.Context,
             changedProperties, changed, summary, snapshot.Contents.Fingerprint, _descriptor.ContractVersion,
             requiresPreview, fullArguments);
-        return new FormulaBlockPlan(commandPlan, snapshot, after, changed, skipped, samples);
+        return new FormulaBlockPlan(commandPlan, snapshot, after, changed, skipped, samples, numberFormat: numberFormat);
     }
 
     private static bool TryRestore(FormulaBlockSnapshot before, IFormulaBlockPort port)
