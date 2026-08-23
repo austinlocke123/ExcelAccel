@@ -1032,6 +1032,12 @@ public static class ExcelAccelNativeMethods
         [Console]::WriteLine("handle_count=$($excelProcess.HandleCount)")
         [Console]::Out.Flush()
 
+        # Runs last: teardown resets the profile, undo, and view runtimes, so
+        # anything after it would be exercising a reopened session.
+        [void]$excel.Run('ExcelAccel.Smoke.UnloadAndReopen')
+        [Console]::WriteLine('addin_unload=exercised')
+        [Console]::Out.Flush()
+
         $workbook.Close($false)
         $workbook = $null
         [Console]::WriteLine('workbook_closed=true')
@@ -1281,6 +1287,7 @@ try {
         'working_set_bytes=',
         'private_memory_bytes=',
         'handle_count=',
+        'addin_unload=exercised',
         'workbook_closed=true',
         'quit_returned=true'
     )

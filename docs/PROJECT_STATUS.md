@@ -654,6 +654,28 @@ Still open, needed before the work packages they touch:
 - Currency cycle: sign placement, decimal defaults, and whether a no-symbol
   variant belongs in the default.
 
+## WP-R-01 add-in unload path
+
+Measured before starting: 290 `addin.open` events, 0 `addin.close`. The unload
+path had never executed, because Excel does not call `xlAutoClose` during a
+COM-automated quit. Marker cleanup on process exit is handled by the runtime's own
+exit handlers, which is why nothing looked wrong.
+
+Running it found a real defect. The eleven resets ran inline inside one catching
+block, so a reset that threw skipped every later reset **and**
+`RuntimeState.StopCleanly` with it. `StopCleanly` deletes the session marker, so
+one failing dialog reset would have left a stale marker and put the next Excel
+session into safe mode, refusing every mutation command for a reason that looks
+unrelated. Nothing had run the path, so nothing had found it.
+
+`LifecycleTeardown.Run` now guarantees each step runs and the marker cleanup runs
+in a `finally`. It sits in the application layer so it can be fault-injected; the
+host has no test project, which is why the logic was untestable where it was.
+
+In real Excel the new smoke hook opens a modeless dialog, tears down, and reopens:
+`marker_before=True|cleared=True|shutting_down=True|reopened=True`, with
+`addin.close normal`. That is the first `addin.close` in 291 sessions.
+
 ## Recommended restart point
 
 Phase 2 and six WP-F packages are finished, so nothing here is blocking. The most
@@ -663,10 +685,9 @@ decisions listed above are the only things genuinely waiting on a person.
 
 If engineering work is wanted instead, in rough order of value:
 
-1. **Cover the add-in unload path.** `AutoClose` is never invoked by the smoke:
-   `addin.close` has been logged zero times against 263 `addin.open` events, so
-   the unload path, the runtime resets, and the recovery-marker cleanup are
-   entirely unexercised. This is the largest remaining reliability gap.
+1. ~~**Cover the add-in unload path.**~~ **Done (WP-R-01).** The path is now
+   exercised by the smoke and its resilience is fault-injected; a defect that
+   would have left a stale session marker was found and fixed.
 2. **WP-G-02 external-link inventory** and **WP-G-01 named-range inventory**.
    Both are read-only and reuse the shared trace view, the registration pattern,
    and the export-with-manifest that already exist, so they are the cheapest
