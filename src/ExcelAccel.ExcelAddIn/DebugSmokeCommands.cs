@@ -395,6 +395,46 @@ public static class DebugSmokeCommands
     }
 
     [ExcelCommand(
+        Name = "ExcelAccel.Smoke.UnloadAndReopen",
+        Description = "Debug-only add-in teardown hook; not compiled into Release builds.")]
+    public static void UnloadAndReopen()
+    {
+        try
+        {
+            // Excel does not call AutoClose during a COM-automated quit, so this
+            // path had never run in 290 recorded sessions. Drive it directly,
+            // with a modeless dialog open, then reopen so the session continues.
+            CallbackBoundary.Run("command.search.open", CommandSearchRuntime.Open, showResult: false);
+            System.Windows.Forms.Application.DoEvents();
+
+            var markerDirectory = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ExcelAccel", "sessions");
+            var markerPath = System.IO.Path.Combine(
+                markerDirectory, System.Diagnostics.Process.GetCurrentProcess().Id + ".running");
+            var markerBefore = System.IO.File.Exists(markerPath);
+
+            AddInLifecycle.Shutdown();
+            System.Windows.Forms.Application.DoEvents();
+
+            var markerCleared = !System.IO.File.Exists(markerPath);
+            var shuttingDown = RuntimeState.IsShuttingDown;
+
+            new AddInLifecycle().AutoOpen();
+            System.Windows.Forms.Application.DoEvents();
+
+            var reopened = System.IO.File.Exists(markerPath) && !RuntimeState.IsShuttingDown;
+            DiagnosticLog.Info(
+                "smoke.addin.unload",
+                $"marker_before={markerBefore}|cleared={markerCleared}|shutting_down={shuttingDown}|reopened={reopened}");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.addin.unload", exception);
+        }
+    }
+
+    [ExcelCommand(
         Name = "ExcelAccel.Smoke.RibbonCycleVisibility",
         Description = "Debug-only ribbon-callback hook; not compiled into Release builds.")]
     public static void RibbonCycleVisibility()
