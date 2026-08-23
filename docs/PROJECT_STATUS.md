@@ -291,9 +291,10 @@ coverage gap, recorded here rather than fixed.
 
 ## Current verification
 
-- **Head of `main`: 528/528 Release tests pass**, Release and Debug builds are
+- **Head of `main`: 591/591 Release tests pass**, Release and Debug builds are
   warning-free, and the hidden-Excel smoke passes with the process-exit check
-  working and no surviving Excel process.
+  working and no surviving Excel process. The rows below are historical
+  per-package records and keep the counts current at the time each landed.
 - WP-2-04 Formula Inspector: 528/528 Release tests; in real Excel the registered
   route returned `formula_inspector=open|success` with workbook contents
   unchanged.
@@ -366,7 +367,10 @@ The following feature gates remain closed but do **not** block Phase 2:
 - Formats-only paste is capped at 100 cells and nine explicit properties.
 - Unknown collaboration state and medium/high-impact collaborative mutation
   remain refused.
-- AutoColor remains disabled.
+- AutoColor **execution** remains disabled. Classification landed in WP-F-08 and
+  the gate now permits selection scope, but the two commands are unregistered
+  because no port reads or writes per-cell font colours, and the 32-change undo
+  receipt ceiling is unresolved.
 
 Attributed startup cost, long-duration single-process retention, the supported
 Office/coexistence/accessibility matrix, CA-signed installer, clean-VM lifecycle,
@@ -622,9 +626,10 @@ Still open, needed before the work packages they touch:
 
 ## Recommended restart point
 
-Phase 2 is finished, so nothing here is blocking. The most useful next step is to
-**use the add-in on a real model and let the friction set the backlog**, ahead of
-any remaining plan row.
+Phase 2 and six WP-F packages are finished, so nothing here is blocking. The most
+useful next step is to **install 0.4.0-local and use the add-in on a real model**,
+letting the friction set the backlog ahead of any remaining plan row. The four
+decisions listed above are the only things genuinely waiting on a person.
 
 If engineering work is wanted instead, in rough order of value:
 
@@ -641,11 +646,14 @@ If engineering work is wanted instead, in rough order of value:
    it; the installer source exists but its GA gates are deferred, so "depends on
    WP-1A-12" is ambiguous. Same class of document conflict as the workbook-scale
    gate, and worth resolving before starting any of them.
-4. **Decide AutoColor.** The planner is complete and tested but registered
-   nowhere, and execution is hard-stopped pending a transactional adapter,
-   rollback and fault-injection evidence, and worksheet-scale preview UI. Note
-   that this document lists it as disabled while WP-G-13 assumes workbook
-   AutoColor gets built.
+4. **Finish AutoColor.** Classification is correct and tested as of WP-F-08, and
+   the gate permits selection scope, but nothing is registered: there is no port
+   that reads or writes per-cell font colours, and `PropertyBatchReceipt` caps at
+   32 changes so a real selection cannot record undo. Resolve the receipt ceiling
+   first; the adapter is pointless without it. Worksheet scope additionally needs
+   rollback and fault-injection evidence and a worksheet-scale preview. Note that
+   WP-G-13 assumes workbook AutoColor gets built, which the approved
+   `commands/AUTOCOLOR.md` explicitly rules out.
 5. Folding Model Check ignores into the profile schema, if the separate atomic
    ignore file is not acceptable long term.
 6. Extending the Phase 2 corpus beyond one dense rectangular shape, and running a
