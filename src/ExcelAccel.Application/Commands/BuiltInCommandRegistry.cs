@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using ExcelAccel.Application.Auditing;
+using ExcelAccel.Application.AutoColor;
 using ExcelAccel.Application.ModelCheck;
 using ExcelAccel.Application.Links;
 using ExcelAccel.Application.Names;
@@ -73,6 +74,7 @@ public static class BuiltInCommandRegistry
         .Concat(ModelCheckCommandCatalog.All)
         .Concat(NamesCommandCatalog.All)
         .Concat(LinksCommandCatalog.All)
+        .Concat(AutoColorCommandCatalog.All)
         .OrderBy(command => command.Id, System.StringComparer.Ordinal)
         .ToArray();
 

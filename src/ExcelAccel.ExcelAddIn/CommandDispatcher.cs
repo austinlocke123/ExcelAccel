@@ -1,5 +1,6 @@
 using ExcelDna.Integration;
 using ExcelAccel.Application.Auditing;
+using ExcelAccel.Application.AutoColor;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
@@ -44,6 +45,8 @@ internal static class CommandDispatcher
         if (commandId == "support.diagnostics.export") return ExportDiagnostics();
         if (commandId == "command.search.open") return CommandSearchRuntime.Open();
         if (CycleCommandFactory.IsCycleCommand(commandId)) return ApplyProfileCycle(commandId);
+        if (commandId == AutoColorCommandCatalog.SelectionId || commandId == AutoColorCommandCatalog.WorksheetId)
+            return ApplyAutoColor(commandId);
         if (commandId == "profile.export") return ExportProfile();
         if (commandId == "profile.import.preview") return ImportProfile(apply: false);
         if (commandId == "profile.import.apply") return ImportProfile(apply: true);
@@ -315,6 +318,44 @@ internal static class CommandDispatcher
     /// Runs a cycle that exists only in the profile. These carry no ribbon button
     /// and are reached through Command Search.
     /// </summary>
+    /// <summary>
+    /// Recolours by classification. Worksheet scope stays behind its
+    /// qualification gate, which the planner enforces rather than this method.
+    /// </summary>
+    public static CommandResult ApplyAutoColor(string commandId)
+    {
+        if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(commandId))
+        {
+            return CommandResult.Refused(commandId, "Mutation commands are disabled in safe mode or quarantine.", RefusalCodes.CommandQuarantined);
+        }
+
+        var port = new ExcelAutoColorAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var command = AutoColorCommandCatalog.Create(commandId);
+        var profile = ProfileRuntime.Current;
+        var execution = command.Plan(profile, port);
+
+        string? confirmation = null;
+        if (execution.CommandPlan.RequiresPreview)
+        {
+            var message =
+                execution.CommandPlan.Summary + Environment.NewLine + Environment.NewLine +
+                "Only the font colour changes. One undo reverses all of it." + Environment.NewLine + Environment.NewLine +
+                "Apply this exact plan?";
+            var owner = ExcelWindowOwner.TryCreate();
+            var response = owner is null
+                ? MessageBox.Show(message, "ExcelAccel AutoColor preview", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+                : MessageBox.Show(owner, message, "ExcelAccel AutoColor preview", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (response != DialogResult.Yes)
+            {
+                return CommandResult.Refused(execution.CommandPlan, "AutoColor preview was cancelled.", "USER_CANCELLED");
+            }
+
+            confirmation = execution.CommandPlan.PlanHash;
+        }
+
+        return command.Execute(execution, profile, port, confirmation, UndoRuntime.Store);
+    }
+
     public static CommandResult ApplyProfileCycle(string commandId)
     {
         if (RuntimeState.IsSafeMode || RuntimeState.IsQuarantined(commandId))

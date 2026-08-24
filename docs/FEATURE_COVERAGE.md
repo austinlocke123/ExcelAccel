@@ -12,7 +12,7 @@ prevents a feature from disappearing during document restructuring.
 | Number-format cycles, user-defined | `commands/FORMAT_CYCLES.md` | Implemented 2026-08-20 (WP-F-01, WP-F-02); editor UI pending WP-F-03 |
 | Settings editor for cycles | `commands/FORMAT_CYCLES.md` | Approved, not implemented (WP-F-03) |
 | Blue-black input/formula toggle | `commands/AUTOCOLOR.md` | Approved, not implemented |
-| Cell classification rules | `commands/AUTOCOLOR.md` | Implemented 2026-08-20 (WP-F-08); commands unregistered pending an adapter |
+| Cell classification rules | `commands/AUTOCOLOR.md` | Implemented 2026-08-20 (WP-F-08); selection scope shipped 2026-08-24 (WP-R-04) |
 | Workbook-scope AutoColor | `commands/AUTOCOLOR.md` | **Withdrawn** 2026-08-20; AutoColor is selection and worksheet only |
 | Named-range inventory | `commands/NAMES_AND_LINKS.md` | Implemented 2026-08-23 (WP-G-01); usage coverage unbuilt |
 | External-link inventory | `commands/NAMES_AND_LINKS.md` | Implemented 2026-08-23 (WP-G-02); chart, query, and validation categories unscanned |
