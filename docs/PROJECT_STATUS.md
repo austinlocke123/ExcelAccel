@@ -966,6 +966,13 @@ comparison corpus (AC-CMP-015), and the worksheet equal-bounds policy with
 hidden/filtered reporting (AC-CMP-009/010), so no worksheet-level command is
 registered.
 
+## Handing off
+
+[`SESSION_HANDOFF.md`](SESSION_HANDOFF.md) is written for the next agent. It
+carries what this document does not: the commit boundary and attribution for the
+Claude Opus 5 work, where the weakest coverage is, which judgement calls are worth
+a second opinion, and the traps that have already cost time here.
+
 ## Recommended restart point
 
 Nothing here is blocking, and no decision is outstanding. The most useful next
