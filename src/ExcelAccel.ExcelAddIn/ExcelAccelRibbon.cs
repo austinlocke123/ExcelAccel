@@ -45,6 +45,10 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                   <group id='ExcelAccel.Group.CellFormat' label='Cell Format'>
                     <button id='ExcelAccel.FontColor' label='Font Color' keytip='F' tag='format.font_color.cycle' getVisible='OnGetCycleVisible' onAction='OnFormattingCommand'/>
                     <button id='ExcelAccel.FillColor' label='Fill Color' keytip='L' tag='format.fill_color.cycle' getVisible='OnGetCycleVisible' onAction='OnFormattingCommand'/>
+                    <menu id='ExcelAccel.AutoColor' label='AutoColor' keytip='EK' imageMso='FontColorPicker'>
+                      <button id='ExcelAccel.AutoColorSelection' label='AutoColor Selection' keytip='S' tag='format.auto_color.selection' onAction='OnAutoColorCommand'/>
+                      <button id='ExcelAccel.AutoColorWorksheet' label='AutoColor Worksheet' keytip='W' tag='format.auto_color.worksheet' onAction='OnAutoColorCommand'/>
+                    </menu>
                     <button id='ExcelAccel.CenterAcross' label='Center Across' keytip='EC' tag='format.center_across.apply' onAction='OnFormattingCommand'/>
                     <menu id='ExcelAccel.Align' label='Align' keytip='EA' imageMso='AlignCenter'>
                       <button id='ExcelAccel.HorizontalAlignment' label='Cycle Horizontal' keytip='H' tag='format.alignment.horizontal.cycle' getVisible='OnGetCycleVisible' onAction='OnFormattingCommand'/>
@@ -257,6 +261,12 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
             DiagnosticLog.Error("ribbon.get_visible", exception);
             return true;
         }
+    }
+
+    public void OnAutoColorCommand(IRibbonControl control)
+    {
+        var commandId = control.Tag;
+        CallbackBoundary.Run(commandId, () => CommandDispatcher.ApplyAutoColor(commandId));
     }
 
     public void OnFormattingCommand(IRibbonControl control)

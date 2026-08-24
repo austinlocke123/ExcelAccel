@@ -50,6 +50,8 @@ public static class RibbonRoutes
         { "fill.value_from_above", "Alt, X, A, RF, V" },
         { "format.alignment.horizontal.cycle", "Alt, X, A, EA, H" },
         { "format.alignment.vertical.cycle", "Alt, X, A, EA, V" },
+        { "format.auto_color.selection", "Alt, X, A, EK, S" },
+        { "format.auto_color.worksheet", "Alt, X, A, EK, W" },
         { "format.border.remove", "Alt, X, A, EB, R" },
         { "format.border.sum_bar.apply", "Alt, X, A, EB, S" },
         { "format.center_across.apply", "Alt, X, A, EC" },

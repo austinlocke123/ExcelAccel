@@ -14,6 +14,7 @@ using ExcelAccel.Application.Auditing;
 using ExcelAccel.Core.Auditing;
 using ExcelAccel.Application.Operations;
 using ExcelAccel.Core.Names;
+using ExcelAccel.Application.AutoColor;
 using ExcelAccel.Application.Links;
 using ExcelAccel.Application.Names;
 using ExcelAccel.Application.Formatting;
@@ -395,6 +396,44 @@ public static class DebugSmokeCommands
             DiagnosticLog.Info("smoke.style.major_header", "success");
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.style.major_header", exception); throw; }
+    }
+
+    [ExcelCommand(
+        Name = "ExcelAccel.Smoke.AutoColorSelection",
+        Description = "Debug-only AutoColor hook; not compiled into Release builds.")]
+    public static void AutoColorSelection()
+    {
+        try
+        {
+            var port = new ExcelAutoColorAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var command = AutoColorCommandCatalog.Create(AutoColorCommandCatalog.SelectionId);
+            var profile = ProfileRuntime.Current;
+            var execution = command.Plan(profile, port);
+            var result = command.Execute(
+                execution, profile, port, execution.CommandPlan.PlanHash, UndoRuntime.Store);
+
+            var after = port.CaptureCells(AutoColorScope.Selection)
+                .OrderBy(cell => cell.Address, StringComparer.Ordinal)
+                .Select(cell => cell.Address + ":" + cell.FontColor)
+                .ToArray();
+            DiagnosticLog.Info(
+                "smoke.autocolor.selection",
+                $"status={result.Status}|changed={execution.Plan.Changes.Count}|{string.Join("+", after)}");
+
+            var undo = UndoRuntime.Store.TryUndo(
+                execution.CommandPlan.Context.WorkbookId, port, DateTimeOffset.UtcNow);
+            var restored = port.CaptureCells(AutoColorScope.Selection)
+                .OrderBy(cell => cell.Address, StringComparer.Ordinal)
+                .Select(cell => cell.Address + ":" + cell.FontColor)
+                .ToArray();
+            DiagnosticLog.Info(
+                "smoke.autocolor.undo",
+                $"outcome={undo.Outcome}|{string.Join("+", restored)}");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.autocolor.selection", exception);
+        }
     }
 
     [ExcelCommand(

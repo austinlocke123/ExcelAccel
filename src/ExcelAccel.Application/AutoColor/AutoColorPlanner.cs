@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Security.Cryptography;
+using System.Globalization;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Profiles;
 using ExcelAccel.Core.Commands;
@@ -177,10 +180,42 @@ public static class AutoColorPlanner
                 changes.Add(new AutoColorChange(cell.Address, category, cell.FontColor, desired));
         }
 
-        var fingerprintSource = string.Join("\n", ordered.Select(value => value.Address + "\0" + value.ScalarKind + "\0" + value.Formula + "\0" + value.FontColor));
         return new AutoColorPlan(selection.Context, scope, changes, counts, counts[AutoColorCategory.Unsupported],
             scope == AutoColorScope.Worksheet || ordered.Length > profile.ImmediatePreviewCellLimit,
-            PreconditionFingerprint.Create(fingerprintSource));
+            PreconditionFingerprint.Create(Digest(ordered)));
+    }
+
+    /// <summary>
+    /// Digests every cell's kind, formula, and colour into one fixed-length value.
+    /// </summary>
+    /// <remarks>
+    /// The fingerprint used to be the raw concatenation of every cell, which made
+    /// <see cref="PreconditionFingerprint"/> throw its character-limit exception on
+    /// any sizeable range. The planner therefore advertised a 250,000-cell bound it
+    /// could never reach, and a large selection produced an unhandled argument
+    /// exception instead of a clean refusal. Hashing incrementally has no length
+    /// limit, so the declared bound is the only thing deciding what is plannable.
+    /// </remarks>
+    private static string Digest(IReadOnlyList<AutoColorCellSnapshot> cells)
+    {
+        using (var hash = SHA256.Create())
+        {
+            foreach (var cell in cells)
+            {
+                var line = cell.Address + "\0" + cell.ScalarKind + "\0" + cell.Formula + "\0" + cell.FontColor + "\n";
+                var bytes = Encoding.UTF8.GetBytes(line);
+                hash.TransformBlock(bytes, 0, bytes.Length, null, 0);
+            }
+
+            hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            var builder = new StringBuilder(64);
+            foreach (var value in hash.Hash!)
+            {
+                builder.Append(value.ToString("x2", CultureInfo.InvariantCulture));
+            }
+
+            return builder.ToString();
+        }
     }
 
     /// <summary>

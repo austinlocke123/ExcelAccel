@@ -151,7 +151,7 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-033 | The ribbon groups commands by modeling task, and every registered command's declared keyboard route matches the ribbon it is reachable through. |
 | AC-FMT-034 | Classification follows the stated precedence, and a cell containing any numeric literal is a hardcode regardless of cross-sheet or external references in the same formula. |
 | AC-FMT-035 | No allowlist is applied; `=A1*2` classifies as a hardcode while Model Check continues to exclude the same literal from its findings. |
-| AC-FMT-036 | AutoColor Selection and AutoColor Worksheet assign the same colour to the same cell, and no third command applies the classification. |
+| AC-FMT-036 | AutoColor Selection and AutoColor Worksheet assign the same colour to the same cell, and no third command applies the classification. **Met for selection scope 2026-08-24 (WP-R-04); worksheet scope remains gated.** |
 | AC-FMT-037 | Both commands write only the font colour, record an undo receipt, and leave value, formula, and other format properties unchanged. |
 | AC-FMT-038 | Every category colour resolves from the active profile, with no colour hard-coded in the product, and each is editable per category from the settings editor. |
 | AC-FMT-039 | An unconfigured cycle slot does not appear on the ribbon, is not offered by Command Search, and is skipped when a cycle advances, so no press ever lands on an empty slot. |

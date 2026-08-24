@@ -1,8 +1,8 @@
 # Cell classification and AutoColor
 
-Status: **Classification implemented 2026-08-20 (WP-F-08) to the rules below.
-The two commands are not registered and cannot run: no adapter reads or writes
-per-cell font colours yet, and the undo receipt ceiling is unresolved.**
+Status: **AutoColor Selection is registered and works, 2026-08-24 (WP-R-04).
+AutoColor Worksheet is registered and refuses at planning time until its
+worksheet-scale qualification passes.**
 Capability: CAP-FMT-002
 Related: [`FORMAT_CYCLES.md`](FORMAT_CYCLES.md),
 [`MODEL_CHECK.md`](MODEL_CHECK.md)

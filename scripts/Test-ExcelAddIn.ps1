@@ -1043,6 +1043,29 @@ public static class ExcelAccelNativeMethods
         [Console]::WriteLine("handle_count=$($excelProcess.HandleCount)")
         [Console]::Out.Flush()
 
+        # One typed number, one same-sheet formula, one text label, each starting
+        # from a colour none of them should end on.
+        $auto = $worksheet.Range('G1:G3')
+        $worksheet.Range('G1').Value2 = 1234
+        $worksheet.Range('G2').Formula = '=G1'
+        $worksheet.Range('G3').Value2 = 'Label'
+        $auto.Font.Color = 0x563412
+        [void]$auto.Select()
+        [void]$excel.Run('ExcelAccel.Smoke.AutoColorSelection')
+        # The hook recolours, then undoes, so the colours here are the restored
+        # ones. A stuck recolour or a failed undo both show up as a mismatch.
+        $autoRestored = @(
+            [int]$worksheet.Range('G1').Font.Color,
+            [int]$worksheet.Range('G2').Font.Color,
+            [int]$worksheet.Range('G3').Font.Color) -join ','
+        [Console]::WriteLine("autocolor_restored=$autoRestored")
+        [Console]::Out.Flush()
+        if ($autoRestored -ne '5649426,5649426,5649426') {
+            throw "AutoColor undo did not restore the exact prior font colours: $autoRestored"
+        }
+        [Console]::WriteLine('autocolor=exercised')
+        [Console]::Out.Flush()
+
         # Seeded last: these formulas enlarge the worksheet's used range, and the
         # dependent-scan assertions above count scanned formulas exactly.
         $worksheet.Range('E1').Formula = "='[NoSuchBook.xlsx]Sheet1'!`$A`$1"
@@ -1237,6 +1260,8 @@ try {
     $requiredEvidence = @(
         'registered=True',
         'version=',
+        'autocolor_restored=5649426,5649426,5649426',
+        'autocolor=exercised',
         'link_inventory=exercised',
         'name_inventory=exercised',
         'ribbon_callbacks=invoked',
