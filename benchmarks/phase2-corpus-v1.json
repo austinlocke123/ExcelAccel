@@ -4,7 +4,8 @@
   "notes": [
     "Budgets are provisional Phase 2 ceilings, not frozen release budgets.",
     "They are measured against the Debug packed XLL, because the measured operations run through Debug-only hooks. Debug is slower than Release, so a passing measurement is a conservative upper bound.",
-    "Every operation under test is read-only. The corpus workbook is never saved."
+    "Every operation under test is read-only. The corpus workbook is never saved.",
+    "The dense block and its four workloads are unchanged, so their measurements remain comparable across runs. Additional shapes are measured separately under shape_workloads."
   ],
   "corpus": {
     "sheet_name": "Phase2Corpus",
@@ -45,6 +46,41 @@
     },
     {
       "id": "model_check_worksheet",
+      "operation": "model_check_worksheet",
+      "governing_requirement": "PERF-004",
+      "acceptance": "AC-CHECK-007",
+      "provisional_p95_ms": 30000
+    }
+  ],
+  "shapes": [
+    {
+      "id": "sparse",
+      "sheet_suffix": "Sparse",
+      "description": "Populated every 50th row across three columns over a 2,000-row span, so the used range is far larger than the populated cell count. This is the shape that exercises the untrusted-used-range ceiling, which a dense block never reaches.",
+      "span_rows": 2000,
+      "row_step": 50,
+      "columns": 3
+    },
+    {
+      "id": "wide",
+      "sheet_suffix": "Wide",
+      "description": "The transpose of the dense block: few rows, many columns. Column-major iteration and per-column bounding differ from row-major, and a dense tall block never exercises them.",
+      "rows": 20,
+      "columns": 200
+    }
+  ],
+  "shape_workloads": [
+    {
+      "id": "model_check_sparse",
+      "shape": "sparse",
+      "operation": "model_check_worksheet",
+      "governing_requirement": "PERF-004",
+      "acceptance": "AC-CHECK-007",
+      "provisional_p95_ms": 20000
+    },
+    {
+      "id": "model_check_wide",
+      "shape": "wide",
       "operation": "model_check_worksheet",
       "governing_requirement": "PERF-004",
       "acceptance": "AC-CHECK-007",

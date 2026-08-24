@@ -125,6 +125,59 @@ public static class ExcelAccelPhase2NativeMethods
         [Console]::WriteLine("corpus_columns=$columns")
         [Console]::Out.Flush()
 
+        # Additional shapes live on their own worksheets so the dense block and
+        # its budgets stay exactly as they were, and remain comparable run to run.
+        $shapeSheets = @{}
+        foreach ($shape in $corpus.shapes) {
+            $shapeSheet = $workbook.Worksheets.Add()
+            # The needle stays off these names: it is 26 characters, and Excel
+            # caps a worksheet name at 31, so appending a suffix overflows. The
+            # privacy probe only needs the marker on the dense sheet, which has it.
+            $shapeSheet.Name = 'Shape' + $shape.sheet_suffix
+            switch ($shape.id) {
+                'sparse' {
+                    # Populated every Nth row, so the used range is far larger
+                    # than the populated cell count.
+                    $step = [int]$shape.row_step
+                    $span = [int]$shape.span_rows
+                    $shapeColumns = [int]$shape.columns
+                    for ($row = 1; $row -le $span; $row += $step) {
+                        $shapeSheet.Cells.Item($row, 1).Value2 = $row
+                        for ($column = 2; $column -le (1 + $shapeColumns); $column++) {
+                            $shapeSheet.Cells.Item($row, $column).Formula = "=`$A$row*$($column - 1)"
+                        }
+                    }
+                }
+                'wide' {
+                    # The transpose of the dense block: few rows, many columns.
+                    $shapeRows = [int]$shape.rows
+                    $shapeColumns = [int]$shape.columns
+                    $wideInputs = New-Object 'object[,]' $shapeRows, 1
+                    for ($row = 1; $row -le $shapeRows; $row++) { $wideInputs[($row - 1), 0] = $row }
+                    $shapeSheet.Range($shapeSheet.Cells.Item(1, 1), $shapeSheet.Cells.Item($shapeRows, 1)).Value2 = $wideInputs
+
+                    $wide = New-Object 'object[,]' $shapeRows, $shapeColumns
+                    for ($row = 1; $row -le $shapeRows; $row++) {
+                        for ($column = 1; $column -le $shapeColumns; $column++) {
+                            $wide[($row - 1), ($column - 1)] = "=`$A$row*$column"
+                        }
+                    }
+                    $shapeSheet.Range(
+                        $shapeSheet.Cells.Item(1, 2),
+                        $shapeSheet.Cells.Item($shapeRows, 1 + $shapeColumns)).Formula = $wide
+                }
+                default { throw "Unknown corpus shape '$($shape.id)'." }
+            }
+
+            $used = $shapeSheet.UsedRange
+            [Console]::WriteLine("shape=$($shape.id) used_cells=$([int]$used.Count)")
+            [Console]::Out.Flush()
+            $shapeSheets[$shape.id] = $shapeSheet
+        }
+
+        $excel.Calculate()
+        [void]$worksheet.Activate()
+
         $results = @{}
         foreach ($workload in $corpus.workloads) {
             $samples = New-Object System.Collections.Generic.List[double]
@@ -163,6 +216,36 @@ public static class ExcelAccelPhase2NativeMethods
                 throw "Workload '$($workload.id)' P95 $([Math]::Round($p95,1)) ms exceeded its $($workload.provisional_p95_ms) ms budget."
             }
         }
+
+        # The same worksheet-scoped operation against each additional shape. Three
+        # iterations of one shape cannot show what a different shape costs.
+        foreach ($shapeWorkload in $corpus.shape_workloads) {
+            $shapeSheet = $shapeSheets[$shapeWorkload.shape]
+            if ($null -eq $shapeSheet) { throw "Shape '$($shapeWorkload.shape)' was never built." }
+            [void]$shapeSheet.Activate()
+            $shapeSamples = New-Object System.Collections.Generic.List[double]
+            $shapeDetail = ''
+            for ($iteration = 1; $iteration -le ($warmups + $measured); $iteration++) {
+                [void]$shapeSheet.Range('A1').Select()
+                switch ($shapeWorkload.operation) {
+                    'model_check_worksheet' { $raw = [string]$excel.Run('ExcelAccel.Perf.ModelCheckWorksheet') }
+                    default { throw "Unknown shape workload operation '$($shapeWorkload.operation)'." }
+                }
+
+                $parts = $raw.Split('|')
+                if ($iteration -gt $warmups) { $shapeSamples.Add([double]$parts[0]) }
+                $shapeDetail = $parts[1]
+            }
+
+            $shapeP95 = Get-Percentile -Samples $shapeSamples.ToArray() -Probability 0.95
+            [Console]::WriteLine("workload=$($shapeWorkload.id) p95_ms=$([Math]::Round($shapeP95, 1)) budget_ms=$($shapeWorkload.provisional_p95_ms) detail=$shapeDetail")
+            [Console]::Out.Flush()
+            if ($shapeP95 -gt [double]$shapeWorkload.provisional_p95_ms) {
+                throw "Workload '$($shapeWorkload.id)' P95 $([Math]::Round($shapeP95,1)) ms exceeded its $($shapeWorkload.provisional_p95_ms) ms budget."
+            }
+        }
+
+        [void]$worksheet.Activate()
 
         # Cancellation at corpus scale must fail closed and return promptly.
         [void]$worksheet.Range('A100').Select()
