@@ -338,7 +338,7 @@ only from the recorded Phase 0 closure commit.
 | AC-CHECK-028 | Values/formulas affect peer grouping only where the versioned rule explicitly declares it. |
 | AC-CHECK-029 | Finding navigation revalidates exact target identity and pushes prior location to audit history. |
 | AC-CHECK-030 | Local ignore stores a rule-specific normalized fingerprint with no raw formula/value content. |
-| AC-CHECK-031 | Ignore/unignore changes only the atomic local profile and takes effect through an explicit rescan. |
+| AC-CHECK-031 | Ignore/unignore changes only the atomic local **ignore store** and takes effect through an explicit rescan. **Reworded 2026-08-24 (WP-R-05):** the store is a separate atomic file rather than the profile document, so a damaged ignore list cannot cost the user their whole profile. See `commands/MODEL_CHECK.md`. |
 | AC-CHECK-032 | An ignore suppresses only equivalent findings for the same rule/version/scope semantics. |
 | AC-CHECK-033 | Active ignores are visible, removable, and portable only through an explicitly approved export/import action. |
 | AC-CHECK-034 | Rescan captures a new snapshot of the exact prior scope/configuration and never relabels old findings as current. |
