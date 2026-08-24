@@ -158,6 +158,12 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
                             supertip='Opens a read-only tree of functions, operators, constants, and references with exact source spans. Nothing is evaluated, scored, or explained.'
                             onAction='OnAuditCommand'
                             tag='audit.formula.inspect'/>
+                    <menu id='ExcelAccel.Compare' label='Compare' keytip='AC' imageMso='ViewSideBySide'>
+                      <button id='ExcelAccel.CompareCapture' label='Capture Source' keytip='S' tag='compare.source.capture' onAction='OnAuditCommand'/>
+                      <button id='ExcelAccel.CompareRun' label='Compare With Source' keytip='C' tag='compare.ranges.same_shape' onAction='OnAuditCommand'/>
+                      <button id='ExcelAccel.CompareTarget' label='Show Target Side' keytip='T' tag='compare.result.navigate_target' onAction='OnAuditCommand'/>
+                      <button id='ExcelAccel.CompareExport' label='Export Results...' keytip='E' tag='compare.results.export' onAction='OnAuditCommand'/>
+                    </menu>
                     <menu id='ExcelAccel.Names' label='Named Ranges' keytip='AN' imageMso='NameDefine'>
                       <button id='ExcelAccel.NamesInventory' label='Name Inventory' keytip='O' tag='names.inventory.open' onAction='OnAuditCommand'/>
                       <button id='ExcelAccel.NamesNavigate' label='Go to Name Target' keytip='G' tag='names.navigate_target' onAction='OnAuditCommand'/>

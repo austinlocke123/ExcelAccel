@@ -63,6 +63,7 @@ public sealed class AddInLifecycle : IExcelAddIn
         yield return Reset("model_check", ModelCheckRuntime.Reset);
         yield return Reset("name_inventory", NameInventoryViewRuntime.Reset);
         yield return Reset("link_inventory", LinkInventoryViewRuntime.Reset);
+        yield return Reset("comparison", ComparisonViewRuntime.Reset);
     }
 
     private static KeyValuePair<string, Action> Reset(string name, Action action) =>

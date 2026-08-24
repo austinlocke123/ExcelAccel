@@ -1,6 +1,7 @@
 using ExcelDna.Integration;
 using ExcelAccel.Application.Auditing;
 using ExcelAccel.Application.AutoColor;
+using ExcelAccel.Application.Compare;
 using ExcelAccel.Application.Commands;
 using ExcelAccel.Application.Formatting;
 using ExcelAccel.Application.Navigation;
@@ -71,6 +72,10 @@ internal static class CommandDispatcher
         if (commandId == LinksCommandCatalog.InventoryId) return ShowLinkInventory();
         if (commandId == LinksCommandCatalog.NavigateUsageId) return NavigateLinkUsage();
         if (commandId == LinksCommandCatalog.ExportId) return ExportLinkInventory();
+        if (commandId == CompareCommandCatalog.CaptureSourceId) return CaptureComparisonSource();
+        if (commandId == CompareCommandCatalog.RangesId) return CompareWithCapturedSource();
+        if (commandId == CompareCommandCatalog.NavigateTargetId) return ShowComparisonTargetSide();
+        if (commandId == CompareCommandCatalog.ExportId) return ExportComparison();
         if (commandId == ModelCheckCommandCatalog.RunSelectionId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Selection);
         if (commandId == ModelCheckCommandCatalog.RunWorksheetId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Worksheet);
         if (commandId == ModelCheckCommandCatalog.RunWorkbookId) return ModelCheckRuntime.Run(ModelCheckScopeKind.Workbook);
@@ -615,6 +620,66 @@ internal static class CommandDispatcher
         var command = new SelectionMatchCommand(descriptor);
         var plan = command.Plan(port.CaptureFormulaBlock(), predicate);
         return command.Execute(plan, port);
+    }
+
+    public static CommandResult CaptureComparisonSource()
+    {
+        var adapter = new ExcelComparisonAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var anchor = adapter.CaptureAnchor();
+        ComparisonViewRuntime.CaptureSource(anchor);
+        DiagnosticLog.Info(CompareCommandCatalog.CaptureSourceId, "captured");
+        return CommandResult.Success(
+            CompareCommandCatalog.CaptureSourceId,
+            $"Captured {anchor} as the comparison source. Select the range to compare it against.");
+    }
+
+    public static CommandResult CompareWithCapturedSource()
+    {
+        var source = ComparisonViewRuntime.Source;
+        if (source is null)
+        {
+            return CommandResult.Refused(
+                CompareCommandCatalog.RangesId,
+                "Capture a comparison source first, then select the range to compare it against.",
+                RefusalCodes.CommandUnavailable);
+        }
+
+        var port = new ExcelComparisonAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread, source);
+        var presence = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        var session = new ComparisonCoordinator().Compare(port);
+        DiagnosticLog.Info(
+            CompareCommandCatalog.RangesId,
+            $"differences:{session.Result.Differences.Count};cells:{session.Result.ComparedCells};complete:{session.Result.IsComplete}");
+        return ComparisonViewRuntime.Present(session, presence);
+    }
+
+    public static CommandResult ShowComparisonTargetSide()
+    {
+        var session = ComparisonViewRuntime.Session;
+        if (session is null)
+        {
+            return CommandResult.Refused(
+                CompareCommandCatalog.NavigateTargetId,
+                "Run a comparison first, then switch to the target side.",
+                RefusalCodes.CommandUnavailable);
+        }
+
+        var presence = new ExcelReferenceSnapshotAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+        return ComparisonViewRuntime.Present(new ComparisonCoordinator().ShowTargetSide(session), presence);
+    }
+
+    public static CommandResult ExportComparison()
+    {
+        var session = ComparisonViewRuntime.Session;
+        if (session is null)
+        {
+            return CommandResult.Refused(
+                CompareCommandCatalog.ExportId,
+                "Run a comparison before exporting it.",
+                RefusalCodes.CommandUnavailable);
+        }
+
+        return ComparisonExportRuntime.Export(session);
     }
 
     public static CommandResult ShowLinkInventory()

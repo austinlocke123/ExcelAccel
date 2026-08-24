@@ -15,6 +15,7 @@ using ExcelAccel.Core.Auditing;
 using ExcelAccel.Application.Operations;
 using ExcelAccel.Core.Names;
 using ExcelAccel.Application.AutoColor;
+using ExcelAccel.Application.Compare;
 using ExcelAccel.Application.Links;
 using ExcelAccel.Application.Names;
 using ExcelAccel.Application.Formatting;
@@ -396,6 +397,49 @@ public static class DebugSmokeCommands
             DiagnosticLog.Info("smoke.style.major_header", "success");
         }
         catch (Exception exception) { DiagnosticLog.Error("smoke.style.major_header", exception); throw; }
+    }
+
+    [ExcelCommand(
+        Name = "ExcelAccel.Smoke.CompareRanges",
+        Description = "Debug-only comparison hook; not compiled into Release builds.")]
+    public static void CompareRanges()
+    {
+        try
+        {
+            // Capture happens against the current selection, then the caller
+            // selects the target and this runs the comparison against it.
+            var capture = new ExcelComparisonAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
+            var anchor = ComparisonViewRuntime.Source;
+            if (anchor is null) { DiagnosticLog.Info("smoke.compare", "no_source_captured"); return; }
+
+            var port = new ExcelComparisonAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread, anchor);
+            var session = new ComparisonCoordinator().Compare(port);
+            var detail = string.Join("+", session.Result.Differences
+                .Select(d => $"r{d.Row + 1}:{d.Category}:{d.FormulaKind}"));
+            DiagnosticLog.Info(
+                "smoke.compare",
+                $"differences={session.Result.Differences.Count}|cells={session.Result.ComparedCells}|complete={session.Result.IsComplete}|{detail}");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.compare", exception);
+        }
+    }
+
+    [ExcelCommand(
+        Name = "ExcelAccel.Smoke.CompareCaptureSource",
+        Description = "Debug-only comparison capture hook; not compiled into Release builds.")]
+    public static void CompareCaptureSource()
+    {
+        try
+        {
+            var result = CommandDispatcher.CaptureComparisonSource();
+            DiagnosticLog.Info("smoke.compare.capture", result.Succeeded ? "captured" : "refused");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("smoke.compare.capture", exception);
+        }
     }
 
     [ExcelCommand(

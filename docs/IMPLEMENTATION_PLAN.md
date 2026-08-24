@@ -281,6 +281,7 @@ from using the add-in rather than from the original specification.
 | WP-R-04 | AutoColor selection execution and registration | WP-F-08, WP-R-03 | AC-FMT-034..037, 046 | |
 | WP-R-05 | Model Check ignore storage settled in its own atomic store | none | AC-CHECK-030..033 | |
 | WP-R-06 | Phase 2 corpus shapes and in-process retention harness | WP-2-09 | AC-PERF-002..006, AC-CHECK-007 | |
+| WP-G-03 | Same-shape range comparison, target-side navigation, export | WP-2-01/04/09 | AC-CMP-001..008, 014, 016..019 | |
 
 Sequencing note: WP-F-01 is the schema change and everything in WP-F-02,
 WP-F-03, and WP-F-08 sits on it, so it goes first. WP-F-06 and WP-F-07 are
