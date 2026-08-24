@@ -291,7 +291,7 @@ coverage gap, recorded here rather than fixed.
 
 ## Current verification
 
-- **Head of `main`: 734/734 Release tests pass**, Release and Debug builds are
+- **Head of `main`: 740/740 Release tests pass**, Release and Debug builds are
   warning-free, and the hidden-Excel smoke passes with the process-exit check
   working and no surviving Excel process. The rows below are historical
   per-package records and keep the counts current at the time each landed.
@@ -834,6 +834,32 @@ starting from one colour none should end on: the number went blue, the formula
 and label went black, and one undo restored all three exactly. The harness asserts
 the restored colours, so a stuck recolour or a failed undo fails the smoke.
 
+## WP-R-05 Model Check ignores stay in their own store
+
+Settled rather than changed. `MODEL_CHECK.md` said ignore/unignore performs an
+"atomic profile write" and AC-CHECK-031 said it "changes only the atomic local
+profile", while the implementation writes a separate TSV beside the profile. The
+spec and the code genuinely disagreed, which is what made this item look open.
+
+The separate store is the better design and is kept. The deciding reason is blast
+radius: `ProfileStore` refuses a profile it cannot parse whole and
+`ProfileRuntime` falls back to the embedded default when a load throws, so
+folding ignores in would mean a damaged suppression list costs the user every
+cycle, colour, quick key, and favorite they have. It is also the wrong shape,
+since an ignore fingerprints a finding in one model while a profile is user-wide
+and portable, so an exported profile would carry entries that can never match
+elsewhere. Secondary: 2,048 entries is roughly a fifth of the profile's 1 MiB
+budget, and folding costs a schema bump with migration and package ripple for no
+user benefit.
+
+The spec and the criterion now describe what the code does, including where the
+file lives. Tests lock the decision in: the profile carries no ignore data and
+`ProfileDefinition` exposes no ignore member, so folding them in later fails
+loudly rather than drifting.
+
+The visible-and-removable half of AC-CHECK-033 was already met by the existing
+manage-ignores dialog, and ignores are not portable by any unapproved route.
+
 ## Recommended restart point
 
 Nothing here is blocking, and no decision is outstanding. The most useful next
@@ -861,8 +887,11 @@ Remaining engineering work, in rough order of value:
    **Worksheet scope remains gated** and needs its performance qualification,
    worksheet-scale rollback and fault-injection evidence, and a preview built for
    thousands of rows rather than a message box.
-5. Folding Model Check ignores into the profile schema, if the separate atomic
-   ignore file is not acceptable long term.
+5. ~~Folding Model Check ignores into the profile schema.~~ **Settled (WP-R-05):
+   they stay in their own atomic store.** Folding them in would let a damaged
+   suppression list cost the user their whole profile, and an ignore fingerprints
+   one model while a profile is user-wide. The spec and AC-CHECK-031 said
+   "profile" and now describe the file the code actually writes.
 6. Extending the Phase 2 corpus beyond one dense rectangular shape, and running a
    long-duration soak of the Phase 2 operations. Three iterations cannot show
    slow leakage, and the existing ten-iteration soak covers Phase 1B only.

@@ -129,15 +129,25 @@ Each finding contains:
 
 - Impact: low local-settings mutation
 - Parameters: finding ID and rule-specific fingerprint scope
-- Plan: show rule, normalized fingerprint inputs, and whether ignore is local
-  profile or separately exported ignore set
-- Execute: atomic profile write; rescan required to apply
+- Plan: show rule and normalized fingerprint inputs
+- Execute: atomic write to the **local ignore store**, a file of its own beside
+  the profile at `%LOCALAPPDATA%\ExcelAccel\model-check-ignores.tsv`; rescan
+  required to apply
 - Must not persist raw formula/value content.
+
+**Ignores are deliberately not part of the profile document.** `ProfileStore`
+refuses a profile it cannot parse whole, and `ProfileRuntime` falls back to the
+embedded default when a load throws, so a damaged ignore list inside the profile
+would cost the user every setting they have to fix a suppression list. An ignore
+is also the wrong shape for a profile: it fingerprints a finding in one model,
+while a profile is user-wide and portable, so an exported profile would carry
+entries that can never match on the other side. The separate store provides the
+atomicity, validation, bounding, and locality the contract requires.
 - Acceptance: AC-CHECK-030 through AC-CHECK-033
 
 ### `model_check.finding.unignore_local`
 
-- Remove only the selected fingerprint from the local profile.
+- Remove only the selected fingerprint from the local ignore store.
 - Acceptance: AC-CHECK-031 through AC-CHECK-033
 
 ### `model_check.rescan`
