@@ -773,6 +773,27 @@ AC-LINK-009 is half met: non-cell usages are visibly non-navigable with a stated
 reason, but no qualified selection path exists for chart series or connections
 because neither is scanned yet.
 
+## WP-R-02 settled dependencies and one contract conflict
+
+Two ambiguities that would have misled the next person are resolved.
+
+**A WP-1A-12 dependency is a release gate, not a start gate.** WP-G-04, G-09,
+G-11 and G-13 read as blocked on an installer whose GA gates are deferred, which
+would have stalled them indefinitely. AC-P0-008 already said the opposite, that
+it "does not block source implementation that cannot install itself or alter
+Office trust"; the dependency column simply could not express the difference. The
+four rows now name implementation dependencies separately from the release gate.
+Every phase through Phase 2 shipped and installed locally without those GA gates,
+which is the evidence the reading is right.
+
+**Workbook AutoColor is withdrawn, not deferred.** WP-G-13 was scoped to include
+it and AC-FMT-019 required it, but the approved `commands/AUTOCOLOR.md` defines
+AutoColor as exactly two commands with no workbook scope, and `docs/README.md`
+puts `commands/` above `ACCEPTANCE.md` for feature contracts. AC-FMT-019 keeps
+its sheet-inventory requirement for workbook **AutoFormat**, which is a different
+feature. Reinstating workbook AutoColor now needs a product decision reversing an
+approved contract, not a plan edit.
+
 ## Recommended restart point
 
 Nothing here is blocking, and no decision is outstanding. The most useful next
@@ -791,10 +812,10 @@ Remaining engineering work, in rough order of value:
    chart series, queries/connections, and validation, each of which the spec
    requires to be separately qualified and each of which is currently reported as
    a coverage gap.
-3. **Settle the WP-1A-12 dependency.** WP-G-04, G-09, G-11, and G-13 depend on
-   it; the installer source exists but its GA gates are deferred, so "depends on
-   WP-1A-12" is ambiguous. Same class of document conflict as the workbook-scale
-   gate, and worth resolving before starting any of them.
+3. ~~**Settle the WP-1A-12 dependency.**~~ **Done (WP-R-02).** A WP-1A-12
+   dependency gates release only, never a start, which is what AC-P0-008 already
+   said; the four package rows now say so. Workbook AutoColor was withdrawn from
+   WP-G-13 in the same pass, because the approved command contract rules it out.
 4. **Finish AutoColor.** Classification is correct and tested as of WP-F-08, and
    the gate permits selection scope, but nothing is registered: there is no port
    that reads or writes per-cell font colours, and `PropertyBatchReceipt` caps at

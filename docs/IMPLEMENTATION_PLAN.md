@@ -119,6 +119,28 @@ disabled until their retained gates pass.
 | WP-1A-11 | Accessibility, focus, progress, and performance hardening | all above | AC-UX-001..005, AC-PERF-002..006 |
 | WP-1A-12 | Installer, update/rollback, full qualification | all above | GA gates |
 
+### What a WP-1A-12 dependency means
+
+**WP-1A-12 is a release gate, not a start gate.** A package listing it may be
+designed, implemented, tested, and merged; what it may not do is claim
+distribution readiness.
+
+This is not a new decision. `ACCEPTANCE.md` already says of AC-P0-008 that it
+"is a hard distribution and WP-1A-12 gate. It does not block source
+implementation that cannot install itself or alter Office trust." The ambiguity
+was only that the dependency column could not distinguish a start gate from a
+release gate, so four packages read as blocked when they are not.
+
+The per-user installer source exists and works: `scripts/Install-ExcelAccel.ps1`
+has performed real upgrades and rollbacks, and every phase through Phase 2
+shipped and installed locally without WP-1A-12's GA gates passing. What remains
+deferred in WP-1A-12 is signing, clean-VM lifecycle verification, and Office
+trust — all distribution concerns.
+
+Dependency cells now name the implementation dependencies separately from the
+release gate, so no package is read as blocked by something that only gates
+release.
+
 ## 5. Phase 1B work packages
 
 Phase 1B begins only after Phase 1A reliability evidence is reviewed and
@@ -219,16 +241,16 @@ its prerequisites and capability-specific performance/reliability corpus exist.
 | WP-G-01 | Read-only named-range inventory/search/navigation/export | WP-2-01/09 | AC-NAME-001..011 | **Delivered 2026-08-23 except AC-NAME-008..010 usage coverage** |
 | WP-G-02 | Read-only external-link inventory/search/navigation/export | WP-2-01/09 | AC-LINK-001..011 |
 | WP-G-03 | Same-shape range/worksheet/workbook compare and export | WP-2-01/04/09 | AC-CMP-001..019 |
-| WP-G-04 | Native one/two-way sensitivity creation and inspection | WP-1A-03/09/12, ADR-0005 | AC-SENS-001..014 |
+| WP-G-04 | Native one/two-way sensitivity creation and inspection | WP-1A-03/09, ADR-0005; WP-1A-12 gates release only | AC-SENS-001..014 |
 | WP-G-05 | Circularity inspection and switch insertion | WP-2-01/09, ADR-0004/0005 | AC-CIRC-001..012 |
 | WP-G-06 | Iterative-calculation settings command | WP-G-05 plus separate side-effect approval | AC-CIRC-013..016 |
 | WP-G-07 | Declarative finance-template engine/library import | WP-1B-05/11 | AC-TPL-001..005, AC-TPL-007..013 |
 | WP-G-08 | Individually reviewed built-in finance template content | WP-G-07 | AC-TPL-006/014 |
-| WP-G-09 | Selected native chart property commands and style recipes | WP-1A-03/09/12 | AC-CHART-001..027 |
+| WP-G-09 | Selected native chart property commands and style recipes | WP-1A-03/09; WP-1A-12 gates release only | AC-CHART-001..027 |
 | WP-G-10 | Optional PowerPoint image-snapshot adapter and commands | WP-G-09 plus separate COM ADR/spike | AC-PPT-001..009 |
-| WP-G-11 | Row/column hide, unhide, group, ungroup, and Smart Hide | WP-1A-03/09/12 | AC-STRUCT-001..011 |
+| WP-G-11 | Row/column hide, unhide, group, ungroup, and Smart Hide | WP-1A-03/09; WP-1A-12 gates release only | AC-STRUCT-001..011 |
 | WP-G-12 | Structural row/column insert/delete | WP-G-11 plus dedicated structural transaction ADR | AC-STRUCT-012..019 |
-| WP-G-13 | Sheet/workbook style, AutoFormat, and workbook AutoColor | WP-1A-06/07/09/12 | AC-FMT-014..020 |
+| WP-G-13 | Sheet/workbook style and AutoFormat. **Workbook AutoColor is withdrawn**, see below | WP-1A-06/07/09; WP-1A-12 gates release only | AC-FMT-014..018, AC-FMT-020 |
 
 Every gated package ends with its own fault-injection, resource-soak,
 compatibility, performance, accessibility, and privacy review before it may be
@@ -272,6 +294,24 @@ validator that do not exist.** `RibbonRoutes.cs` is hand-maintained and
 `RibbonRoutes.For()` falls back silently on an unknown id, so a descriptor can
 advertise a route that does not work; four Model Check descriptors already do.
 Either the code or the document has to change, and the document is right.
+
+### Workbook AutoColor is withdrawn from WP-G-13
+
+WP-G-13 was scoped as "sheet/workbook style, AutoFormat, and workbook AutoColor",
+and AC-FMT-019 required a workbook AutoColor sheet inventory. The approved
+`commands/AUTOCOLOR.md` states that AutoColor is exactly two commands, selection
+and worksheet, and that **there is no workbook scope**; `AutoColorScope` in the
+planner is exactly `{ Selection, Worksheet }`.
+
+`docs/README.md` puts `commands/` above `ACCEPTANCE.md` in authority for feature
+contracts, and the two-command surface was an explicit product decision on
+2026-08-20. Workbook AutoColor is therefore withdrawn rather than deferred, and
+AC-FMT-019's AutoColor half goes with it.
+
+WP-G-13 keeps sheet and workbook **AutoFormat**, which is a different feature
+about applying styles, and keeps AC-FMT-019's sheet-inventory requirement for
+that. Reinstating workbook AutoColor needs a product decision reversing the
+approved command contract, not a plan edit.
 
 ## 8. Pull-request slicing rules
 
