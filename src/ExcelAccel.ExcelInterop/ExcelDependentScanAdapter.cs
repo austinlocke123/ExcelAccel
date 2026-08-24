@@ -54,7 +54,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
         return new AuditCellIdentity(context.WorkbookId, context.WorksheetName, context.Address);
     }
 
-    /// <summary>Every visible worksheet, in workbook order.</summary>
+    /// <summary>Every worksheet, in workbook order.</summary>
     public IReadOnlyList<string> CaptureWorksheetNames()
     {
         _verifyExcelThread();
@@ -142,6 +142,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
             ComRelease.Owned(worksheetObject);
             ComRelease.Owned(worksheetsObject);
             ComRelease.Owned(workbookObject);
+            ComRelease.Owned(applicationObject);
         }
     }
 
@@ -180,6 +181,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
         {
             ComRelease.Owned(worksheetsObject);
             ComRelease.Owned(workbookObject);
+            ComRelease.Owned(applicationObject);
         }
     }
 
@@ -208,6 +210,7 @@ public sealed class ExcelDependentScanAdapter : IDependentScanPort
             ComRelease.Owned(worksheetObject);
             ComRelease.Owned(worksheetsObject);
             ComRelease.Owned(workbookObject);
+            ComRelease.Owned(applicationObject);
         }
     }
 

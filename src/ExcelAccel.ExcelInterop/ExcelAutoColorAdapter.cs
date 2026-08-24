@@ -62,6 +62,20 @@ public sealed class ExcelAutoColorAdapter : IAutoColorPort
     /// adapter's existing property handling.
     /// </summary>
     public bool TryRead(SelectionContext target, string propertyId, out string value)
+        => TryReadCore(target, propertyId, null, out value);
+
+    public bool TryRead(
+        SelectionContext target,
+        string propertyId,
+        string referenceValue,
+        out string value)
+        => TryReadCore(target, propertyId, referenceValue, out value);
+
+    private bool TryReadCore(
+        SelectionContext target,
+        string propertyId,
+        string? referenceValue,
+        out string value)
     {
         if (!string.Equals(propertyId, FontColorBlock.ReceiptPropertyId, StringComparison.Ordinal))
         {
@@ -71,7 +85,16 @@ public sealed class ExcelAutoColorAdapter : IAutoColorPort
         value = string.Empty;
         try
         {
-            var cells = ReadBlock(target);
+            // A font-colour receipt contains only cells AutoColor changed. Use
+            // that value as the exact address manifest; reading the whole
+            // original selection would include unchanged cells and make a valid
+            // undo look stale.
+            var addresses = string.IsNullOrEmpty(referenceValue)
+                ? null
+                : FontColorBlock.Deserialize(referenceValue)
+                    .Select(cell => cell.Key)
+                    .ToArray();
+            var cells = ReadBlock(target, addresses);
             value = FontColorBlock.Serialize(cells);
             return true;
         }
@@ -101,7 +124,9 @@ public sealed class ExcelAutoColorAdapter : IAutoColorPort
         }
     }
 
-    private IReadOnlyList<KeyValuePair<string, string>> ReadBlock(SelectionContext target)
+    private IReadOnlyList<KeyValuePair<string, string>> ReadBlock(
+        SelectionContext target,
+        IReadOnlyList<string>? addresses = null)
     {
         object? applicationObject = null;
         object? workbookObject = null;
@@ -121,6 +146,11 @@ public sealed class ExcelAutoColorAdapter : IAutoColorPort
 
             worksheetsObject = ((dynamic)workbookObject).Worksheets;
             worksheetObject = ((dynamic)worksheetsObject)[target.WorksheetName];
+            if (addresses is not null)
+            {
+                return ReadAddresses(worksheetObject, addresses);
+            }
+
             rangeObject = ((dynamic)worksheetObject).Range[target.Address];
             return ReadRange(rangeObject);
         }
@@ -164,6 +194,33 @@ public sealed class ExcelAutoColorAdapter : IAutoColorPort
         finally
         {
             ComRelease.Owned(cellsObject);
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<KeyValuePair<string, string>> ReadAddresses(
+        object worksheetObject,
+        IReadOnlyList<string> addresses)
+    {
+        var result = new List<KeyValuePair<string, string>>(addresses.Count);
+        foreach (var address in addresses)
+        {
+            object? cellObject = null;
+            object? fontObject = null;
+            try
+            {
+                cellObject = ((dynamic)worksheetObject).Range[address];
+                fontObject = ((dynamic)cellObject).Font;
+                result.Add(new KeyValuePair<string, string>(
+                    (string)((dynamic)cellObject).Address(false, false),
+                    ColorToHex(((dynamic)fontObject).Color)));
+            }
+            finally
+            {
+                ComRelease.Owned(fontObject);
+                ComRelease.Owned(cellObject);
+            }
         }
 
         return result;
@@ -392,30 +449,41 @@ public sealed class ExcelAutoColorAdapter : IAutoColorPort
         }
 
         object? accumulated = null;
-        foreach (var address in addresses)
+        try
         {
-            object? next = null;
-            try
+            foreach (var address in addresses)
             {
-                next = ((dynamic)worksheetObject).Range[address];
-                if (accumulated is null)
+                object? next = null;
+                try
                 {
-                    accumulated = next;
-                    next = null;
-                    continue;
+                    next = ((dynamic)worksheetObject).Range[address];
+                    if (accumulated is null)
+                    {
+                        accumulated = next;
+                        next = null;
+                        continue;
+                    }
+
+                    var merged = (object)((dynamic)applicationObject).Union(accumulated, next);
+                    ComRelease.Owned(accumulated);
+                    accumulated = merged;
                 }
+                finally
+                {
+                    ComRelease.Owned(next);
+                }
+            }
 
-                var merged = (object)((dynamic)applicationObject).Union(accumulated, next);
-                ComRelease.Owned(accumulated);
-                accumulated = merged;
-            }
-            finally
-            {
-                ComRelease.Owned(next);
-            }
+            var result = accumulated;
+            accumulated = null;
+            return result;
         }
-
-        return accumulated;
+        finally
+        {
+            // Ownership transfers to the caller only on success. If a later
+            // Range or Union call fails, release the partial union here.
+            ComRelease.Owned(accumulated);
+        }
     }
 
     private static string ColorToHex(object value)

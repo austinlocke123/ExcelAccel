@@ -1059,13 +1059,16 @@ public static class ExcelAccelNativeMethods
         [Console]::WriteLine('compare=exercised')
         [Console]::Out.Flush()
 
-        # One typed number, one same-sheet formula, one text label, each starting
-        # from a colour none of them should end on.
+        # A sparse change inside a mixed selection: the number needs recolouring,
+        # the formula is already correct, and the blank is unsupported. Undo must
+        # validate only the changed cell while preserving all three exactly.
         $auto = $worksheet.Range('G1:G3')
         $worksheet.Range('G1').Value2 = 1234
         $worksheet.Range('G2').Formula = '=G1'
-        $worksheet.Range('G3').Value2 = 'Label'
-        $auto.Font.Color = 0x563412
+        $worksheet.Range('G3').ClearContents()
+        $worksheet.Range('G1').Font.Color = 0x563412
+        $worksheet.Range('G2').Font.Color = 0x000000
+        $worksheet.Range('G3').Font.Color = 0x214365
         [void]$auto.Select()
         [void]$excel.Run('ExcelAccel.Smoke.AutoColorSelection')
         # The hook recolours, then undoes, so the colours here are the restored
@@ -1076,7 +1079,7 @@ public static class ExcelAccelNativeMethods
             [int]$worksheet.Range('G3').Font.Color) -join ','
         [Console]::WriteLine("autocolor_restored=$autoRestored")
         [Console]::Out.Flush()
-        if ($autoRestored -ne '5649426,5649426,5649426') {
+        if ($autoRestored -ne '5649426,0,2179941') {
             throw "AutoColor undo did not restore the exact prior font colours: $autoRestored"
         }
         [Console]::WriteLine('autocolor=exercised')
@@ -1243,8 +1246,8 @@ try {
         -PassThru
 
     $completed = $workerProcess.WaitForExit($TimeoutSeconds * 1000)
-    $output = if (Test-Path -LiteralPath $outputPath) { Get-Content -LiteralPath $outputPath -Raw } else { '' }
-    $errors = if (Test-Path -LiteralPath $errorPath) { Get-Content -LiteralPath $errorPath -Raw } else { '' }
+    [string]$output = if (Test-Path -LiteralPath $outputPath) { Get-Content -LiteralPath $outputPath -Raw } else { '' }
+    [string]$errors = if (Test-Path -LiteralPath $errorPath) { Get-Content -LiteralPath $errorPath -Raw } else { '' }
 
     if (-not $completed) {
         Stop-Process -Id $workerProcess.Id -Force -ErrorAction SilentlyContinue
@@ -1276,7 +1279,7 @@ try {
     $requiredEvidence = @(
         'registered=True',
         'version=',
-        'autocolor_restored=5649426,5649426,5649426',
+        'autocolor_restored=5649426,0,2179941',
         'compare=exercised',
         'autocolor=exercised',
         'link_inventory=exercised',

@@ -152,7 +152,10 @@ internal static class CommandDispatcher
 
     public static CommandResult UndoLastProperty()
     {
-        var port = CreateSelectionAdapter();
+        // AutoColor's sparse font-colour receipt needs the reference-aware port;
+        // that adapter delegates every other receipt property to the ordinary
+        // selection adapter, so one undo route handles every receipt type.
+        var port = new ExcelAutoColorAdapter(() => ExcelDnaUtil.Application, RuntimeState.VerifyExcelThread);
         var workbookId = port.CaptureSelection().Context.WorkbookId;
         return UndoLastCommand.Execute(workbookId, UndoRuntime.Store, port, DateTimeOffset.UtcNow);
     }

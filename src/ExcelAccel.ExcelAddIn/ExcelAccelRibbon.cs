@@ -296,7 +296,14 @@ public sealed class ExcelAccelRibbon : ExcelRibbon
     public void OnAuditCommand(IRibbonControl control)
     {
         var commandId = control.Tag;
-        CallbackBoundary.Run(commandId, () => CommandDispatcher.InvokeRegistered(commandId, null, InvocationSource.Ribbon), showResult: false);
+        CallbackBoundary.Run(
+            commandId,
+            () => CommandDispatcher.InvokeRegistered(commandId, null, InvocationSource.Ribbon),
+            // Trace/inspector and inventory-open commands always present their
+            // own result, including refusals. Comparison, navigation, and export
+            // commands can refuse before any view exists, so their failures must
+            // remain visible through the callback boundary.
+            showResult: !CommandResultPresentationPolicy.PresentsOwnAuditResult(commandId));
     }
 
     public void OnNavigate(IRibbonControl control)

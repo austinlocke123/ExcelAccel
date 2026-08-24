@@ -43,6 +43,20 @@ public interface IPropertyReceiptPort
     bool TryWrite(SelectionContext target, string propertyId, string value);
 }
 
+/// <summary>
+/// Reads a sparse or coarse property using the receipt value to identify the
+/// exact cells represented by that value. Ordinary properties can continue to
+/// implement <see cref="IPropertyReceiptPort"/> alone.
+/// </summary>
+public interface IReferenceValuePropertyReceiptPort : IPropertyReceiptPort
+{
+    bool TryRead(
+        SelectionContext target,
+        string propertyId,
+        string referenceValue,
+        out string value);
+}
+
 public enum UndoOutcome { Success, Empty, Expired, Stale, WriteFailed, VerificationFailed }
 
 public sealed class PropertyChange
@@ -146,7 +160,8 @@ public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchRecei
         }
         if (now > receipt.ExpiresUtc) return new UndoResult(UndoOutcome.Expired, "The latest receipt expired and was discarded.", receipt.ReceiptId);
         foreach (var change in receipt.Changes)
-            if (!port.TryRead(receipt.Target, change.PropertyId, out var current) || !ValuesMatch(change.PropertyId, current, change.AfterValue))
+            if (!TryRead(port, receipt.Target, change.PropertyId, change.AfterValue, out var current)
+                || !ValuesMatch(change.PropertyId, current, change.AfterValue))
                 return new UndoResult(UndoOutcome.Stale, "Undo refused because the target or a receipt property changed after the command.", receipt.ReceiptId);
 
         var restored = new List<PropertyChange>();
@@ -158,13 +173,15 @@ public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchRecei
             // means no write occurred.
             var compensating = restored.Concat(new[] { change }).ToArray();
             var rollbackComplete = compensating.All(value => port.TryWrite(receipt.Target, value.PropertyId, value.AfterValue)) &&
-                compensating.All(value => port.TryRead(receipt.Target, value.PropertyId, out var observedAfter) && ValuesMatch(value.PropertyId, observedAfter, value.AfterValue));
+                compensating.All(value => TryRead(port, receipt.Target, value.PropertyId, value.AfterValue, out var observedAfter)
+                    && ValuesMatch(value.PropertyId, observedAfter, value.AfterValue));
             return new UndoResult(UndoOutcome.WriteFailed, rollbackComplete
                 ? "Undo could not write the complete before-state; already restored properties were returned to the post-command state."
                 : "Undo failed and could not fully return already restored properties to the post-command state; inspect the target.", receipt.ReceiptId);
         }
         foreach (var change in receipt.Changes)
-            if (!port.TryRead(receipt.Target, change.PropertyId, out var observed) || !ValuesMatch(change.PropertyId, observed, change.BeforeValue))
+            if (!TryRead(port, receipt.Target, change.PropertyId, change.BeforeValue, out var observed)
+                || !ValuesMatch(change.PropertyId, observed, change.BeforeValue))
                 return new UndoResult(UndoOutcome.VerificationFailed, "Undo postcondition verification failed for one or more receipt properties; inspect the target.", receipt.ReceiptId);
         return new UndoResult(UndoOutcome.Success, $"Restored {receipt.Changes.Count} unchanged ExcelAccel propert{(receipt.Changes.Count == 1 ? "y" : "ies")}.", receipt.ReceiptId);
     }
@@ -192,4 +209,14 @@ public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchRecei
             OrdinalComparedProperties.Contains(propertyId, StringComparer.Ordinal)
                 ? StringComparison.Ordinal
                 : StringComparison.OrdinalIgnoreCase);
+
+    private static bool TryRead(
+        IPropertyReceiptPort port,
+        SelectionContext target,
+        string propertyId,
+        string referenceValue,
+        out string value) =>
+        port is IReferenceValuePropertyReceiptPort referencePort
+            ? referencePort.TryRead(target, propertyId, referenceValue, out value)
+            : port.TryRead(target, propertyId, out value);
 }

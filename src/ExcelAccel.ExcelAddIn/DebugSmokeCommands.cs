@@ -464,15 +464,17 @@ public static class DebugSmokeCommands
                 "smoke.autocolor.selection",
                 $"status={result.Status}|changed={execution.Plan.Changes.Count}|{string.Join("+", after)}");
 
-            var undo = UndoRuntime.Store.TryUndo(
-                execution.CommandPlan.Context.WorkbookId, port, DateTimeOffset.UtcNow);
+            // Go through the production host route, which creates a fresh
+            // reference-aware receipt port. Calling the store with the same
+            // adapter instance would miss a host-wiring regression.
+            var undo = CommandDispatcher.UndoLastProperty();
             var restored = port.CaptureCells(AutoColorScope.Selection)
                 .OrderBy(cell => cell.Address, StringComparer.Ordinal)
                 .Select(cell => cell.Address + ":" + cell.FontColor)
                 .ToArray();
             DiagnosticLog.Info(
                 "smoke.autocolor.undo",
-                $"outcome={undo.Outcome}|{string.Join("+", restored)}");
+                $"status={undo.Status}|refusal={undo.RefusalCode ?? "none"}|{string.Join("+", restored)}");
         }
         catch (Exception exception)
         {

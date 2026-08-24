@@ -319,9 +319,9 @@ public sealed class FormulaParser
     {
         for (var index = 0; index + 2 < tokens.Count; index++)
         {
-            if (tokens[index].Kind == FormulaTokenKind.Reference &&
+            if (CanBeIntersectionOperand(tokens[index]) &&
                 tokens[index + 1].Kind == FormulaTokenKind.Whitespace &&
-                tokens[index + 2].Kind == FormulaTokenKind.Reference)
+                CanBeIntersectionOperand(tokens[index + 2]))
             {
                 return true;
             }
@@ -329,6 +329,9 @@ public sealed class FormulaParser
 
         return false;
     }
+
+    private static bool CanBeIntersectionOperand(FormulaToken token) =>
+        token.Kind == FormulaTokenKind.Reference || token.Kind == FormulaTokenKind.Identifier;
 
     private static bool ContainsTopLevelUnion(IReadOnlyList<FormulaToken> tokens)
     {
@@ -422,7 +425,8 @@ public sealed class FormulaParser
                     if (!expectOperand)
                     {
                         if (token.Kind == FormulaTokenKind.Reference &&
-                            previous?.Kind == FormulaTokenKind.Reference &&
+                            previous is not null &&
+                            CanBeIntersectionOperand(previous) &&
                             whitespaceSincePrevious)
                         {
                             break;
@@ -439,6 +443,13 @@ public sealed class FormulaParser
                     if (!expectOperand)
                     {
                         if (previous?.Kind == FormulaTokenKind.BracketedIdentifier && !whitespaceSincePrevious)
+                        {
+                            break;
+                        }
+
+                        if (previous is not null &&
+                            CanBeIntersectionOperand(previous) &&
+                            whitespaceSincePrevious)
                         {
                             break;
                         }

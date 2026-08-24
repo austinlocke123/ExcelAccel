@@ -17,7 +17,7 @@ namespace ExcelAccel.Application.AutoColor;
 /// block through the same port, under
 /// <see cref="FontColorBlock.ReceiptPropertyId"/>.
 /// </remarks>
-public interface IAutoColorPort : IPropertyReceiptPort
+public interface IAutoColorPort : IReferenceValuePropertyReceiptPort
 {
     SelectionSnapshot CaptureSelection();
 

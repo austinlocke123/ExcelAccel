@@ -38,6 +38,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Release-ComObject {
+    param([object]$Value)
+    if ($null -ne $Value -and [Runtime.InteropServices.Marshal]::IsComObject($Value)) {
+        [void][Runtime.InteropServices.Marshal]::ReleaseComObject($Value)
+    }
+}
+
 function Resolve-AddInPath {
     param([string]$Candidate)
     if (-not [string]::IsNullOrWhiteSpace($Candidate)) {
@@ -57,6 +64,7 @@ if ($Worker) {
     $resolvedPath = Resolve-AddInPath -Candidate $AddInPath
     $excel = $null
     $workbook = $null
+    $worksheet = $null
     try {
         Add-Type -Namespace ExcelAccelRetention -Name NativeMethods -MemberDefinition @'
 [System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -108,10 +116,13 @@ public static extern int GetWindowThreadProcessId(System.IntPtr hWnd, out int pr
 
             if ($cycle -le $WarmupCycles) { continue }
 
-            # Let managed allocations settle so a sample measures retention
-            # rather than the timing of the next collection.
-            [System.GC]::Collect()
-            [System.GC]::WaitForPendingFinalizers()
+            # Collect inside Excel's CLR, where the managed add-in lives. A
+            # PowerShell GC only collects this controller process and says
+            # nothing about allocations retained by ExcelAccel.
+            $gcStatus = [string]$excel.Run('ExcelAccel.Perf.CollectGarbage')
+            if ($gcStatus -ne 'collected') {
+                throw "The in-process collection hook returned '$gcStatus'."
+            }
             $process.Refresh()
             $samples.Add([pscustomobject]@{
                 cycle                = $cycle - $WarmupCycles
@@ -138,6 +149,7 @@ public static extern int GetWindowThreadProcessId(System.IntPtr hWnd, out int pr
         }
 
         [Console]::WriteLine("cycles_measured=$($samples.Count)")
+        [Console]::WriteLine('gc_in_excel=True')
 
         $contentPreserved = ([string]$worksheet.Range('B10').Formula -eq '=$A10*1')
         [Console]::WriteLine("content_preserved=$contentPreserved")
@@ -164,15 +176,20 @@ public static extern int GetWindowThreadProcessId(System.IntPtr hWnd, out int pr
         [Console]::WriteLine("report=$reportPath")
 
         $workbook.Close($false)
-        $workbook = $null
         [Console]::WriteLine('workbook_closed=true')
+        Release-ComObject $worksheet
+        $worksheet = $null
+        Release-ComObject $workbook
+        $workbook = $null
         $excel.Quit()
         [Console]::WriteLine('quit_returned=true')
     }
     finally {
         if ($null -ne $workbook) { try { $workbook.Close($false) } catch { } }
+        Release-ComObject $worksheet
+        Release-ComObject $workbook
         if ($null -ne $excel) { try { $excel.Quit() } catch { } }
-        if ($null -ne $excel) { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($excel) }
+        Release-ComObject $excel
         [GC]::Collect()
         [GC]::WaitForPendingFinalizers()
     }
@@ -208,8 +225,15 @@ try {
         -PassThru
 
     $completed = $workerProcess.WaitForExit($TimeoutSeconds * 1000)
-    $output = if (Test-Path -LiteralPath $outputPath) { Get-Content -LiteralPath $outputPath -Raw } else { '' }
-    $errors = if (Test-Path -LiteralPath $errorPath) { Get-Content -LiteralPath $errorPath -Raw } else { '' }
+    if ($completed) {
+        # The parameterless wait completes redirected-stream handling and makes
+        # ExitCode reliable after the timed wait reports that the process ended.
+        $workerProcess.WaitForExit()
+    }
+    $output = if (Test-Path -LiteralPath $outputPath) { [string](Get-Content -LiteralPath $outputPath -Raw) } else { '' }
+    $errors = if (Test-Path -LiteralPath $errorPath) { [string](Get-Content -LiteralPath $errorPath -Raw) } else { '' }
+    if ($null -eq $output) { $output = '' }
+    if ($null -eq $errors) { $errors = '' }
 
     if (-not $completed) {
         Stop-Process -Id $workerProcess.Id -Force -ErrorAction SilentlyContinue
@@ -228,11 +252,15 @@ try {
         }
     }
 
-    if ($workerProcess.ExitCode -ne 0 -or $errors.Trim().Length -gt 0) {
+    # Some Windows PowerShell hosts leave ExitCode unset on a Start-Process
+    # wrapper even after both waits. A known non-zero code is a failure; when it
+    # is unavailable, the required worker evidence below remains the fail-closed
+    # completion check.
+    if (($null -ne $workerProcess.ExitCode -and $workerProcess.ExitCode -ne 0) -or $errors.Trim().Length -gt 0) {
         throw "The retention worker reported an error. Output:`n$output`nErrors:`n$errors"
     }
 
-    foreach ($expected in @('registered=True', 'content_preserved=True', 'workbook_closed=true', 'quit_returned=true')) {
+    foreach ($expected in @('registered=True', 'gc_in_excel=True', 'content_preserved=True', 'workbook_closed=true', 'quit_returned=true')) {
         if ($output -notmatch [regex]::Escape($expected)) {
             throw "The retention run did not report '$expected'. Output:`n$output"
         }

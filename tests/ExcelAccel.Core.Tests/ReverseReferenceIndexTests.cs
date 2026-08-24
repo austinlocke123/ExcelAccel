@@ -178,6 +178,29 @@ public sealed class ReverseReferenceIndexTests
     }
 
     [Fact]
+    public void ANamedIntersectionDoesNotReportEitherWholeOperandAsADependent()
+    {
+        var names = new[]
+        {
+            new AuditNameBinding("RangeOne", AuditNameScope.Workbook, Cell("A1:A10")),
+            new AuditNameBinding("RangeTwo", AuditNameScope.Workbook, Cell("A5:A15")),
+        };
+        var index = ReverseReferenceIndex.Build(
+            WorksheetScope,
+            Formulas(("B1", "=Z1+RangeOne RangeTwo")),
+            names);
+
+        var outsideIntersection = index.FindDirectDependents(Cell("A1"));
+        var independentReference = index.FindDirectDependents(Cell("Z1"));
+
+        Assert.Empty(outsideIntersection.Dependents);
+        Assert.Equal(1, outsideIntersection.CoverageGapCount);
+        Assert.False(outsideIntersection.CanClaimCompleteness);
+        Assert.Single(independentReference.Dependents);
+        Assert.Equal(1, independentReference.CoverageGapCount);
+    }
+
+    [Fact]
     public void AFormulaOnAnotherWorksheetIsCountedAsAGapRatherThanRead()
     {
         var outside = new AuditFormulaCell(new AuditCellIdentity(Workbook, "Other", "B1"), "=Model!A1");

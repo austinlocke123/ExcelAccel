@@ -56,6 +56,7 @@ public static class ExcelAccelPhase2NativeMethods
     $excel = $null
     $workbook = $null
     $worksheet = $null
+    $shapeSheets = @{}
     $quitReturned = $false
     $needle = 'EXCELACCELSEED' + ([Guid]::NewGuid().ToString('N').Substring(0, 12).ToUpperInvariant())
 
@@ -127,7 +128,6 @@ public static class ExcelAccelPhase2NativeMethods
 
         # Additional shapes live on their own worksheets so the dense block and
         # its budgets stay exactly as they were, and remain comparable run to run.
-        $shapeSheets = @{}
         foreach ($shape in $corpus.shapes) {
             $shapeSheet = $workbook.Worksheets.Add()
             # The needle stays off these names: it is 26 characters, and Excel
@@ -171,6 +171,7 @@ public static class ExcelAccelPhase2NativeMethods
 
             $used = $shapeSheet.UsedRange
             [Console]::WriteLine("shape=$($shape.id) used_cells=$([int]$used.Count)")
+            Release-ComObject $used
             [Console]::Out.Flush()
             $shapeSheets[$shape.id] = $shapeSheet
         }
@@ -233,6 +234,13 @@ public static class ExcelAccelPhase2NativeMethods
                 }
 
                 $parts = $raw.Split('|')
+                if ($parts.Count -lt 2) {
+                    throw "Shape workload '$($shapeWorkload.id)' returned malformed evidence: '$raw'."
+                }
+                $shapeStatus = $parts[1].Split(';')[0]
+                if ($shapeStatus -ne [string]$shapeWorkload.expected_status) {
+                    throw "Shape workload '$($shapeWorkload.id)' returned '$shapeStatus'; expected '$($shapeWorkload.expected_status)'. Evidence: '$raw'."
+                }
                 if ($iteration -gt $warmups) { $shapeSamples.Add([double]$parts[0]) }
                 $shapeDetail = $parts[1]
             }
@@ -286,8 +294,13 @@ public static class ExcelAccelPhase2NativeMethods
         }
 
         $workbook.Close($false)
-        $workbook = $null
         [Console]::WriteLine('workbook_closed=true')
+        foreach ($shapeSheet in $shapeSheets.Values) { Release-ComObject $shapeSheet }
+        $shapeSheets.Clear()
+        Release-ComObject $worksheet
+        $worksheet = $null
+        Release-ComObject $workbook
+        $workbook = $null
         $excel.Quit()
         $quitReturned = $true
         [Console]::WriteLine('quit_returned=true')
@@ -295,9 +308,11 @@ public static class ExcelAccelPhase2NativeMethods
     }
     finally {
         try { if ($null -ne $workbook) { $workbook.Close($false) } } catch { }
-        try { if ($null -ne $excel -and -not $quitReturned) { $excel.Quit() } } catch { }
+        foreach ($shapeSheet in $shapeSheets.Values) { Release-ComObject $shapeSheet }
+        $shapeSheets.Clear()
         Release-ComObject $worksheet
         Release-ComObject $workbook
+        try { if ($null -ne $excel -and -not $quitReturned) { $excel.Quit() } } catch { }
         Release-ComObject $excel
         [GC]::Collect()
         [GC]::WaitForPendingFinalizers()
@@ -339,8 +354,14 @@ for ($iteration = 1; $iteration -le $Iterations; $iteration++) {
         $workerProcess = Start-Process powershell.exe -ArgumentList $arguments -WindowStyle Hidden `
             -RedirectStandardOutput $outputPath -RedirectStandardError $errorPath -PassThru
         $completed = $workerProcess.WaitForExit($TimeoutSeconds * 1000)
-        $output = if (Test-Path -LiteralPath $outputPath) { Get-Content -LiteralPath $outputPath -Raw } else { '' }
-        $errors = if (Test-Path -LiteralPath $errorPath) { Get-Content -LiteralPath $errorPath -Raw } else { '' }
+        if ($completed) {
+            # Finish redirected-stream handling before reading the evidence.
+            $workerProcess.WaitForExit()
+        }
+        $output = if (Test-Path -LiteralPath $outputPath) { [string](Get-Content -LiteralPath $outputPath -Raw) } else { '' }
+        $errors = if (Test-Path -LiteralPath $errorPath) { [string](Get-Content -LiteralPath $errorPath -Raw) } else { '' }
+        if ($null -eq $output) { $output = '' }
+        if ($null -eq $errors) { $errors = '' }
 
         if (-not $completed) {
             Stop-Process -Id $workerProcess.Id -Force -ErrorAction SilentlyContinue

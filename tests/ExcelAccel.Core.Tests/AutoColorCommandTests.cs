@@ -61,6 +61,33 @@ public sealed class AutoColorCommandTests
         Assert.Equal("#222222", port.ColorOf("A2"));
     }
 
+    /// <summary>
+    /// The receipt carries only cells that changed. Already-correct and
+    /// unsupported cells in the original selection must not make that sparse
+    /// receipt look stale when undo validates it.
+    /// </summary>
+    [Fact]
+    public void OneUndoRestoresASparseChangeInsideAMixedSelection()
+    {
+        var port = new FakePort(
+            Cell("A1", CellScalarKind.Number, string.Empty, "#111111"),
+            Cell("A2", CellScalarKind.Number, string.Empty, "#0000FF"),
+            Cell("A3", CellScalarKind.Empty, string.Empty, "#333333"));
+        var store = new SessionUndoStore();
+        var command = Selection();
+        var execution = command.Plan(Profile(), port);
+
+        var result = command.Execute(execution, Profile(), port, execution.CommandPlan.PlanHash, store);
+        var undo = store.TryUndo("Book.xlsx", port, DateTimeOffset.UtcNow);
+
+        Assert.True(result.Succeeded);
+        Assert.Single(execution.Plan.Changes);
+        Assert.Equal(UndoOutcome.Success, undo.Outcome);
+        Assert.Equal("#111111", port.ColorOf("A1"));
+        Assert.Equal("#0000FF", port.ColorOf("A2"));
+        Assert.Equal("#333333", port.ColorOf("A3"));
+    }
+
     [Fact]
     public void AnAlreadyCorrectSelectionWritesNothing()
     {
@@ -251,6 +278,21 @@ public sealed class AutoColorCommandTests
         {
             value = FontColorBlock.Serialize(
                 _cells.Values.Select(cell => new KeyValuePair<string, string>(cell.Address, cell.FontColor)));
+            return propertyId == FontColorBlock.ReceiptPropertyId;
+        }
+
+        public bool TryRead(
+            SelectionContext target,
+            string propertyId,
+            string referenceValue,
+            out string value)
+        {
+            var addresses = FontColorBlock.Deserialize(referenceValue)
+                .Select(cell => cell.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            value = FontColorBlock.Serialize(_cells.Values
+                .Where(cell => addresses.Contains(cell.Address))
+                .Select(cell => new KeyValuePair<string, string>(cell.Address, cell.FontColor)));
             return propertyId == FontColorBlock.ReceiptPropertyId;
         }
 

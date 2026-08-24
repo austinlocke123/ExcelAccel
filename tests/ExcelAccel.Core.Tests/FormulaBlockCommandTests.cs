@@ -273,6 +273,23 @@ public sealed class FormulaBlockCommandTests
     }
 
     [Fact]
+    public void BasisPointReceiptStoreFailureRollsBackValuesAndNumberFormatsTogether()
+    {
+        var before = Block(1, 1, FormulaCellValue.Number(0.0125));
+        var port = new FakeFormulaPort(Snapshot(before));
+        var command = Command("formula.units.to_basis_points");
+        var plan = command.PlanScale(port.CaptureFormulaBlock(), 10000, divide: false,
+            includeNumericConstants: true, numberFormat: "0\" bps\"");
+
+        var result = command.Execute(plan, port, plan.CommandPlan.PlanHash, new ThrowingBatchReceiptSink());
+
+        Assert.Equal(CommandResultStatus.Failed, result.Status);
+        Assert.Equal("RECEIPT_STORE_ROLLED_BACK", result.DiagnosticId);
+        Assert.True(before.ContentEquals(port.Current));
+        Assert.Equal("General", port.NumberFormatBlock);
+    }
+
+    [Fact]
     public void FormulaReceiptPostStateComparisonIsCaseSensitive()
     {
         var before = Block(1, 1, FormulaCellValue.Formula("=A1"));
@@ -367,5 +384,11 @@ public sealed class FormulaBlockCommandTests
     private sealed class ThrowingReceiptSink : IPropertyReceiptSink
     {
         public void Add(PropertyReceipt receipt) => throw new InvalidOperationException("Injected receipt failure.");
+    }
+
+    private sealed class ThrowingBatchReceiptSink : IPropertyReceiptSink, IPropertyBatchReceiptSink
+    {
+        public void Add(PropertyReceipt receipt) => throw new InvalidOperationException("Unexpected single receipt.");
+        public void Add(PropertyBatchReceipt receipt) => throw new InvalidOperationException("Injected batch receipt failure.");
     }
 }

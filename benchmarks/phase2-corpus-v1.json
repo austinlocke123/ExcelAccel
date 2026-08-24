@@ -74,6 +74,7 @@
       "id": "model_check_sparse",
       "shape": "sparse",
       "operation": "model_check_worksheet",
+      "expected_status": "Complete",
       "governing_requirement": "PERF-004",
       "acceptance": "AC-CHECK-007",
       "provisional_p95_ms": 20000
@@ -82,6 +83,7 @@
       "id": "model_check_wide",
       "shape": "wide",
       "operation": "model_check_worksheet",
+      "expected_status": "Complete",
       "governing_requirement": "PERF-004",
       "acceptance": "AC-CHECK-007",
       "provisional_p95_ms": 30000

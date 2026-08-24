@@ -303,9 +303,18 @@ public sealed class ReverseReferenceIndex
         if (!parse.IsSuccess) return false;
         var document = parse.Document!;
         var complete = !document.LimitationCodes.Any(CanHideAnInScopeEdge);
+        var hasIntersection = document.LimitationCodes.Contains(FormulaRefusalCodes.IntersectionInspectOnly);
 
         foreach (var reference in document.References)
         {
+            if (hasIntersection && IsIntersectionOperand(document.Tokens, reference.Span))
+            {
+                // The operands are not independently read: only their overlap is.
+                // Until the parser models that overlap exactly, omit both operands
+                // rather than returning cells outside it as confirmed dependents.
+                continue;
+            }
+
             var qualifier = UnquoteQualifier(reference.Qualifier);
             if (qualifier is not null && qualifier.IndexOf('[') >= 0)
             {
@@ -332,6 +341,7 @@ public sealed class ReverseReferenceIndex
         {
             if (!AuditNameCandidates.IsNameCandidate(document.Tokens, index)) continue;
             var token = document.Tokens[index];
+            if (hasIntersection && IsIntersectionOperand(document.Tokens, token.Span)) continue;
             var binding = names
                 .Where(value => string.Equals(value.Name, token.Text, StringComparison.OrdinalIgnoreCase))
                 .Where(value => value.Scope == AuditNameScope.Workbook ||
@@ -352,6 +362,30 @@ public sealed class ReverseReferenceIndex
 
         return complete;
     }
+
+    private static bool IsIntersectionOperand(
+        IReadOnlyList<FormulaToken> tokens,
+        FormulaSourceSpan span)
+    {
+        for (var index = 0; index < tokens.Count; index++)
+        {
+            var token = tokens[index];
+            if (token.Span.Start != span.Start || token.Span.Length != span.Length) continue;
+
+            var leftOperand = index >= 2 &&
+                tokens[index - 1].Kind == FormulaTokenKind.Whitespace &&
+                CanBeIntersectionOperand(tokens[index - 2]);
+            var rightOperand = index + 2 < tokens.Count &&
+                tokens[index + 1].Kind == FormulaTokenKind.Whitespace &&
+                CanBeIntersectionOperand(tokens[index + 2]);
+            return leftOperand || rightOperand;
+        }
+
+        return false;
+    }
+
+    private static bool CanBeIntersectionOperand(FormulaToken token) =>
+        token.Kind == FormulaTokenKind.Reference || token.Kind == FormulaTokenKind.Identifier;
 
     /// <summary>
     /// Whether a coverage limitation could conceal a reference to an in-scope

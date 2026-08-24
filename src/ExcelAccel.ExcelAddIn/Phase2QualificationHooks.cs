@@ -84,6 +84,18 @@ public static class Phase2QualificationHooks
         });
     }
 
+    [ExcelCommand(Name = "ExcelAccel.Perf.CollectGarbage", Description = "Debug-only in-process retention sampling hook.")]
+    public static string CollectGarbage()
+    {
+        // This method executes in Excel's CLR. Calling GC.Collect in the
+        // PowerShell controller would collect the controller instead of the
+        // managed add-in whose retention the harness is measuring.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        return "collected";
+    }
+
     /// <summary>
     /// Exports the sanitized diagnostics and reports whether the seeded marker
     /// survived anywhere in the file. The marker is written into a formula, a

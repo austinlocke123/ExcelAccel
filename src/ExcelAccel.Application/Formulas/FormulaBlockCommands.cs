@@ -252,12 +252,9 @@ public sealed class FormulaBlockCommand
         }
         catch (Exception exception)
         {
-            var restored = TryRestore(plan.Before, port);
-            if (restored && plan.NumberFormat is not null)
-            {
-                try { restored = port.TryWrite(plan.Before.Selection.Context, FormatPasteCommand.ReceiptPropertyId, formatBefore); }
-                catch { restored = false; }
-            }
+            var restored = plan.NumberFormat is null
+                ? TryRestore(plan.Before, port)
+                : TryRestoreWithNumberFormat(plan.Before, port, formatBefore);
 
             if (restored) return CommandResult.Failed(_descriptor.Id,
                 $"Formula mutation failed ({exception.GetType().Name}); the entire target was restored to its exact before-state.",
@@ -296,7 +293,10 @@ public sealed class FormulaBlockCommand
         }
         catch (Exception exception)
         {
-            if (TryRestore(plan.Before, port)) return CommandResult.Failed(_descriptor.Id,
+            var restored = plan.NumberFormat is null
+                ? TryRestore(plan.Before, port)
+                : TryRestoreWithNumberFormat(plan.Before, port, formatBefore);
+            if (restored) return CommandResult.Failed(_descriptor.Id,
                 $"The undo receipt could not be stored ({exception.GetType().Name}); the complete mutation was rolled back.",
                 "RECEIPT_STORE_ROLLED_BACK");
             return CommandResult.Partial(_descriptor.Id,
@@ -306,6 +306,31 @@ public sealed class FormulaBlockCommand
         return CommandResult.Success(_descriptor.Id,
             $"Changed {plan.ChangedCount:N0} cell(s); skipped {plan.SkippedCount:N0}; verified the complete target.",
             plan.ChangedCount, receiptId);
+    }
+
+    private static bool TryRestoreWithNumberFormat(
+        FormulaBlockSnapshot before,
+        IFormulaBlockPort port,
+        string formatBefore)
+    {
+        // Both restores are best-effort and independently verified by their
+        // ports. Do not skip the format restore merely because the contents
+        // restore failed; leaving either half applied is still worth avoiding.
+        var contentsRestored = TryRestore(before, port);
+        bool formatRestored;
+        try
+        {
+            formatRestored = port.TryWrite(
+                before.Selection.Context,
+                FormatPasteCommand.ReceiptPropertyId,
+                formatBefore);
+        }
+        catch
+        {
+            formatRestored = false;
+        }
+
+        return contentsRestored && formatRestored;
     }
 
     private FormulaBlockPlan PlanFormulaMap(FormulaBlockSnapshot snapshot, string label,

@@ -46,6 +46,17 @@ public sealed class FormulaCoverageCauseTests
         Assert.Contains(FormulaRefusalCodes.NameInspectOnly, document.LimitationCodes);
     }
 
+    [Theory]
+    [InlineData("=RangeOne RangeTwo")]
+    [InlineData("=A1:A10 RangeTwo")]
+    public void IntersectionsWithDefinedNamesCarryTheIntersectionCause(string formula)
+    {
+        var document = Parse(formula);
+
+        Assert.Contains(FormulaRefusalCodes.IntersectionInspectOnly, document.LimitationCodes);
+        Assert.Contains(FormulaRefusalCodes.NameInspectOnly, document.LimitationCodes);
+    }
+
     [Fact]
     public void TheReportedCodeIsAlwaysTheFirstCauseInPrecedenceOrder()
     {
