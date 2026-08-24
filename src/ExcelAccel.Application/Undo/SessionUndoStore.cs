@@ -175,10 +175,21 @@ public sealed class SessionUndoStore : IPropertyReceiptSink, IPropertyBatchRecei
     private static int ReceiptCharacters(IEnumerable<PropertyBatchReceipt> receipts) =>
         receipts.Sum(receipt => receipt.Changes.Sum(change => checked(change.BeforeValue.Length + change.AfterValue.Length)));
 
+    /// <summary>
+    /// Coarse block properties carry a serialized payload whose exact bytes are
+    /// the value, so they compare ordinally. Everything else is a single
+    /// formatting value where case is not meaningful.
+    /// </summary>
+    private static readonly string[] OrdinalComparedProperties =
+    {
+        "cell_contents_v1",
+        "cell_format_block_v1",
+        "cell_font_color_block_v1",
+    };
+
     private static bool ValuesMatch(string propertyId, string first, string second) =>
         string.Equals(first, second,
-            string.Equals(propertyId, "cell_contents_v1", StringComparison.Ordinal) ||
-            string.Equals(propertyId, "cell_format_block_v1", StringComparison.Ordinal)
+            OrdinalComparedProperties.Contains(propertyId, StringComparer.Ordinal)
                 ? StringComparison.Ordinal
                 : StringComparison.OrdinalIgnoreCase);
 }
