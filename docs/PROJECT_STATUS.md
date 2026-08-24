@@ -291,7 +291,7 @@ coverage gap, recorded here rather than fixed.
 
 ## Current verification
 
-- **Head of `main`: 703/703 Release tests pass**, Release and Debug builds are
+- **Head of `main`: 723/723 Release tests pass**, Release and Debug builds are
   warning-free, and the hidden-Excel smoke passes with the process-exit check
   working and no surviving Excel process. The rows below are historical
   per-package records and keep the counts current at the time each landed.
@@ -793,6 +793,26 @@ puts `commands/` above `ACCEPTANCE.md` for feature contracts. AC-FMT-019 keeps
 its sheet-inventory requirement for workbook **AutoFormat**, which is a different
 feature. Reinstating workbook AutoColor now needs a product decision reversing an
 approved contract, not a plan edit.
+
+## WP-R-03 font-colour block receipt
+
+The undo ceiling that blocked AutoColor execution is resolved, and not by raising
+it. `PropertyBatchReceipt` caps at 32 changes, which is a statement that a receipt
+holds a few properties rather than many cells; the product already carries whole
+blocks under one coarse property twice, as `cell_contents_v1` and
+`cell_format_block_v1`. AutoColor now does the same with
+`cell_font_color_block_v1`, so a recolour of any size is one change on one
+receipt and the cap is irrelevant rather than raised.
+
+The value groups addresses under their colour, is deterministic so two captures
+of one state are byte-identical, and is compared ordinally like the other coarse
+properties. The 50,000-cell ceiling is tied to the store's per-value character
+limit by a test that fails if either constant moves without the other being
+reconsidered.
+
+Its own tests caught a bug: duplicate detection was per colour group, so one cell
+listed under two colours passed, then deserialized as one cell with two
+conflicting colours and undo would have written whichever it read last.
 
 ## Recommended restart point
 
