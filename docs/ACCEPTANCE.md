@@ -49,7 +49,9 @@ work to remain in spike branches indefinitely:
   ADR-0005. Unknown or unqualified collaborative states do not gain mutation
   authority.
 - AC-P0-008 is a hard distribution and WP-1A-12 gate. It does not block source
-  implementation that cannot install itself or alter Office trust.
+  implementation that cannot install itself or alter Office trust. Consequently a
+  work package listing WP-1A-12 as a dependency is gated for **release only**;
+  see `IMPLEMENTATION_PLAN.md` for the per-package restatement.
 
 No capability may bypass its retained gate. Phase 1A foundation work may begin
 only from the recorded Phase 0 closure commit.
@@ -132,7 +134,7 @@ only from the recorded Phase 0 closure commit.
 | AC-FMT-016 | Sheet style requires mandatory preview and exact-plan postcondition verification. |
 | AC-FMT-017 | Every enabled broad-format component has qualified rollback/receipt semantics or is unavailable. |
 | AC-FMT-018 | Sheet-style failure rolls back qualified writes or reports exact remaining changed properties/targets and cannot report success. |
-| AC-FMT-019 | Workbook AutoFormat/AutoColor requires an explicit included-sheet inventory and never silently expands to hidden/unselected sheets. |
+| AC-FMT-019 | Workbook **AutoFormat** requires an explicit included-sheet inventory and never silently expands to hidden/unselected sheets. **The AutoColor half is withdrawn:** `commands/AUTOCOLOR.md`, approved 2026-08-20, defines AutoColor as exactly two commands with no workbook scope, and `commands/` outranks this document on feature contract. |
 | AC-FMT-020 | Workbook-scale formatting meets frozen resource/performance/AutoSave/coauthoring gates and cannot expose partial success as the default result. |
 | AC-FMT-021 | A cycle advances from the selection's current format to the next entry and wraps at the end, deriving position from the cell rather than stored state. |
 | AC-FMT-022 | A current format absent from the cycle applies entry 0, and a mixed selection applies entry 0 to every cell. |
