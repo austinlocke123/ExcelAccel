@@ -16,6 +16,7 @@ prevents a feature from disappearing during document restructuring.
 | Workbook-scope AutoColor | `commands/AUTOCOLOR.md` | **Withdrawn** 2026-08-20; AutoColor is selection and worksheet only |
 | Named-range inventory | `commands/NAMES_AND_LINKS.md` | Implemented 2026-08-23 (WP-G-01); usage coverage unbuilt |
 | External-link inventory | `commands/NAMES_AND_LINKS.md` | Implemented 2026-08-23 (WP-G-02); chart, query, and validation categories unscanned |
+| Same-shape comparison | `commands/COMPARE.md` | Range comparison implemented 2026-08-24 (WP-G-03); workbook structure and timing corpus unbuilt |
 | Ribbon task grouping | `commands/RIBBON_LAYOUT.md` | Implemented 2026-08-20 |
 | §6.1 AutoColor selection/worksheet | `commands/CATALOG.md` §1.3 | Phase 1A |
 | §6.1 workbook AutoColor | `commands/WORKBOOK_OPERATIONS.md` §4 | Gated high-impact |

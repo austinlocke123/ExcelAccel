@@ -291,7 +291,7 @@ coverage gap, recorded here rather than fixed.
 
 ## Current verification
 
-- **Head of `main`: 740/740 Release tests pass**, Release and Debug builds are
+- **Head of `main`: 771/771 Release tests pass**, Release and Debug builds are
   warning-free, and the hidden-Excel smoke passes with the process-exit check
   working and no surviving Excel process. The rows below are historical
   per-package records and keep the counts current at the time each landed.
@@ -934,6 +934,38 @@ Both inventories shipped, but the item also covers **WP-G-03 compare**, name
 usage coverage (AC-NAME-008..010), and link scanning for chart series,
 queries/connections, and validation. Those remain.
 
+## WP-G-03 same-shape comparison
+
+`compare.source.capture` remembers a range, `compare.ranges.same_shape` compares
+the selection against it position by position,
+`compare.result.navigate_target` re-lists the same differences against the other
+side, and `compare.results.export` writes them locally after a manifest.
+
+Both sides must already be open. Nothing is opened, saved, closed, or
+recalculated, and the source is stored as an address only and re-read when the
+comparison runs, so a stale capture cannot present old content as current.
+
+Unequal dimensions are refused with a message saying the comparison "does not
+align or truncate". There is no row matching, no shift detection, and no
+comparison of a common sub-rectangle.
+
+The distinction that makes results readable is **equivalent shape**. `=J1*2` and
+`=K1*2` are different text but the same formula from another anchor; calling that
+a structural difference would bury the real ones under every copied column in the
+model. A formula outside parser coverage is reported as such rather than guessed
+at, and a category that was not compared is named in the coverage gaps, so a
+result can never look complete while quietly skipping something.
+
+Real Excel, over three cells where one row matches, one holds a different value,
+and one holds a copied formula: `differences=2|cells=3|complete=False|
+r2:Constant:Identical+r3:Formula:EquivalentShape`.
+
+**Not built and not claimed:** workbook structure comparison with explicit sheet
+pairing (AC-CMP-011..013), the separately measured timing against a frozen
+comparison corpus (AC-CMP-015), and the worksheet equal-bounds policy with
+hidden/filtered reporting (AC-CMP-009/010), so no worksheet-level command is
+registered.
+
 ## Recommended restart point
 
 Nothing here is blocking, and no decision is outstanding. The most useful next
@@ -946,12 +978,13 @@ Remaining engineering work, in rough order of value:
 1. ~~**Cover the add-in unload path.**~~ **Done (WP-R-01).** The path is now
    exercised by the smoke and its resilience is fault-injected; a defect that
    would have left a stale session marker was found and fixed.
-2. **Both inventories are done** (WP-G-01, WP-G-02). What remains of this item:
-   **WP-G-03 compare**, the larger user win, unblocked now that WP-2-04 has
-   landed; name **usage** coverage (AC-NAME-008..010); and link scanning for
-   chart series, queries/connections, and validation, each of which the spec
-   requires to be separately qualified and each of which is currently reported as
-   a coverage gap.
+2. **Both inventories and range comparison are done** (WP-G-01, WP-G-02,
+   WP-G-03). What remains of this item: workbook structure comparison with
+   explicit sheet pairing and the frozen comparison timing corpus
+   (AC-CMP-011..013, 015); name **usage** coverage (AC-NAME-008..010); and link
+   scanning for chart series, queries/connections, and validation. Each is
+   separately qualified by its spec and each is currently reported as a coverage
+   gap rather than silently omitted.
 3. ~~**Settle the WP-1A-12 dependency.**~~ **Done (WP-R-02).** A WP-1A-12
    dependency gates release only, never a start, which is what AC-P0-008 already
    said; the four package rows now say so. Workbook AutoColor was withdrawn from

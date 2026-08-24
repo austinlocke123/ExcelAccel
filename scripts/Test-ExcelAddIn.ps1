@@ -1043,6 +1043,22 @@ public static class ExcelAccelNativeMethods
         [Console]::WriteLine("handle_count=$($excelProcess.HandleCount)")
         [Console]::Out.Flush()
 
+        # Two same-shape blocks: one identical row, one differing value, and one
+        # formula copied to a different anchor, which must read as same-shape
+        # rather than as a structural change.
+        $worksheet.Range('J1').Value2 = 10
+        $worksheet.Range('J2').Value2 = 20
+        $worksheet.Range('J3').Formula = '=J1*2'
+        $worksheet.Range('K1').Value2 = 10
+        $worksheet.Range('K2').Value2 = 99
+        $worksheet.Range('K3').Formula = '=K1*2'
+        [void]$worksheet.Range('J1:J3').Select()
+        [void]$excel.Run('ExcelAccel.Smoke.CompareCaptureSource')
+        [void]$worksheet.Range('K1:K3').Select()
+        [void]$excel.Run('ExcelAccel.Smoke.CompareRanges')
+        [Console]::WriteLine('compare=exercised')
+        [Console]::Out.Flush()
+
         # One typed number, one same-sheet formula, one text label, each starting
         # from a colour none of them should end on.
         $auto = $worksheet.Range('G1:G3')
@@ -1261,6 +1277,7 @@ try {
         'registered=True',
         'version=',
         'autocolor_restored=5649426,5649426,5649426',
+        'compare=exercised',
         'autocolor=exercised',
         'link_inventory=exercised',
         'name_inventory=exercised',

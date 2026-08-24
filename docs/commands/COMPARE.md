@@ -1,6 +1,8 @@
 # Same-shape comparison command contracts
 
-Status: **Draft for review**  
+Status: **Range comparison, target-side navigation, and export implemented
+2026-08-24 (WP-G-03). Workbook structure comparison, the worksheet equal-bounds
+policy, and the frozen timing corpus remain unbuilt.**  
 Capability: CAP-CMP-001  
 Earliest phase: gated after parser and Phase 2 reliability evidence  
 Approved scope: read-only comparison of already-open sources with explicit,

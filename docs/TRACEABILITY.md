@@ -30,6 +30,7 @@ documents.
 | CAP-NAME-001 (named-range inventory) | commands/NAMES_AND_LINKS | WP-G-01 delivered | AC-NAME-001..007, 011 evidenced in evidence/WP-G-01_NAMED_RANGE_INVENTORY; AC-NAME-008..010 unbuilt |
 | CAP-LINK-001 (external-link inventory) | commands/NAMES_AND_LINKS | WP-G-02 delivered | AC-LINK-001..008, 010, 011 evidenced in evidence/WP-G-02_EXTERNAL_LINK_INVENTORY; AC-LINK-009 partial |
 | CAP-FMT-002 (AutoColor) | commands/AUTOCOLOR | WP-F-08, WP-R-03, WP-R-04 delivered | AC-FMT-034..037, 046 evidenced in evidence/WP-R-04_AUTOCOLOR_EXECUTION; worksheet scope gated |
+| CAP-CMP-001 (same-shape comparison) | commands/COMPARE | WP-G-03 delivered for ranges | AC-CMP-001..008, 014, 016..019 evidenced in evidence/WP-G-03_SAME_SHAPE_COMPARISON; AC-CMP-011..013, 015 unbuilt |
 | CAP-UX-002 (ribbon task grouping) | commands/RIBBON_LAYOUT | delivered 2026-08-20 | AC-FMT-033 |
 | CAP-NAV-001 | commands/CATALOG §1.4 | WP-1A-08 | AC-NAV-001..006 |
 | CAP-UNDO-001 | ADR-0003; Reliability §6 | WP-1A-09 | AC-REL-011/012 |
