@@ -893,6 +893,47 @@ the honest caveat that a very slow leak and noise look alike at this length.
 A 12-iteration soak confirmed cross-session behaviour separately: clean exits
 every time, add-in unlocked every time, drift under 2%.
 
+## Session of 2026-08-24
+
+Six packages merged, each as its own PR with evidence, covering every item on the
+restart list:
+
+| PR | Package | Restart item |
+|---|---|---|
+| #50 | WP-R-02 | 3, dependency and contract conflict |
+| #51 | WP-R-03 | 4a, font-colour block undo value |
+| #52 | WP-R-04 | 4b, AutoColor selection execution |
+| #53 | WP-R-05 | 5, Model Check ignore storage settled |
+| #54 | WP-R-06 | 6, corpus shapes and in-process retention |
+
+plus PRs #48 and #49 earlier the same day for item 2's two inventories.
+
+Verification on `main` after the last merge: Release and Debug builds
+warning-free, **740/740** Release tests, `scripts/Test-ExcelAddIn.ps1` passing
+with Excel exiting cleanly and no stale session markers, Phase 2 qualification
+inside every budget, and an 80-cycle in-process retention run showing a plateau.
+
+### What running the code found
+
+Three defects surfaced only because something was executed rather than reasoned
+about:
+
+- **AutoColor's planner advertised a bound it could never reach.** The
+  fingerprint concatenated every cell and `PreconditionFingerprint` caps at a
+  million characters, so a large selection threw an unhandled argument exception
+  instead of refusing.
+- **The dense corpus always truncates.** Every Phase 2 qualification run
+  exercised the 5,000-cell cap and never the completing path, which the new
+  sparse and wide shapes reach.
+- **A font-colour block could hold one cell twice** under two colours, and undo
+  would have written whichever it read last.
+
+### Item 2 is not finished
+
+Both inventories shipped, but the item also covers **WP-G-03 compare**, name
+usage coverage (AC-NAME-008..010), and link scanning for chart series,
+queries/connections, and validation. Those remain.
+
 ## Recommended restart point
 
 Nothing here is blocking, and no decision is outstanding. The most useful next
