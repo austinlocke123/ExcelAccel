@@ -860,6 +860,39 @@ loudly rather than drifting.
 The visible-and-removable half of AC-CHECK-033 was already met by the existing
 manage-ignores dialog, and ignores are not portable by any unapproved route.
 
+## WP-R-06 corpus shapes and in-process retention
+
+The Phase 2 corpus was one dense rectangle. Sparse and wide shapes were added on
+their own worksheets, leaving the dense block and its four budgets untouched so
+they stay comparable run to run. Sparse is populated every 50th row, giving a used
+range of 7,804 cells for roughly 160 populated ones, which is the
+untrusted-used-range hazard the dense block never reaches; wide is the transpose,
+because column-major bounding is a different path.
+
+They earned their place on the first run. The dense shape reports
+`Partial;5000;16000` because it always hits the 5,000-cell cap, while both new
+shapes report `Complete`. Every Phase 2 qualification run until now exercised the
+truncated path and never the completing one.
+
+Two corrections to what this document previously said. The claim that the soak
+covers Phase 1B only was **stale**: the smoke it loops now covers precedents,
+dependents, workbook dependents, the formula inspector, Model Check, the name and
+link inventories, AutoColor, and the unload path. And more iterations could never
+have shown slow leakage, because the soak launches a fresh Excel process per
+iteration, which its own limitations already stated. The gap was the harness
+shape, not the iteration count.
+
+`scripts/Test-ExcelInProcessRetention.ps1` closes that gap: one Excel process, one
+workbook, the Phase 2 operations repeated, sampling resources throughout. Over 80
+cycles, handles by quarter went 1,847, 1,970, 1,972, 1,982 and working set 298,
+309, 308, 309 MB — a warm-up rise, then a plateau. The second-half slope of +0.46
+handles per cycle sits inside a 186-handle spread, so it is not distinguishable
+from noise. **No evidence of unbounded in-process retention over 80 cycles**, with
+the honest caveat that a very slow leak and noise look alike at this length.
+
+A 12-iteration soak confirmed cross-session behaviour separately: clean exits
+every time, add-in unlocked every time, drift under 2%.
+
 ## Recommended restart point
 
 Nothing here is blocking, and no decision is outstanding. The most useful next
@@ -892,9 +925,13 @@ Remaining engineering work, in rough order of value:
    suppression list cost the user their whole profile, and an ignore fingerprints
    one model while a profile is user-wide. The spec and AC-CHECK-031 said
    "profile" and now describe the file the code actually writes.
-6. Extending the Phase 2 corpus beyond one dense rectangular shape, and running a
-   long-duration soak of the Phase 2 operations. Three iterations cannot show
-   slow leakage, and the existing ten-iteration soak covers Phase 1B only.
+6. ~~Extending the Phase 2 corpus and running a long-duration soak.~~ **Done
+   (WP-R-06).** Sparse and wide shapes now sit beside the dense block and both
+   reach the completing path it never did. In-process retention has its own
+   harness, because the soak's fresh process per iteration could never show it at
+   any iteration count. What remains is a much longer retention run to separate a
+   very slow leak from noise, and frozen rather than provisional budgets for the
+   new shapes.
 
 Standing constraints for any of the above:
 

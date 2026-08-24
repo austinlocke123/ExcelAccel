@@ -94,3 +94,21 @@ are deliberately narrower:
   add-in runtime, or corpus changes;
 - add feature-specific progress/cancellation and retained-memory evidence for
   operations that actually exceed 500 ms or retain large snapshots.
+
+## In-process retention
+
+`scripts/Test-ExcelInProcessRetention.ps1` holds one Excel process and repeats the
+Phase 2 read-only operations, sampling working set, private memory, and handles
+throughout. It exists because `Test-ExcelReliabilitySoak.ps1` launches a fresh
+process per iteration and therefore proves process cleanup rather than in-process
+retention, at any iteration count.
+
+Drift compares the first and last thirds of the samples after a warm-up, so a
+single noisy reading cannot decide the outcome, and it refuses to start if any
+Excel is already open, since it would otherwise measure a process it does not
+control.
+
+Measured 2026-08-24 over 80 cycles: handles by quarter 1,847 / 1,970 / 1,972 /
+1,982 and working set 298 / 309 / 308 / 309 MB — a warm-up rise then a plateau,
+with no evidence of unbounded retention. A very slow leak and noise are not
+separable at this length; a longer run is the way to tell them apart.
