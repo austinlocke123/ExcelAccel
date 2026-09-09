@@ -121,3 +121,9 @@ performance-baseline, and packaging/trust prototype work is implemented. Phase
 1A begins with the production foundation. Feature families remain governed by
 their command contracts and retained gates; Phase 0 closure does not imply
 release readiness.
+
+## License
+
+ExcelAccel is open-source software released under the [MIT License](LICENSE).
+
+Copyright © 2026 Austin Locke.
